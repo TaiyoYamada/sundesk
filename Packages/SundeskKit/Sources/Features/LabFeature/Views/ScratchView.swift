@@ -36,6 +36,7 @@ struct ScratchView: View {
                 }
             }
             .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
             .frame(width: 200)
             Divider()
             SplitPane(.vertical, fraction: 0.6, minFirst: 200, minSecond: 160) {
