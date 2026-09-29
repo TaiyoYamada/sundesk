@@ -1,8 +1,8 @@
 # sundesk アーキテクチャ
 
-- 状態: ドラフト（話し合いながら更新中）
+- 状態: フェーズ 0 の実装を反映済み
 - 最終更新: 2026-09-29
-- 要件は [requirements.md](requirements.md) を参照
+- 要件は [requirements.md](requirements.md)、個々の判断の理由は [ADR](adr/README.md) を参照
 
 ## 1. 方針
 
@@ -31,7 +31,7 @@
 └────────────────────────────────────────────────────────┘
 
 依存の向き: Presentation → Domain ← Data → Infrastructure
-組み立て: App ターゲット（Composition Root）が全部をつなぐ
+組み立て: SundeskComposition（Composition Root）が全部をつなぐ
 ```
 
 | 層 | 知ってよいもの | 知ってはいけないもの |
@@ -46,7 +46,10 @@
 - **SwiftData の `@Model` は Data 層の外に出さない。** 境界で Mapper を通して Domain の Entity（`Sendable` な struct）に変換する
 - **View は `@Query` を使わない。** データの変化は Data 層で `ResultsObserver` を使って監視し、Repository が `AsyncSequence` として流す
 - **UseCase は 1 つの操作につき 1 つ。** `callAsFunction` で呼べるようにする
-- **DI は手書きのコンストラクタ注入。** DI コンテナのライブラリは入れない。組み立ては App ターゲットの Composition Root で一か所にまとめる
+- **DI は [Factory](https://github.com/hmlongco/Factory) を使う**（[ADR 0004](adr/0004-factory-composition-root.md)）
+  - Domain、Data、Presentation は Factory を import しない。依存はコンストラクタで受け取る
+  - コンテナへの登録は `SundeskComposition` モジュールにまとめる。全層を知っているのはここだけ
+  - View は `@InjectedObservable(\.xxxViewModel)` で ViewModel を受け取る
 - **エラーは層ごとに型を決める。** typed throws を使い、層の境界で変換する
 
 ## 3. モジュール構成
@@ -55,23 +58,36 @@
 sundesk/
 ├── sundesk.xcodeproj
 ├── sundesk/                      App ターゲット
-│   ├── App/                      @main、Composition Root、ウインドウ、メニュー
+│   ├── App/                      @main、AppDelegate（エンジンの起動と停止）、メニュー
 │   └── Views/                    SwiftUI の View（機能ごとのフォルダ）
 ├── Packages/SundeskKit/
 │   ├── Package.swift
 │   ├── Sources/
 │   │   ├── SundeskDomain/        Entity、UseCase、Repository の protocol
-│   │   ├── SundeskPresentation/  ViewModel（UI に依存しないのでテストしやすい）
+│   │   ├── SundeskEngine/        Infrastructure: エンジンのプロセス管理と HTTP クライアント
 │   │   ├── SundeskData/          Repository の実装、SwiftData のスキーマ、Mapper
-│   │   ├── SundeskEngine/        AI エンジンとの接続（DataSource）
-│   │   └── SundeskGraphRenderer/ Metal による知識グラフの描画
+│   │   ├── SundeskPresentation/  ViewModel（UI に依存しないのでテストしやすい）
+│   │   └── SundeskComposition/   Composition Root（Factory への登録、設定の読み込み）
 │   └── Tests/                    モジュールごとのテスト
-├── engine/                       Python エンジン（プロセス構成が B 案になった場合）
-└── docs/
+├── engine/                       Python エンジン（uv で管理。LLM、画像生成、埋め込み、NLP、グラフ計算）
+├── Configurations/               xcconfig（バンドル ID、対象 OS、Swift の設定）
+├── scripts/                      補助スクリプト（カバレッジの集計など）
+└── docs/                         要件、アーキテクチャ、ADR
+
+フェーズ 2 で、Metal による知識グラフの描画モジュール SundeskGraphRenderer を加える。
 ```
 
 - モジュール名に `Data` を単独で使わない（Foundation の `Data` 型と衝突するため）。すべて `Sundesk` の接頭辞を付ける
 - View は App ターゲットに置き、ViewModel は `SundeskPresentation` に置く。こうすると ViewModel を UI 抜きでテストできる
+
+| モジュール | 依存先 |
+|---|---|
+| SundeskDomain | なし |
+| SundeskEngine | swift-subprocess |
+| SundeskData | SundeskDomain、SundeskEngine |
+| SundeskPresentation | SundeskDomain |
+| SundeskComposition | すべて、FactoryKit |
+| アプリ本体 | SundeskComposition、SundeskPresentation、SundeskDomain |
 
 ## 4. 画面（MVVM）の書き方
 
@@ -108,11 +124,21 @@ public final class ChatViewModel {
 | View、ViewModel | `@MainActor` |
 | UseCase | `nonisolated`。重い計算は `@concurrent` |
 | SwiftData への大量の書き込み | `@ModelActor`（バックグラウンド） |
-| エンジンとの通信、ジョブ管理 | `actor` |
+| エンジンのプロセス管理（`EngineProcess`）、ジョブ管理 | `actor` |
+| エンジンの起動（子プロセスの実行） | `@concurrent` |
 | 逐次の通知（トークン、進捗） | `AsyncSequence` と `ProgressManager` |
 | 後始末（モデルの解放など） | `withTaskCancellationShield` |
 
-## 6. 知識グラフの描画（Metal）
+## 6. AI エンジンとの連携
+
+- 通信: `127.0.0.1` の空いているポートで HTTP。起動ごとにトークンを発行し、`Authorization` ヘッダーで確かめる（[ADR 0006](adr/0006-engine-http-over-loopback.md)）
+- 起動: `uv run --project engine sundesk-engine`。swift-subprocess で起動し、`GET /health` が応答したら稼働中とみなす
+- 停止: SIGTERM を送り、5 秒で終わらなければ強制終了する。アプリは終了前にエンジンを止め終える
+- 取り残し対策: アプリのプロセス ID を渡し、エンジンは親がいなくなったら自分で終了する（[ADR 0007](adr/0007-engine-process-lifecycle.md)）
+- 設定: エンジンのフォルダと uv の場所は設定画面で変えられる。既定はリポジトリの `engine/` と、Homebrew などの決まった場所
+- ログ: OSLog のサブシステム `com.taiyou.sundesk`。エンジン自身の出力はカテゴリ `engine.output` に流す。起動にかかった時間は signpost で Instruments に出る
+
+## 7. 知識グラフの描画（Metal）
 
 - `MTKView` を SwiftUI に埋め込んで描く
 - 点と線はインスタンス描画でまとめて描く（数万規模を想定）
@@ -122,7 +148,7 @@ public final class ChatViewModel {
   - 描き方（グリフのアトラスを作って Metal で描くか、SwiftUI を重ねるか）は試作して決める
 - テストでは、シェーダーの計算結果を CPU の参照実装と比べる
 
-## 7. テスト
+## 8. テスト
 
 - **実装した後に書く**（TDD にはしない）。ただし、層ごとに漏れなく書く
 - Swift Testing を基本にする。UI テストだけ XCTest を使う
@@ -137,9 +163,12 @@ public final class ChatViewModel {
 | エンジン | API の約束事を Swift と Python の両側から検証する |
 | 画面 | スナップショットテストと、主要な操作の UI テスト |
 
-## 8. 未決事項
+- `make test` でパッケージ、アプリ、Python のテストをまとめて走らせる。`make test-ui` で UI テスト
+- 本物のエンジンを起動する結合テストは、`SUNDESK_INTEGRATION=1` のときだけ走る（`make test-integration`、CI では常に走らせる）
+- CI（GitHub Actions）はプルリクエストごとに、lint、テスト、カバレッジの集計を行う
 
-- [ ] プロセス構成（Swift のみか Swift + Python か）。決まれば `SundeskEngine` と `engine/` の中身が決まる
-- [ ] 画面の構成（ウインドウは一つか、複数か）
-- [ ] ノートを sundesk で編集するか、読むだけか
-- [ ] MVP の範囲と作る順番
+## 9. 未決事項
+
+- [ ] ノートを sundesk で編集するか、読むだけか（当面は読むだけ）
+- [ ] 大きなテンソル（Attention の行列など）の転送形式（フェーズ 4）
+- [ ] CodeQL の Swift 対応（CodeQL が Swift 6.4 に対応したら加える）

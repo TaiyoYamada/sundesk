@@ -5,15 +5,20 @@
 //  Created by 山田大陽 on 2026/09/29.
 //
 
+import SundeskPresentation
 import Testing
+
 @testable import sundesk
 
-struct sundeskTests {
+@MainActor
+@Suite("エンジンの状態の表示")
+struct EngineIndicatorStyleTests {
+    @Test("状態ごとに別のアイコンを使う")
+    func symbolsAreDistinct() {
+        let symbols = [
+            EngineStatusViewModel.Indicator.idle, .working, .ready, .error,
+        ].map(\.symbolName)
 
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
-        // Swift Testing Documentation
-        // https://developer.apple.com/documentation/testing
+        #expect(Set(symbols).count == symbols.count)
     }
-
 }

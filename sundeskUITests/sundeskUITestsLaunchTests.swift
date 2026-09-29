@@ -7,9 +7,9 @@
 
 import XCTest
 
-final class sundeskUITestsLaunchTests: XCTestCase {
-
-    override class var runsForEachTargetApplicationUIConfiguration: Bool {
+/// ライトモードとダークモードで起動し、最初の画面のスクリーンショットを残す。
+final class SundeskUITestsLaunchTests: XCTestCase {
+    override static var runsForEachTargetApplicationUIConfiguration: Bool {
         true
     }
 
@@ -20,15 +20,11 @@ final class sundeskUITestsLaunchTests: XCTestCase {
     @MainActor
     func testLaunch() throws {
         let app = XCUIApplication()
+        app.launchArguments += ["-engine.startsAutomatically", "NO"]
         app.launch()
 
-        // Insert steps here to perform after app launch but before taking a screenshot,
-        // such as logging into a test account or navigating somewhere in the app
-        // XCUIAutomation Documentation
-        // https://developer.apple.com/documentation/xcuiautomation
-
         let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "Launch Screen"
+        attachment.name = "起動直後の画面"
         attachment.lifetime = .keepAlways
         add(attachment)
     }

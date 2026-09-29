@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		5D0A00000000000000000041 /* SundeskComposition in Frameworks */ = {isa = PBXBuildFile; productRef = 5D0A00000000000000000031 /* SundeskComposition */; };
+		5D0A00000000000000000042 /* SundeskPresentation in Frameworks */ = {isa = PBXBuildFile; productRef = 5D0A00000000000000000032 /* SundeskPresentation */; };
+		5D0A00000000000000000043 /* SundeskDomain in Frameworks */ = {isa = PBXBuildFile; productRef = 5D0A00000000000000000033 /* SundeskDomain */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		E5C813E3306B8ECC0078C279 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +30,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		5D0A00000000000000000001 /* Shared.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Shared.xcconfig; sourceTree = "<group>"; };
+		5D0A00000000000000000002 /* App.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = App.xcconfig; sourceTree = "<group>"; };
+		5D0A00000000000000000003 /* Tests.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Tests.xcconfig; sourceTree = "<group>"; };
+		5D0A00000000000000000004 /* UITests.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = UITests.xcconfig; sourceTree = "<group>"; };
 		E5C813D3306B8ECB0078C279 /* sundesk.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sundesk.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E5C813E2306B8ECC0078C279 /* sundeskTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sundeskTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E5C813EC306B8ECC0078C279 /* sundeskUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sundeskUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -52,6 +62,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5D0A00000000000000000041 /* SundeskComposition in Frameworks */,
+				5D0A00000000000000000042 /* SundeskPresentation in Frameworks */,
+				5D0A00000000000000000043 /* SundeskDomain in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -72,12 +85,24 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		5D0A00000000000000000010 /* Configurations */ = {
+			isa = PBXGroup;
+			children = (
+				5D0A00000000000000000001 /* Shared.xcconfig */,
+				5D0A00000000000000000002 /* App.xcconfig */,
+				5D0A00000000000000000003 /* Tests.xcconfig */,
+				5D0A00000000000000000004 /* UITests.xcconfig */,
+			);
+			path = Configurations;
+			sourceTree = "<group>";
+		};
 		E5C813CA306B8ECB0078C279 = {
 			isa = PBXGroup;
 			children = (
 				E5C813D5306B8ECB0078C279 /* sundesk */,
 				E5C813E5306B8ECC0078C279 /* sundeskTests */,
 				E5C813EF306B8ECC0078C279 /* sundeskUITests */,
+				5D0A00000000000000000010 /* Configurations */,
 				E5C813D4306B8ECB0078C279 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -112,6 +137,9 @@
 			);
 			name = sundesk;
 			packageProductDependencies = (
+				5D0A00000000000000000031 /* SundeskComposition */,
+				5D0A00000000000000000032 /* SundeskPresentation */,
+				5D0A00000000000000000033 /* SundeskDomain */,
 			);
 			productName = sundesk;
 			productReference = E5C813D3306B8ECB0078C279 /* sundesk.app */;
@@ -195,6 +223,9 @@
 			);
 			mainGroup = E5C813CA306B8ECB0078C279;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5D0A00000000000000000020 /* XCLocalSwiftPackageReference "Packages/SundeskKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E5C813D4306B8ECB0078C279 /* Products */;
 			projectDirPath = "";
@@ -271,6 +302,7 @@
 /* Begin XCBuildConfiguration section */
 		E5C813F4306B8ECC0078C279 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5D0A00000000000000000001 /* Shared.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -304,7 +336,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = HJC5DQ3PVM;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -323,7 +354,6 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -335,6 +365,7 @@
 		};
 		E5C813F5306B8ECC0078C279 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5D0A00000000000000000001 /* Shared.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -368,7 +399,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = HJC5DQ3PVM;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -381,7 +411,6 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -391,144 +420,96 @@
 		};
 		E5C813F7306B8ECC0078C279 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5D0A00000000000000000002 /* App.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = HJC5DQ3PVM;
-				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "----.sundesk";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
 		};
 		E5C813F8306B8ECC0078C279 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5D0A00000000000000000002 /* App.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = HJC5DQ3PVM;
-				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "----.sundesk";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
 		E5C813FA306B8ECC0078C279 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5D0A00000000000000000003 /* Tests.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = HJC5DQ3PVM;
 				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "----.sundeskTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/sundesk.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/sundesk";
 			};
 			name = Debug;
 		};
 		E5C813FB306B8ECC0078C279 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5D0A00000000000000000003 /* Tests.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = HJC5DQ3PVM;
 				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "----.sundeskTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/sundesk.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/sundesk";
 			};
 			name = Release;
 		};
 		E5C813FD306B8ECC0078C279 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5D0A00000000000000000004 /* UITests.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = HJC5DQ3PVM;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "----.sundeskUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
 				TEST_TARGET_NAME = sundesk;
 			};
 			name = Debug;
 		};
 		E5C813FE306B8ECC0078C279 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5D0A00000000000000000004 /* UITests.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = HJC5DQ3PVM;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "----.sundeskUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
 				TEST_TARGET_NAME = sundesk;
 			};
 			name = Release;
@@ -573,6 +554,28 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		5D0A00000000000000000020 /* XCLocalSwiftPackageReference "Packages/SundeskKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/SundeskKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5D0A00000000000000000031 /* SundeskComposition */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SundeskComposition;
+		};
+		5D0A00000000000000000032 /* SundeskPresentation */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SundeskPresentation;
+		};
+		5D0A00000000000000000033 /* SundeskDomain */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SundeskDomain;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E5C813CB306B8ECB0078C279 /* Project object */;
 }
