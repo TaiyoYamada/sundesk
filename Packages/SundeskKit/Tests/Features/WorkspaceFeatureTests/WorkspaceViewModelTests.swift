@@ -93,6 +93,21 @@ struct WorkspaceViewModelTests {
         #expect(workspace.alertMessage == "リンク先「ない」が見つかりません。")
     }
 
+    @Test("論文や実験のメモへのリンクは、論文や実験の画面で開き、読めた題名をタブに出す")
+    func opensLibraryScreensFromLinks() async {
+        let workspace = makeWorkspace(links: ["SA の実験": "Experiments/2026-09-17-sa/note.md"])
+
+        await workspace.openLink("SA の実験", isExactPath: false)
+        #expect(workspace.selectedTab?.content == .experiment("2026-09-17-sa"))
+        workspace.open(path: "Papers/peruzzo2014/paper.pdf")
+        #expect(workspace.selectedTab?.content == .paper("peruzzo2014"))
+        workspace.open(path: "Experiments/2026-09-17-sa/note.md", line: 3)
+        #expect(workspace.tabs.count == 2)
+
+        workspace.retitle(.experiment("2026-09-17-sa"), to: "SA で Max-Cut")
+        #expect(workspace.tabs.first { $0.content == .experiment("2026-09-17-sa") }?.title == "SA で Max-Cut")
+    }
+
     @Test("タブの名前とアイコン。Markdown は拡張子を出さない")
     func tabTitles() {
         #expect(WorkspaceTab(content: .document("論文メモ/Attention.md")).title == "Attention")

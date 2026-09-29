@@ -65,25 +65,36 @@ public final class WorkspaceViewModel {
 
     // MARK: - タブ
 
-    /// ファイルを開く。すでに開いていれば、そのタブを選ぶ。
+    /// ファイルを開く。すでに開いていれば、そのタブを選ぶ。論文や実験のフォルダの中なら、その画面で開く。
     public func open(path: String) {
-        open(.document(path))
+        open(Self.content(for: path))
     }
 
-    /// ファイルを開き、指定の行へ移る。論文や実験のフォルダの中なら、そのタブで開く。
+    /// ファイルを開き、指定の行へ移る。
     public func open(path: String, line: Int) {
+        let content = Self.content(for: path)
+        open(content)
+        // 論文や実験の画面なら、メモ（note.md）の行へ移る
+        if WorkspaceTab(content: content).documentPath == path { document(for: path).reveal(line: line) }
+    }
+
+    /// パスを開くタブの中身。論文と実験のフォルダの中のファイルは、論文や実験の画面にする。
+    static func content(for path: String) -> WorkspaceTab.Content {
         let parts = path.split(separator: "/").map(String.init)
-        if parts.count >= 3, parts[0] == "Papers" || parts[0] == "Experiments" {
-            if parts[0] == "Papers" {
-                open(paper: parts[1], title: parts[1])
-            } else {
-                open(experiment: parts[1], title: parts[1])
-            }
-            if path.hasSuffix("note.md") { document(for: path).reveal(line: line) }
-            return
+        guard parts.count >= 3 else { return .document(path) }
+        switch parts[0] {
+        case LibrarySection.papers.folder: return .paper(parts[1])
+        case LibrarySection.experiments.folder: return .experiment(parts[1])
+        default: return .document(path)
         }
-        open(.document(path))
-        document(for: path).reveal(line: line)
+    }
+
+    /// タブの題名を変える（論文や実験の題名が読めたとき）。
+    public func retitle(_ content: WorkspaceTab.Content, to title: String) {
+        guard !title.isEmpty, let index = tabs.firstIndex(where: { $0.content == content }),
+            tabs[index].customTitle != title
+        else { return }
+        tabs[index].customTitle = title
     }
 
     public func open(tool: WorkspaceTool) {

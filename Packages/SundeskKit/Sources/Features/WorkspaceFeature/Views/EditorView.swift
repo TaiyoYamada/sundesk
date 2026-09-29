@@ -43,13 +43,19 @@ struct EditorView: View {
                         )
                     case .paper(let key):
                         // 同じ種類のタブを切り替えても読み直すよう、キーごとに別の画面にする
-                        PaperScreen(viewModel: screens.paper(key)) { note(for: tab) }
+                        let paper = screens.paper(key)
+                        PaperScreen(viewModel: paper) { note(for: tab) }
                             .id(tab.id)
+                            .onChange(of: paper.title, initial: true) { workspace.retitle(tab.content, to: paper.title) }
                     case .experiment(let key):
-                        ExperimentScreen(viewModel: screens.experiment(key), openPath: openLibraryPath) {
+                        let experiment = screens.experiment(key)
+                        ExperimentScreen(viewModel: experiment, openPath: openLibraryPath) {
                             note(for: tab)
                         }
                         .id(tab.id)
+                        .onChange(of: experiment.title, initial: true) {
+                            workspace.retitle(tab.content, to: experiment.title)
+                        }
                     case .comparison(let keys):
                         ComparisonScreen(viewModel: screens.comparison(keys)) { key, title in
                             workspace.open(experiment: key, title: title)

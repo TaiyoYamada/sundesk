@@ -25,7 +25,7 @@ public struct WorkspaceTab: Identifiable, Hashable, Sendable {
     public let id: UUID
     public let content: Content
     /// 論文や実験の題名（タブに出す）。
-    public let customTitle: String?
+    public var customTitle: String?
 
     public init(id: UUID = UUID(), content: Content, title: String? = nil) {
         self.id = id
