@@ -9,11 +9,13 @@ import AppKit
 import EngineFeature
 import FactoryKit
 import NotesFeature
+import SettingsFeature
 import SundeskDomain
 
 /// アプリの起動と終了に合わせて、AI エンジンを起動・停止する。終了する前に、編集を保存する。
 public final class AppDelegate: NSObject, NSApplicationDelegate {
     public func applicationDidFinishLaunching(_ notification: Notification) {
+        AppAppearance.stored.apply()
         // ユニットテストはアプリをホストにして動くので、そのときはエンジンを起動しない
         let isRunningUnitTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
         guard Container.shared.resolvedSettings().startsEngineAutomatically, !isRunningUnitTests else { return }

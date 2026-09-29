@@ -39,37 +39,55 @@ struct NavigatorView: View {
 }
 
 /// ナビゲータの上のアイコンの列。左の 3 つでナビゲータを切り替え、右の 5 つで機能をタブで開く。
+///
+/// Xcode と同じく、列をガラスのカプセル（Liquid Glass）に載せ、選んでいるものの下の丸みを、選び直すと滑らせて動かす。
 private struct NavigatorBar: View {
     let workspace: WorkspaceViewModel
+    @Namespace private var selection
 
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(WorkspaceViewModel.NavigatorMode.allCases) { mode in
-                item(mode.title, mode.systemImage, isSelected: workspace.navigatorMode == mode) {
-                    workspace.navigatorMode = mode
+        GlassEffectContainer {
+            HStack(spacing: 0) {
+                ForEach(WorkspaceViewModel.NavigatorMode.allCases) { mode in
+                    item(mode.title, mode.systemImage, group: "mode", isSelected: workspace.navigatorMode == mode) {
+                        withAnimation(.snappy(duration: 0.25)) { workspace.navigatorMode = mode }
+                    }
+                    .accessibilityAddTraits(workspace.navigatorMode == mode ? .isSelected : [])
                 }
-                .accessibilityAddTraits(workspace.navigatorMode == mode ? .isSelected : [])
-            }
-            Divider().frame(height: 16).padding(.horizontal, 2)
-            ForEach(WorkspaceTool.allCases) { tool in
-                item(tool.title, tool.systemImage, isSelected: workspace.selectedTab?.content == .tool(tool)) {
-                    workspace.open(tool: tool)
+                Divider().frame(height: 14).padding(.horizontal, 3)
+                ForEach(WorkspaceTool.allCases) { tool in
+                    item(
+                        tool.title, tool.systemImage, group: "tool",
+                        isSelected: workspace.selectedTab?.content == .tool(tool)
+                    ) {
+                        withAnimation(.snappy(duration: 0.25)) { workspace.open(tool: tool) }
+                    }
                 }
             }
+            .padding(3)
+            .glassEffect(.regular, in: .capsule)
         }
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 8)
         .padding(.vertical, 6)
     }
 
     private func item(
-        _ title: String, _ systemImage: String, isSelected: Bool, action: @escaping () -> Void
+        _ title: String, _ systemImage: String, group: String, isSelected: Bool, action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
+                .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
                 .frame(maxWidth: .infinity, minHeight: 24)
-                .contentShape(.rect)
+                .contentShape(.capsule)
+                .background {
+                    if isSelected {
+                        Capsule()
+                            .fill(.tint.opacity(0.18))
+                            .matchedGeometryEffect(id: group, in: selection)
+                    }
+                }
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(.plain)
         .foregroundStyle(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
         .help(title)
         .accessibilityLabel(title)

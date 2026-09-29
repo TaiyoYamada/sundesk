@@ -17,6 +17,9 @@ struct SettingsView: View {
 
     var body: some View {
         TabView {
+            Tab("一般", systemImage: "gearshape") {
+                AppearanceSettingsView()
+            }
             Tab("Vault", systemImage: "books.vertical") {
                 VaultSettingsView(settings: vaultSettings)
             }
