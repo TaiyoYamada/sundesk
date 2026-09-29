@@ -7,6 +7,7 @@
 
 import FactoryTesting
 import Foundation
+import SundeskData
 import SundeskDomain
 import SundeskEngine
 import SundeskPresentation
@@ -83,5 +84,33 @@ struct EngineSettingsTests {
 
         defaults.set("/custom/engine", forKey: EngineSettings.Key.engineDirectory)
         #expect(EngineSettings.configuration(defaults: defaults).engineDirectory.path == "/custom/engine")
+    }
+}
+
+@MainActor
+@Suite("Vault の組み立て", .container)
+struct VaultCompositionTests {
+    @Test("既定の Vault はリポジトリの SampleVault")
+    func defaultVaultIsSampleVault() {
+        let url = VaultSettings.defaultDirectory()
+        #expect(url.lastPathComponent == "SampleVault")
+        #expect(FileManager.default.fileExists(atPath: url.appending(path: "ホーム.md").path))
+    }
+
+    @Test("ファイルの木は共有し、ワークスペースはウインドウごとに作る")
+    func scopes() {
+        #expect(Container.shared.fileNavigatorViewModel() === Container.shared.fileNavigatorViewModel())
+        #expect(Container.shared.workspaceViewModel() !== Container.shared.workspaceViewModel())
+    }
+
+    @Test("組み立てたものでモックの Vault を開ける")
+    func opensSampleVaultDocument() async throws {
+        let inMemory = try NoteIndexStore.makeContainer(url: nil)
+        Container.shared.noteIndexModelContainer.register { inMemory }
+
+        let openDocument = Container.shared.openDocument()
+        let document = try await openDocument(path: "ホーム.md")
+
+        #expect(document.title == "ホーム")
     }
 }
