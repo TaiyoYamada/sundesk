@@ -46,7 +46,9 @@ struct EditorView: View {
                         let paper = screens.paper(key)
                         PaperScreen(viewModel: paper) { note(for: tab) }
                             .id(tab.id)
-                            .onChange(of: paper.title, initial: true) { workspace.retitle(tab.content, to: paper.title) }
+                            .onChange(of: paper.title, initial: true) {
+                                workspace.retitle(tab.content, to: paper.title)
+                            }
                     case .experiment(let key):
                         let experiment = screens.experiment(key)
                         ExperimentScreen(viewModel: experiment, openPath: openLibraryPath) {
