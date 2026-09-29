@@ -9,7 +9,7 @@ import Foundation
 import SundeskCodeHighlight
 import Testing
 
-@Suite("CodeHighlighter")
+@Suite("CodeHighlighter", .timeLimit(.minutes(1)))
 struct CodeHighlighterTests {
     private let highlighter = CodeHighlighter()
 

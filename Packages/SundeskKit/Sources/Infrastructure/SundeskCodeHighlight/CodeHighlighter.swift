@@ -57,6 +57,10 @@ public struct CodeToken: Hashable, Sendable {
 public final class CodeHighlighter: Sendable {
     public static let shared = CodeHighlighter()
 
+    /// 読み込んだ文法と規則。解析もこの鍵の中で 1 つずつ行う。
+    ///
+    /// 同時にいくつも解析すると、CI の仮想マシンで tree-sitter が止まったまま戻らなかった。
+    /// 色づけは軽いので、並べずに順に処理する。
     private let configurations = Mutex<[CodeLanguage: LanguageConfiguration?]>([:])
 
     public init() {}
@@ -67,10 +71,22 @@ public final class CodeHighlighter: Sendable {
     }
 
     public func highlight(_ code: String, language: String) -> [CodeToken] {
-        guard let language = CodeLanguage(name: language), let configuration = configuration(for: language),
-            let query = configuration.queries[.highlights]
-        else { return [] }
+        guard let language = CodeLanguage(name: language) else { return [] }
+        return configurations.withLock { cache in
+            let configuration: LanguageConfiguration?
+            if let cached = cache[language] {
+                configuration = cached
+            } else {
+                configuration = try? language.loadConfiguration()
+                cache[language] = configuration
+            }
+            guard let configuration else { return [] }
+            return Self.highlight(code, configuration: configuration)
+        }
+    }
 
+    private static func highlight(_ code: String, configuration: LanguageConfiguration) -> [CodeToken] {
+        guard let query = configuration.queries[.highlights] else { return [] }
         let parser = Parser()
         guard (try? parser.setLanguage(configuration.language)) != nil, let tree = parser.parse(code) else { return [] }
 
@@ -81,13 +97,6 @@ public final class CodeHighlighter: Sendable {
             .compactMap { highlight in
                 CodeTokenKind(captureName: highlight.name).map { CodeToken(range: highlight.range, kind: $0) }
             }
-    }
-
-    private func configuration(for language: CodeLanguage) -> LanguageConfiguration? {
-        if let cached = configurations.withLock({ $0[language] }) { return cached }
-        let loaded = try? language.loadConfiguration()
-        configurations.withLock { $0[language] = loaded }
-        return loaded
     }
 }
 
