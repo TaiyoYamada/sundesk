@@ -2,6 +2,7 @@
 
 PACKAGE := Packages/SundeskKit
 ENGINE := engine
+RENDERER := renderer
 SWIFT_SOURCES := sundesk sundeskTests sundeskUITests $(PACKAGE)/Sources $(PACKAGE)/Tests $(PACKAGE)/Package.swift
 DERIVED_DATA := build/DerivedData
 
@@ -25,11 +26,12 @@ bootstrap: ## 開発に必要な道具と依存関係をそろえる
 	@command -v actionlint >/dev/null || brew install actionlint
 	swift package --package-path $(PACKAGE) resolve
 	cd $(ENGINE) && uv sync
+	cd $(RENDERER) && npm ci
 
 # MARK: - 静的チェック
 
-.PHONY: lint lint-swift lint-python lint-actions
-lint: lint-swift lint-python lint-actions ## Swift、Python、GitHub Actions の静的チェック
+.PHONY: lint lint-swift lint-python lint-renderer lint-actions
+lint: lint-swift lint-python lint-renderer lint-actions ## Swift、Python、TypeScript、GitHub Actions の静的チェック
 
 lint-swift: ## SwiftLint と swift-format で検査する
 	swiftlint lint --strict --quiet
@@ -37,6 +39,9 @@ lint-swift: ## SwiftLint と swift-format で検査する
 
 lint-python: ## ruff と pyright で検査する
 	cd $(ENGINE) && uv run ruff check . && uv run ruff format --check . && uv run pyright
+
+lint-renderer: ## renderer（TypeScript）の型を検査する
+	cd $(RENDERER) && npm run typecheck
 
 lint-actions: ## GitHub Actions のワークフローを actionlint で検査する
 	actionlint
@@ -48,8 +53,8 @@ format: ## Swift と Python のコードを自動で整形する
 
 # MARK: - テスト
 
-.PHONY: test test-package test-integration test-app test-ui test-python coverage
-test: test-package test-app test-python ## UI テスト以外のすべてのテスト
+.PHONY: test test-package test-integration test-app test-ui test-python test-renderer coverage
+test: test-package test-app test-python test-renderer ## UI テスト以外のすべてのテスト
 
 test-package: ## Swift パッケージのテスト
 	swift test --package-path $(PACKAGE) --enable-code-coverage
@@ -66,12 +71,18 @@ test-ui: ## アプリの UI テスト（画面を実際に操作する）
 test-python: ## Python エンジンのテスト
 	cd $(ENGINE) && uv run pytest --cov
 
+test-renderer: ## renderer（TypeScript）のテスト
+	cd $(RENDERER) && npm test
+
 coverage: test-package ## Swift パッケージのカバレッジをモジュールごとに出す
 	scripts/swift-coverage.sh $(PACKAGE)
 
 # MARK: - ビルドと実行
 
-.PHONY: build run engine clean
+.PHONY: build run engine renderer clean
+renderer: ## renderer をビルドし、Swift パッケージのリソースに書き出す
+	cd $(RENDERER) && npm run build
+
 build: ## アプリをビルドする
 	$(XCODEBUILD) build
 
