@@ -1,0 +1,41 @@
+name: 機能
+description: 新しい機能や改善
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: purpose
+    attributes:
+      label: 目的
+      description: なぜ必要か。何ができるようになるか。
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: やること
+      description: 実装する内容。箇条書きで。
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: 完了の条件
+      description: これを満たしたら閉じてよい、という条件。
+    validations:
+      required: true
+  - type: dropdown
+    id: phase
+    attributes:
+      label: フェーズ
+      options:
+        - 0. 基盤
+        - 1. 取り込み
+        - 2. 知識グラフ
+        - 3. RAG
+        - 4. LLM 実験室
+        - 5. 画像生成
+        - 6. いじる（LoRA、steering）
+        - その他
+    validations:
+      required: true

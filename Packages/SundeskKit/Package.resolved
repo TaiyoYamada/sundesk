@@ -1,0 +1,33 @@
+{
+  "originHash" : "7e4397f0510b9cd4f2959dec4e79f0f2558717d8b04cbe067ef9c13e65af88e0",
+  "pins" : [
+    {
+      "identity" : "factory",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/hmlongco/Factory",
+      "state" : {
+        "revision" : "39d340fbfc4eb79a8981e9166083cda011a6b3f8",
+        "version" : "3.4.1"
+      }
+    },
+    {
+      "identity" : "swift-subprocess",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftlang/swift-subprocess",
+      "state" : {
+        "revision" : "b3937ab85dd32f6e9435914599c1519074769c1a",
+        "version" : "1.0.0"
+      }
+    },
+    {
+      "identity" : "swift-system",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-system",
+      "state" : {
+        "revision" : "869129b7bf4ecc57b97d0193ad29690ca2134750",
+        "version" : "1.8.1"
+      }
+    }
+  ],
+  "version" : 3
+}

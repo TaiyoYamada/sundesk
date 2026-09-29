@@ -1,0 +1,79 @@
+# sundesk
+
+[![CI](https://github.com/TaiyoYamada/sundesk/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/TaiyoYamada/sundesk/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/TaiyoYamada/sundesk/actions/workflows/codeql.yml/badge.svg?branch=develop)](https://github.com/TaiyoYamada/sundesk/actions/workflows/codeql.yml)
+
+自分の知識グラフの上で、ローカル AI を動かし、覗き、いじるための macOS アプリ。
+
+学習・研究ノート（Markdown）を取り込み、概念と関係の知識グラフを作り、
+出典つきの RAG で問いに答える。Hugging Face のモデルを載せて、トークンの確率分布や
+Attention を覗いたり、LoRA で学習させたり、画像を生成したりできる場所を目指している。
+
+> [!NOTE]
+> 個人のプロジェクトです。コードは参照のためだけに公開しており、利用は許諾していません（[LICENSE](LICENSE)）。
+
+## 状態
+
+フェーズ 0（基盤）。アプリの外枠と、Python エンジンの起動・停止までができている。
+
+| フェーズ | 内容 | 状態 |
+|---|---|---|
+| 0 | 基盤（開発環境、CI、アプリの外枠、エンジン） | 進行中 |
+| 1 | ノートの取り込みと表示 | |
+| 2 | 知識グラフ（Metal で描画） | |
+| 3 | RAG（出典つきのチャット） | |
+| 4 | LLM 実験室（確率分布、Attention、logit lens） | |
+| 5 | 画像生成 | |
+| 6 | LoRA、steering | |
+
+## 構成
+
+```
+┌─ sundesk.app（Swift / SwiftUI）──────────────────────┐
+│  画面 ／ SwiftData ／ Metal ／ エンジンの起動と停止         │
+└───────────────┬──────────────────────────────────────┘
+                │ 127.0.0.1 の HTTP（起動ごとのトークン）
+┌───────────────┴──────────── engine（Python）───────────┐
+│  LLM ／ 画像生成 ／ 埋め込み ／ 形態素解析 ／ グラフの計算    │
+└──────────────────────────────────────────────────────┘
+```
+
+| フォルダ | 中身 |
+|---|---|
+| `sundesk/` | アプリ本体（View、ウインドウ、メニュー） |
+| `Packages/SundeskKit/` | 画面以外のすべて（Clean Architecture の各層） |
+| `engine/` | Python の AI エンジン（uv で管理） |
+| `Configurations/` | ビルド設定（xcconfig） |
+| `docs/` | 要件、アーキテクチャ、ADR |
+
+詳しくは [docs/architecture.md](docs/architecture.md) と [docs/adr/](docs/adr/README.md)。
+
+## 必要なもの
+
+- Apple シリコンの Mac（メモリ 16GB 以上）
+- macOS 27、Xcode 27（Swift 6.4）
+- [Homebrew](https://brew.sh)（SwiftLint、uv、actionlint を入れるため）
+
+## はじめかた
+
+```sh
+make bootstrap   # 道具と依存関係をそろえる
+make run         # ビルドして起動する
+```
+
+起動すると、アプリが Python エンジンを自動で立ち上げる（初回は依存関係の取得で少し時間がかかる）。
+
+## 開発
+
+`make` だけで、使える操作の一覧が出る。
+
+```sh
+make lint        # SwiftLint、swift-format、ruff、pyright、actionlint
+make format      # 自動で整形する
+make test        # UI テスト以外のすべてのテスト
+make test-ui     # UI テスト
+make coverage    # Swift パッケージのカバレッジ
+make engine      # エンジンだけを単独で起動する
+```
+
+ブランチ、コミットメッセージ、コードの書き方は [CONTRIBUTING.md](CONTRIBUTING.md) を参照。

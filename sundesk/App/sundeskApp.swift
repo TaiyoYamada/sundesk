@@ -5,28 +5,27 @@
 //  Created by 山田大陽 on 2026/09/29.
 //
 
+import SundeskComposition
+import SundeskPresentation
 import SwiftUI
-import SwiftData
 
 @main
-struct sundeskApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+struct SundeskApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @InjectedObservable(\.engineStatusViewModel) private var engineStatus
 
     var body: some Scene {
-        WindowGroup {
-            ContentView()
+        WindowGroup("sundesk", id: "main") {
+            MainWindowView()
         }
-        .modelContainer(sharedModelContainer)
+        .commands {
+            SidebarCommands()
+            ToolbarCommands()
+            EngineCommands(engineStatus: engineStatus)
+        }
+
+        Settings {
+            SettingsView()
+        }
     }
 }
