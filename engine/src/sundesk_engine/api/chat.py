@@ -27,6 +27,8 @@ class ChatRequest(BaseModel):
     temperature: float = Field(default=0.7, ge=0.0, le=5.0)
     top_p: float = Field(default=0.95, gt=0.0, le=1.0)
     adapter: str | None = None
+    thinking: bool = True
+    """偽なら、考える過程（Qwen3 の `<think>`）を飛ばして、すぐ答えさせる"""
 
 
 @router.post("/chat")
@@ -43,7 +45,7 @@ async def post_chat(request: ChatRequest, engine: EngineDep) -> StreamingRespons
             on_loading=lambda: emit({"type": "loading", "model": request.model}),
         )
         messages = [message.model_dump() for message in request.messages]
-        prompt = chat_prompt(llm.tokenizer, messages)
+        prompt = chat_prompt(llm.tokenizer, messages, thinking=request.thinking)
         ids = [int(token) for token in llm.tokenizer.encode(prompt, add_special_tokens=False)]
         stats = stream_chat(
             llm.model,

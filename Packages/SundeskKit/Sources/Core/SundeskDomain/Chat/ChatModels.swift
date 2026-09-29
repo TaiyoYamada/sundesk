@@ -126,10 +126,13 @@ public struct PromptMessage: Hashable, Sendable {
 public struct GenerationSettings: Hashable, Sendable {
     public var temperature: Double
     public var maxTokens: Int
+    /// 考える過程（Qwen3 の `<think>`）を許すか。小さなモデルでは考えるだけで上限に達し、答えが空になりやすい。
+    public var thinking: Bool
 
-    public init(temperature: Double = 0.4, maxTokens: Int = 1200) {
+    public init(temperature: Double = 0.4, maxTokens: Int = 1200, thinking: Bool = false) {
         self.temperature = temperature
         self.maxTokens = maxTokens
+        self.thinking = thinking
     }
 }
 

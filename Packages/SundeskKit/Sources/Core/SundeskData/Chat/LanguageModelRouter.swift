@@ -63,7 +63,8 @@ public struct LanguageModelRouter: LanguageModelService {
                     }
                     let request = ChatRequest(
                         model: model, messages: messages.map { .init(role: $0.role.rawValue, content: $0.content) },
-                        maxTokens: settings.maxTokens, temperature: settings.temperature, topP: 0.95, adapter: nil)
+                        maxTokens: settings.maxTokens, temperature: settings.temperature, topP: 0.95, adapter: nil,
+                        thinking: settings.thinking)
                     for try await event in client.stream("chat", body: request, as: ChatEvent.self) {
                         switch event.type {
                         case "loading": continuation.yield(.loading)
@@ -153,6 +154,7 @@ private struct ChatRequest: Encodable {
     let temperature: Double
     let topP: Double
     let adapter: String?
+    let thinking: Bool
 }
 
 private struct ChatEvent: Decodable, Sendable {

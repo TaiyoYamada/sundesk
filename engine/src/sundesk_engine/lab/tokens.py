@@ -24,11 +24,18 @@ def has_chat_template(tokenizer: Any) -> bool:
     )
 
 
-def chat_prompt(tokenizer: Any, messages: list[dict[str, str]]) -> str:
-    """会話をモデルのチャットの型に包み、応答を書き始める直前までの文字列にする。"""
+def chat_prompt(tokenizer: Any, messages: list[dict[str, str]], *, thinking: bool = True) -> str:
+    """会話をモデルのチャットの型に包み、応答を書き始める直前までの文字列にする。
+
+    `thinking` が偽なら、考える過程（Qwen3 の `<think>`）を飛ばすよう型に伝える。
+    この変数を知らない型は、黙って無視する。
+    """
     if not has_chat_template(tokenizer):
         raise UnsupportedError("このモデルはチャットの型（chat template）を持っていません")
-    text = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
+    options: dict[str, Any] = {} if thinking else {"enable_thinking": False}
+    text = tokenizer.apply_chat_template(
+        messages, add_generation_prompt=True, tokenize=False, **options
+    )
     return str(text)
 
 

@@ -99,3 +99,32 @@ def test_embeddings_reject_unknown_kind(client: TestClient) -> None:
     response = client.post("/embeddings", json={"texts": ["a"], "kind": "topic"})
 
     assert response.status_code == 400
+
+
+class _TemplateTokenizer:
+    chat_template = "fake"
+
+    def __init__(self) -> None:
+        self.options: dict[str, object] = {}
+
+    def apply_chat_template(self, messages: object, **options: object) -> str:
+        self.options = options
+        return "prompt"
+
+
+def test_chat_prompt_turns_thinking_off_only_when_asked() -> None:
+    from sundesk_engine.lab.tokens import chat_prompt
+
+    tokenizer = _TemplateTokenizer()
+    chat_prompt(tokenizer, MESSAGES)
+    assert "enable_thinking" not in tokenizer.options
+
+    chat_prompt(tokenizer, MESSAGES, thinking=False)
+    assert tokenizer.options["enable_thinking"] is False
+
+
+def test_chat_accepts_thinking_flag(client: TestClient) -> None:
+    request = {"model": LLM_ID, "messages": MESSAGES, "max_tokens": 3, "thinking": False}
+    events = ndjson(client.post("/chat", json=request))
+
+    assert events[-1]["type"] == "done"

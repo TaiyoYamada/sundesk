@@ -105,9 +105,11 @@
 {
   "model": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
   "messages": [{"role": "system", "content": "…"}, {"role": "user", "content": "…"}],
-  "max_tokens": 1024, "temperature": 0.7, "top_p": 0.95, "adapter": null
+  "max_tokens": 1024, "temperature": 0.7, "top_p": 0.95, "adapter": null, "thinking": true
 }
 ```
+
+- `thinking` を `false` にすると、考える過程（Qwen3 の `<think>`）を飛ばすようチャットの型に伝える（`enable_thinking=False`）。知らない型は無視する
 
 ```
 {"type": "loading", "model": "…"}          ← モデルを載せ始めたとき（載っていれば出ない）
