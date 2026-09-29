@@ -56,6 +56,21 @@ struct RetrievalTests {
         #expect(result.first?.sources == [.keyword, .graph])
     }
 
+    @Test("出てこられない検索がある候補は、出てこられる検索の数で割って比べる")
+    func fusionNormalizesByEligibleRankings() {
+        // "pdf" は知識グラフに入らないので、グラフの検索には出てこられない
+        let rankings: [ReciprocalRankFusion.Ranking] = [
+            .init(source: .vector, ids: ["pdf", "note"]),
+            .init(source: .keyword, ids: ["pdf", "note"]),
+            .init(source: .graph, ids: ["note"], canContain: { $0 != "pdf" }),
+        ]
+
+        let fused = ReciprocalRankFusion.fuse(rankings, limit: 2)
+
+        #expect(fused.map(\.id) == ["pdf", "note"])
+        #expect(fused.first?.sources == [.vector, .keyword])
+    }
+
     @Test("エンジンが止まっていても、語とグラフで探せる")
     func worksWithoutEngine() async throws {
         let retrieve = RetrieveContextInteractor(

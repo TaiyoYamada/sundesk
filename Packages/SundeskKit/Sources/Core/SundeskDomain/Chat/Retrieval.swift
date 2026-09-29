@@ -49,16 +49,21 @@ public struct RetrieveContextInteractor: RetrieveContextUseCase {
         guard !chunks.isEmpty else { return [] }
         let byID = Dictionary(chunks.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
 
-        var rankings: [(RetrievedChunk.Source, [String])] = []
+        var rankings: [ReciprocalRankFusion.Ranking] = []
         // 意味の近さ（エンジンが動いていなければ飛ばす）
         if let vector = try? await engine.embed([question], kind: .query).vectors.first,
             let nearest = try? await repository.nearestChunks(to: vector, limit: candidates)
         {
-            rankings.append((.vector, nearest.map(\.chunkID)))
+            rankings.append(.init(source: .vector, ids: nearest.map(\.chunkID)))
         }
-        rankings.append((.keyword, KeywordSearch.rank(question, in: chunks, limit: candidates)))
+        rankings.append(.init(source: .keyword, ids: KeywordSearch.rank(question, in: chunks, limit: candidates)))
         let graph = try await repository.graph()
-        rankings.append((.graph, GraphSearch.rank(question, in: graph, limit: candidates)))
+        let byGraph = GraphSearch.rank(question, in: graph, limit: candidates)
+        if !byGraph.isEmpty {
+            // 知識グラフに入っていないチャンク（論文の PDF など）は、この検索では出てこられない
+            let mentioned = Set(graph.mentions.map(\.chunk))
+            rankings.append(.init(source: .graph, ids: byGraph, canContain: { mentioned.contains($0) }))
+        }
 
         return ReciprocalRankFusion.fuse(rankings, limit: limit).compactMap { fused in
             byID[fused.id].map { RetrievedChunk(chunk: $0, score: fused.score, sources: fused.sources) }
@@ -67,7 +72,17 @@ public struct RetrieveContextInteractor: RetrieveContextUseCase {
 }
 
 /// 複数の順位を、順位の逆数の和でまとめる（Reciprocal Rank Fusion）。
+///
+/// そもそも出てこられない検索がある候補（知識グラフに入らない PDF の節など）は、
+/// 出てこられる検索の数で割って比べる。割らないと、どれだけ近くても上位に来られない。
 enum ReciprocalRankFusion {
+    struct Ranking {
+        let source: RetrievedChunk.Source
+        let ids: [String]
+        /// この検索で出てくる可能性があるか。
+        var canContain: (String) -> Bool = { _ in true }
+    }
+
     struct Fused {
         let id: String
         let score: Double
@@ -75,16 +90,18 @@ enum ReciprocalRankFusion {
     }
 
     /// - Parameter smoothing: 上位の順位の差を和らげる定数（よく使われる 60）。
-    static func fuse(
-        _ rankings: [(RetrievedChunk.Source, [String])], limit: Int, smoothing: Double = 60
-    ) -> [Fused] {
-        var scores: [String: Double] = [:]
+    static func fuse(_ rankings: [Ranking], limit: Int, smoothing: Double = 60) -> [Fused] {
+        var sums: [String: Double] = [:]
         var sources: [String: Set<RetrievedChunk.Source>] = [:]
-        for (source, ids) in rankings {
-            for (rank, id) in ids.enumerated() {
-                scores[id, default: 0] += 1 / (smoothing + Double(rank + 1))
-                sources[id, default: []].insert(source)
+        for ranking in rankings {
+            for (rank, id) in ranking.ids.enumerated() {
+                sums[id, default: 0] += 1 / (smoothing + Double(rank + 1))
+                sources[id, default: []].insert(ranking.source)
             }
+        }
+        let scores = sums.map { id, sum in
+            let eligible = rankings.filter { $0.canContain(id) }.count
+            return (key: id, value: sum * Double(rankings.count) / Double(max(eligible, 1)))
         }
         return scores.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }
             .prefix(limit)
