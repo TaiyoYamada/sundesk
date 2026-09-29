@@ -53,7 +53,7 @@ docs: アーキテクチャの図を更新する
 | `chore` | その他の雑務 |
 | `revert` | 以前のコミットの取り消し |
 
-- 範囲（任意）は、モジュールや機能の名前にする（`domain`、`data`、`vault`、`renderer`、`graph`、`rag`、`lab`、`image`、`engine`、`app` など）
+- 範囲（任意）は、モジュールや機能の名前にする（`domain`、`data`、`vault`、`notes`、`workspace`、`editor`、`markdown`、`highlight`、`graph`、`rag`、`lab`、`image`、`engine`、`app` など）
 - 要約は「〜する」で終える。句点は付けない
 - 互換性を壊す変更は、`feat!:` のように `!` を付け、フッターに `BREAKING CHANGE:` と書く
 
@@ -80,12 +80,12 @@ make engine      # AI エンジンだけを単独で起動する
 
 ## コードの書き方
 
-- Swift ファイルの先頭には、Xcode の形式でヘッダーを書く。2 行目はファイルが属するターゲット名（`sundesk`、`SundeskDomain` など）、作成者は `山田大陽`、日付はファイルを作った日にする
+- Swift ファイルの先頭には、Xcode の形式でヘッダーを書く。2 行目はファイルが属するターゲット名（`sundesk`、`SundeskDomain`、`NotesFeature` など）、作成者は `山田大陽`、日付はファイルを作った日にする
 
   ```swift
   //
   //  ChatViewModel.swift
-  //  SundeskPresentation
+  //  ChatFeature
   //
   //  Created by 山田大陽 on 2026/09/29.
   //

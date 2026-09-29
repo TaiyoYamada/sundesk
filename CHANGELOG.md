@@ -10,15 +10,23 @@
 - ノートの表示（フェーズ 1）
   - 画面を Xcode と Obsidian を合わせた構成にした: ナビゲータ（ファイル／検索／タグ）、タブで開くエディタ、インスペクタ
   - Markdown（数式、コード、表、注記、脚注、タスクリスト、`[[リンク]]`）、HTML、テキスト、コード、画像、PDF を開ける
-  - 表示とソースを ⌘E で切り替える。ソースは行番号と色づけつき
+  - Markdown はライブプレビュー、ソース、閲覧の 3 つのモードで開き、⌘E で編集と閲覧を切り替える
+  - ノートとコードを編集できる（TextKit 2）。1 秒ごとに自動で保存し、タブを閉じるとき、⌘S、終了時にも保存する
+  - 閲覧モードは SwiftUI で描く（数式は SwiftMath、コードの色づけは tree-sitter の 15 言語）
   - `[[リンク]]` と相対リンクをたどると、そのファイルを新しいタブで開く
   - インスペクタに、ファイルの情報、プロパティ、タグ、目次、バックリンクを出す
   - ノートの索引（SwiftData）: タイトル、タグ、リンク、本文。変わったノートだけを読み直す
   - Vault の変更を FSEvents で見張り、自動で読み直す
   - 設定に Vault の場所を追加した
   - モックの Vault（`SampleVault/`）: 数学、量子計算、Swift、機械学習、論文メモ、研究ログ、資料（画像、PDF、JSON、テキスト）
-  - 描画用の `renderer/`（TypeScript: markdown-it、KaTeX、Shiki）と、CI の Renderer ジョブ
-  - ADR 0008、0009
+  - ADR 0008〜0011
+
+### 変更
+
+- 描画を WebKit の JavaScript（markdown-it、KaTeX、Shiki）から、Swift（swift-markdown、SwiftUI、TextKit 2）に移した。
+  WebKit は HTML ファイルだけに使う（ADR 0010）
+- Swift パッケージを機能ごとのマルチモジュール（App / Features / Core / Infrastructure / UI）にし、
+  アプリのターゲットは起動だけにした（ADR 0011）
 
 - アプリの外枠: サイドバー（ノート、知識グラフ、チャット、実験室、画像生成、モデル）、
   ツールバーのエンジン状態、「エンジン」メニュー、設定ウインドウ
@@ -34,3 +42,4 @@
 ### 削除
 
 - 最初の試作コード（Obsidian 型の Vault）
+- 描画用の `renderer/`（TypeScript）と、CI の Renderer ジョブ

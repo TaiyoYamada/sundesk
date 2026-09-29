@@ -1,6 +1,6 @@
 # 0008. ノートの描画は WebKit の中で markdown-it、KaTeX、Shiki を使う
 
-- 状態: 採用
+- 状態: 置き換え済み（[0010](0010-native-rendering-and-editing.md)）
 - 日付: 2026-09-29
 
 ## 背景

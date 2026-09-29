@@ -187,14 +187,14 @@ MVP には全機能を入れ、次の順に作る。各フェーズはプルリ�
 | フェーズ | 内容 |
 |---|---|
 | 0. 基盤 | 開発環境、CI、パッケージの骨組み、エンジンの骨組み、アプリの外枠 |
-| 1. ノートの表示 | Vault（フォルダ）のファイルを開いて表示する。Markdown、HTML、テキスト、コード、画像、PDF に対応し、表示とソースを切り替えられる。study-artifact の取り込みは見送り、当面はモックの Vault で作る |
+| 1. ノートの表示と編集 | Vault（フォルダ）のファイルを開いて表示し、編集する。Markdown、HTML、テキスト、コード、画像、PDF に対応する。Markdown はライブプレビュー、ソース、閲覧の 3 つのモードで、自動で保存する。study-artifact の取り込みは見送り、当面はモックの Vault で作る |
 | 2. 知識グラフ | 形態素解析と用語抽出、関係の抽出、PageRank とコミュニティ検出、Metal での描画 |
 | 3. RAG | ruri-v3 の埋め込み、3 種類を組み合わせた検索、出典つきのチャット、履歴 |
 | 4. LLM 実験室 | Hugging Face からのモデル管理、トークンの確率分布、Attention、logit lens |
 | 5. 画像生成 | mflux で FLUX.2 klein や Z-Image を動かす |
 | 6. いじる | LoRA、steering |
 
-画面はメインウインドウを一つにし、サイドバーで機能を切り替える。
+画面はメインウインドウを一つにし、機能はタブで開く（ADR 0009）。
 
 ## 9. 未決事項
 
@@ -241,6 +241,9 @@ MVP には全機能を入れ、次の順に作る。各フェーズはプルリ�
 | 2026-09-29 | フェーズ 1 では study-artifact を取り込まず、モックの Vault（`SampleVault/`）で作る |
 | 2026-09-29 | 画面は Xcode と Obsidian を合わせた形。左にナビゲータ、中央にタブで開くエディタ（機能もタブで開く）、右にインスペクタ。アイコンは SF Symbols |
 | 2026-09-29 | Markdown、HTML、テキスト、コード、画像、PDF を開けるようにする。表示と生のソースを切り替えられる |
-| 2026-09-29 | 描画は WebKit の中で markdown-it、KaTeX、Shiki（JavaScript）を使う。画像は SwiftUI、PDF は PDFKit、それ以外は Quick Look |
+| 2026-09-29 | 描画は WebKit の中で markdown-it、KaTeX、Shiki（JavaScript）を使う。画像は SwiftUI、PDF は PDFKit、それ以外は Quick Look（のちに下の決定で置き換え） |
 | 2026-09-29 | 最初の試作コード（`sundesk/Vault/`）は捨てた |
 | 2026-09-29 | 実務寄りの項目として、ブランチ保護、Issue とプルリクエストのテンプレート、Dependabot、CodeQL と秘密情報の検出、カバレッジの計測、OSLog signpost を採用する（lefthook は入れない） |
+| 2026-09-29 | 描画はなるべく Swift と Apple 公式のものにする: swift-markdown、SwiftUI、TextKit 2。数式は SwiftMath、コードの色づけは swift-tree-sitter。WebKit は HTML ファイルだけ（ADR 0010） |
+| 2026-09-29 | ノートは sundesk で編集する。モードはライブプレビュー（既定）、ソース、閲覧の 3 つで、自動で保存する |
+| 2026-09-29 | 大規模に備え、機能ごとのマルチモジュール（App / Features / Core / Infrastructure / UI）に移す。アプリのターゲットは起動だけ（ADR 0011） |

@@ -40,10 +40,9 @@ Attention を覗いたり、LoRA で学習させたり、画像を生成した�
 
 | フォルダ | 中身 |
 |---|---|
-| `sundesk/` | アプリ本体（View、ウインドウ、メニュー） |
-| `Packages/SundeskKit/` | 画面以外のすべて（Clean Architecture の各層） |
+| `sundesk/` | アプリのターゲット（起動するだけ） |
+| `Packages/SundeskKit/` | アプリのすべて。App / Features / Core / Infrastructure / UI のモジュール |
 | `engine/` | Python の AI エンジン（uv で管理） |
-| `renderer/` | Markdown、数式、コードの描画（TypeScript） |
 | `SampleVault/` | モックのノート（既定で開く Vault） |
 | `Configurations/` | ビルド設定（xcconfig） |
 | `docs/` | 要件、アーキテクチャ、ADR |
@@ -55,7 +54,6 @@ Attention を覗いたり、LoRA で学習させたり、画像を生成した�
 - Apple シリコンの Mac（メモリ 16GB 以上）
 - macOS 27、Xcode 27（Swift 6.4）
 - [Homebrew](https://brew.sh)（SwiftLint、uv、actionlint を入れるため）
-- Node.js 22（renderer をビルドするとき）
 
 ## はじめかた
 
@@ -71,13 +69,12 @@ make run         # ビルドして起動する
 `make` だけで、使える操作の一覧が出る。
 
 ```sh
-make lint        # SwiftLint、swift-format、ruff、pyright、TypeScript、actionlint
+make lint        # SwiftLint、swift-format、ruff、pyright、actionlint
 make format      # 自動で整形する
 make test        # UI テスト以外のすべてのテスト
 make test-ui     # UI テスト
 make coverage    # Swift パッケージのカバレッジ
 make engine      # エンジンだけを単独で起動する
-make renderer    # renderer をビルドし直す（renderer/ を変えたとき）
 ```
 
 ブランチ、コミットメッセージ、コードの書き方は [CONTRIBUTING.md](CONTRIBUTING.md) を参照。
