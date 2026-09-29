@@ -31,7 +31,7 @@ def confined_path(value: str, what: str) -> str:
     if not os.path.isabs(normalized):
         raise BadRequestError(f"{what}は絶対パスで指定してください: {value}")
     for root in _allowed_roots():
-        # 置き場そのものではなく、その中だけを許す（CodeQL が確かめ方として認める startswith の形にする）
+        # 置き場そのものではなく、その中だけを許す（CodeQL が確かめ方と認める形）
         if normalized.startswith(root.rstrip(os.sep) + os.sep):
             return normalized
     raise BadRequestError(f"{what}は、ホームか一時フォルダの中にしてください: {value}")
