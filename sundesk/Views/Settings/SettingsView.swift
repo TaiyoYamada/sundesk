@@ -11,6 +11,9 @@ import SwiftUI
 struct SettingsView: View {
     var body: some View {
         TabView {
+            Tab("Vault", systemImage: "books.vertical") {
+                VaultSettingsView()
+            }
             Tab("エンジン", systemImage: "cpu") {
                 EngineSettingsView()
             }

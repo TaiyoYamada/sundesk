@@ -10,6 +10,7 @@
 		5D0A00000000000000000041 /* SundeskComposition in Frameworks */ = {isa = PBXBuildFile; productRef = 5D0A00000000000000000031 /* SundeskComposition */; };
 		5D0A00000000000000000042 /* SundeskPresentation in Frameworks */ = {isa = PBXBuildFile; productRef = 5D0A00000000000000000032 /* SundeskPresentation */; };
 		5D0A00000000000000000043 /* SundeskDomain in Frameworks */ = {isa = PBXBuildFile; productRef = 5D0A00000000000000000033 /* SundeskDomain */; };
+		5D0A00000000000000000044 /* SundeskRenderer in Frameworks */ = {isa = PBXBuildFile; productRef = 5D0A00000000000000000034 /* SundeskRenderer */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -65,6 +66,7 @@
 				5D0A00000000000000000041 /* SundeskComposition in Frameworks */,
 				5D0A00000000000000000042 /* SundeskPresentation in Frameworks */,
 				5D0A00000000000000000043 /* SundeskDomain in Frameworks */,
+				5D0A00000000000000000044 /* SundeskRenderer in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -140,6 +142,7 @@
 				5D0A00000000000000000031 /* SundeskComposition */,
 				5D0A00000000000000000032 /* SundeskPresentation */,
 				5D0A00000000000000000033 /* SundeskDomain */,
+				5D0A00000000000000000034 /* SundeskRenderer */,
 			);
 			productName = sundesk;
 			productReference = E5C813D3306B8ECB0078C279 /* sundesk.app */;
@@ -574,6 +577,10 @@
 		5D0A00000000000000000033 /* SundeskDomain */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SundeskDomain;
+		};
+		5D0A00000000000000000034 /* SundeskRenderer */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SundeskRenderer;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

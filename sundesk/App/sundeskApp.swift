@@ -17,10 +17,13 @@ struct SundeskApp: App {
     var body: some Scene {
         WindowGroup("sundesk", id: "main") {
             MainWindowView()
+                .frame(minWidth: 900, minHeight: 560)
         }
+        .defaultSize(width: 1200, height: 800)
         .commands {
             SidebarCommands()
             ToolbarCommands()
+            WorkspaceCommands()
             EngineCommands(engineStatus: engineStatus)
         }
 
