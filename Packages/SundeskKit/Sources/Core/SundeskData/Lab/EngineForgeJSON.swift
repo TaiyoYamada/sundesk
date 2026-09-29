@@ -111,7 +111,28 @@ struct DistillBody: Encodable, Sendable {
     let alpha: Double
     let maxSeqLength: Int
     let batchSize: Int
+    /// nil なら生徒の全体を学習する。省くとエンジンの既定（8）になるので、null を必ず書く。
     let loraRank: Int?
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(teacher, forKey: .teacher)
+        try container.encode(student, forKey: .student)
+        try container.encode(texts, forKey: .texts)
+        try container.encode(outputDir, forKey: .outputDir)
+        try container.encode(iterations, forKey: .iterations)
+        try container.encode(learningRate, forKey: .learningRate)
+        try container.encode(temperature, forKey: .temperature)
+        try container.encode(alpha, forKey: .alpha)
+        try container.encode(maxSeqLength, forKey: .maxSeqLength)
+        try container.encode(batchSize, forKey: .batchSize)
+        try container.encode(loraRank, forKey: .loraRank)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case teacher, student, texts, outputDir, iterations, learningRate, temperature, alpha, maxSeqLength
+        case batchSize, loraRank
+    }
 }
 
 struct ForgeLine: Decodable, Sendable {

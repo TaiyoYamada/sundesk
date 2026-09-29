@@ -123,4 +123,54 @@ struct EngineEndToEndTests {
         #expect(local.contains { $0.id == Self.model && $0.kind == .llm })
         try await lab.unload(nil)
     }
+
+    @Test("工房で作り、評価で比べ、スクラッチで覗く")
+    func forgeAndScratch() async throws {
+        let forge = EngineForgeGateway(process: Self.process)
+        let output = FileManager.default.temporaryDirectory.appending(path: "sundesk-forge-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: output) }
+
+        var built: [String] = []
+        for (name, job) in [
+            ("3bit", ForgeJob.quantize(model: Self.model, method: .affine(bits: 3, groupSize: 64, mixed: nil), overrides: [])),
+            ("sim6", .quantize(model: Self.model, method: .simulated(bits: 6), overrides: [])),
+            ("pruned", .prune(model: Self.model, dropLayers: [20, 21], dropHeads: [AttentionHead(layer: 3, head: 1)])),
+        ] {
+            let path = output.appending(path: name).path
+            for try await event in forge.run(job, texts: [], outputPath: path) {
+                if case .done(let model) = event {
+                    print("作った: \(name) \(model.sizeBytes ?? 0) バイト、\(model.bitsPerWeight ?? 0) ビット/重み")
+                    built.append(model.path)
+                }
+            }
+        }
+        #expect(built.count == 3)
+
+        let texts = ["固有値とは、行列を掛けても向きが変わらないベクトルの倍率である。量子力学では、測定で得られる値が固有値になる。"]
+        var results: [EvaluationResult] = []
+        for try await event in forge.evaluate(
+            ([Self.model] + built).map { EvaluationTarget(model: $0) }, texts: texts, prompts: ["日本の首都は"],
+            maxTokens: 16, seed: 0)
+        {
+            if case .result(let result) = event { results.append(result) }
+        }
+        for result in results {
+            print("評価: \((result.target.model as NSString).lastPathComponent) PPL \(result.perplexity)、\(result.samples.first ?? "")")
+        }
+        #expect(results.count == 4)
+
+        var outputs: [ScratchOutput] = []
+        for try await output in forge.run(
+            session: "test", code: "x = model.args.num_hidden_layers\nprint(x)\nshow([{\"層\": 0, \"値\": 1.5}])\nx * 2",
+            model: Self.model, adapter: nil)
+        {
+            outputs.append(output)
+        }
+        print("スクラッチ:", outputs.map { "\($0)".prefix(60) })
+        #expect(outputs.contains(.stdout("28\n")))
+        #expect(outputs.contains(.value("56")))
+        #expect(outputs.contains { if case .table = $0 { true } else { false } })
+        try await forge.reset(session: "test")
+    }
 }

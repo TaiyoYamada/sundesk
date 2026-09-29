@@ -42,6 +42,14 @@ struct WorkspaceCommands: Commands {
                 Button(mode.title) { workspace?.navigatorMode = mode }
                     .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")))
             }
+            Divider()
+            // サイドバーの上のアイコンの列と同じ順に、⌘4〜⌘8 で機能を開く（Xcode のナビゲータと同じ）
+            ForEach(Array(WorkspaceTool.allCases.enumerated()), id: \.element) { index, tool in
+                Button(tool.title) { workspace?.open(tool: tool) }
+                    .keyboardShortcut(
+                        KeyEquivalent(Character("\(WorkspaceViewModel.NavigatorMode.allCases.count + index + 1)")))
+            }
+            Divider()
             Button("ノートを検索") { workspace?.navigatorMode = .search }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
             Divider()
