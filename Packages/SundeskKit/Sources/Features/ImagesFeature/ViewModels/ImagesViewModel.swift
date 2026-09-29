@@ -29,7 +29,8 @@ public final class ImagesViewModel {
     public private(set) var progress: ProgressItem?
     public var errorMessage: String?
 
-    public var isGenerating: Bool { task != nil }
+    /// 生成している途中か。`task` は観測しないので、別に持つ。
+    public private(set) var isGenerating = false
     public var canGenerate: Bool { !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isGenerating }
     public var selectedImage: ImageItem? { images.first { $0.id == selectedImageID } }
 
@@ -78,6 +79,7 @@ public final class ImagesViewModel {
             model: modelID, prompt: prompt.trimmingCharacters(in: .whitespacesAndNewlines), width: size, height: size,
             steps: steps, seed: seed)
         let stream = generation.generate(request)
+        isGenerating = true
         task = Task {
             do {
                 for try await event in stream {
@@ -101,6 +103,7 @@ public final class ImagesViewModel {
             }
             progress = nil
             task = nil
+            isGenerating = false
         }
     }
 

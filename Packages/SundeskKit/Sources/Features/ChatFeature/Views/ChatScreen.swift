@@ -100,7 +100,8 @@ private struct SessionListView: View {
             ) {
                 ForEach(viewModel.sessions) { session in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(session.title).lineLimit(2)
+                        // 題名が変わっても行の高さを変えない
+                        Text(session.title).lineLimit(2, reservesSpace: true)
                         Text(session.date).font(.caption).foregroundStyle(.secondary)
                     }
                     .tag(session.id)
@@ -112,6 +113,8 @@ private struct SessionListView: View {
             .listStyle(.sidebar)
             // タブの中ではサイドバーの素材を使わず、周りと同じ背景にする
             .scrollContentBackground(.hidden)
+            // 会話が増えたり減ったりしたら作り直す。macOS の List は、足した行の高さを小さいまま残すことがある
+            .id(viewModel.sessions.map(\.id))
             .overlay {
                 if viewModel.sessions.isEmpty {
                     Text("まだ会話はありません").font(.callout).foregroundStyle(.secondary)

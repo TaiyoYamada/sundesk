@@ -29,7 +29,8 @@ public final class ChatViewModel {
     public private(set) var build: String?
     public var temperature = 0.4
 
-    public var isAnswering: Bool { answerTask != nil }
+    /// 答えている途中か。`answerTask` は観測しないので、別に持つ（持たないと、答え終わっても画面が変わらない）。
+    public private(set) var isAnswering = false
     public var canSend: Bool { !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isAnswering }
 
     /// インスペクタに出す出典（答えている途中なら途中のもの、そうでなければ最後の答えのもの）。
@@ -47,6 +48,8 @@ public final class ChatViewModel {
     @ObservationIgnored private let rebuildKnowledge: any RebuildKnowledgeUseCase
     @ObservationIgnored private let observeBuild: any ObserveKnowledgeBuildUseCase
     @ObservationIgnored private var answerTask: Task<Void, Never>?
+    /// 今の質問の目印。止めてすぐ次を送ったとき、前の質問の後片付けが次の質問の状態を消さないようにする。
+    @ObservationIgnored private var answerID: UUID?
     @ObservationIgnored private var currentSession: ChatSession?
     @ObservationIgnored private var sessionModels: [UUID: ChatSession] = [:]
 
@@ -143,17 +146,22 @@ public final class ChatViewModel {
         let stream = ask(
             question, in: currentSession, model: selectedModelID,
             settings: GenerationSettings(temperature: temperature))
-        answerTask = Task { await consume(stream) }
+        isAnswering = true
+        let id = UUID()
+        answerID = id
+        answerTask = Task { await consume(stream, id: id) }
     }
 
     /// 答えを途中で止める。
     public func stop() {
         answerTask?.cancel()
         answerTask = nil
+        answerID = nil
+        isAnswering = false
         status = nil
     }
 
-    private func consume(_ stream: AsyncThrowingStream<AnswerEvent, any Error>) async {
+    private func consume(_ stream: AsyncThrowingStream<AnswerEvent, any Error>, id: UUID) async {
         do {
             for try await event in stream {
                 switch event {
@@ -182,12 +190,15 @@ public final class ChatViewModel {
         } catch {
             errorMessage = "答えられませんでした: \(error.localizedDescription)"
         }
+        guard answerID == id || answerID == nil else { return }
         if !streamingAnswer.isEmpty {
             messages.append(ChatMessageItem(ChatMessage(role: .assistant, content: streamingAnswer)))
             streamingAnswer = ""
         }
         status = nil
         answerTask = nil
+        answerID = nil
+        isAnswering = false
     }
 
     // MARK: - 知識
