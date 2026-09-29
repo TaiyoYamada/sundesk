@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import LibraryFeature
 import NotesFeature
 import SundeskDomain
 import Testing
@@ -106,6 +107,20 @@ struct WorkspaceViewModelTests {
 
         workspace.retitle(.experiment("2026-09-17-sa"), to: "SA で Max-Cut")
         #expect(workspace.tabs.first { $0.content == .experiment("2026-09-17-sa") }?.title == "SA で Max-Cut")
+    }
+
+    @Test("出典から論文の PDF を開くと、そのページを頼む。頼むたびに別の頼みになる")
+    func requestsPDFPage() {
+        let workspace = makeWorkspace()
+
+        workspace.open(path: "Papers/peruzzo2014/paper.pdf", line: 3)
+        let first = workspace.pageRequests["peruzzo2014"]
+        #expect(first?.page == 3)
+        #expect(workspace.selectedTab?.content == .paper("peruzzo2014"))
+
+        workspace.open(path: "Papers/peruzzo2014/paper.pdf", line: 3)
+        #expect(workspace.pageRequests["peruzzo2014"] != first)
+        #expect(workspace.tabs.count == 1)
     }
 
     @Test("タブの名前とアイコン。Markdown は拡張子を出さない")

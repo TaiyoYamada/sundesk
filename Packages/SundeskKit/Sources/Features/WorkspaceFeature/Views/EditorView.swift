@@ -44,7 +44,7 @@ struct EditorView: View {
                     case .paper(let key):
                         // 同じ種類のタブを切り替えても読み直すよう、キーごとに別の画面にする
                         let paper = screens.paper(key)
-                        PaperScreen(viewModel: paper) { note(for: tab) }
+                        PaperScreen(viewModel: paper, pageRequest: workspace.pageRequests[key]) { note(for: tab) }
                             .id(tab.id)
                             .onChange(of: paper.title, initial: true) {
                                 workspace.retitle(tab.content, to: paper.title)

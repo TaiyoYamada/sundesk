@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import LibraryFeature
 import NotesFeature
 import Observation
 import SundeskDomain
@@ -44,6 +45,8 @@ public final class WorkspaceViewModel {
     public var isInspectorPresented = true
     /// リンク先が見つからなかったときなどに出すメッセージ。
     public var alertMessage: String?
+    /// 論文（キー）の PDF で開いてほしいページ。
+    public private(set) var pageRequests: [String: PDFPageRequest] = [:]
 
     @ObservationIgnored private let resolveLink: any ResolveLinkUseCase
     @ObservationIgnored private let makeDocument: (String) -> DocumentViewModel
@@ -74,8 +77,13 @@ public final class WorkspaceViewModel {
     public func open(path: String, line: Int) {
         let content = Self.content(for: path)
         open(content)
-        // 論文や実験の画面なら、メモ（note.md）の行へ移る
-        if WorkspaceTab(content: content).documentPath == path { document(for: path).reveal(line: line) }
+        if case .paper(let key) = content, path.lowercased().hasSuffix(".pdf") {
+            // 論文の PDF なら、行はページ（知識の PDF のチャンクは、ページを行として持つ）
+            pageRequests[key] = PDFPageRequest(page: line)
+        } else if WorkspaceTab(content: content).documentPath == path {
+            // 論文や実験の画面なら、メモ（note.md）の行へ移る
+            document(for: path).reveal(line: line)
+        }
     }
 
     /// パスを開くタブの中身。論文と実験のフォルダの中のファイルは、論文や実験の画面にする。

@@ -11,15 +11,30 @@ import SundeskDesignSystem
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// PDF の、このページを開いてほしいという頼み。同じページでも、頼むたびに移る。
+public struct PDFPageRequest: Equatable, Sendable {
+    /// 1 から数えたページ。
+    public let page: Int
+    private let id = UUID()
+
+    public init(page: Int) {
+        self.page = page
+    }
+}
+
 /// 論文のタブ。左に PDF、右に書誌情報と論文メモ。
 public struct PaperScreen<Note: View>: View {
     @Bindable private var viewModel: PaperViewModel
+    private let pageRequest: PDFPageRequest?
     private let note: Note
     @State private var isAttaching = false
 
-    /// - Parameter note: 論文メモのエディタ（note.md）。
-    public init(viewModel: PaperViewModel, @ViewBuilder note: () -> Note) {
+    /// - Parameters:
+    ///   - pageRequest: PDF のこのページを開く（チャットの出典から開いたときなど）。
+    ///   - note: 論文メモのエディタ（note.md）。
+    public init(viewModel: PaperViewModel, pageRequest: PDFPageRequest? = nil, @ViewBuilder note: () -> Note) {
         self.viewModel = viewModel
+        self.pageRequest = pageRequest
         self.note = note()
     }
 
@@ -43,7 +58,7 @@ public struct PaperScreen<Note: View>: View {
     @ViewBuilder
     private var pdf: some View {
         if let url = viewModel.pdfURL {
-            PDFKitView(url: url)
+            PDFKitView(url: url, pageRequest: pageRequest)
         } else {
             ContentUnavailableView {
                 Label("PDF はありません", systemImage: "doc.richtext")
@@ -124,6 +139,13 @@ public struct PaperScreen<Note: View>: View {
 /// PDFKit の表示。
 struct PDFKitView: NSViewRepresentable {
     let url: URL
+    let pageRequest: PDFPageRequest?
+
+    final class Coordinator {
+        var handledRequest: PDFPageRequest?
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeNSView(context: Context) -> PDFView {
         let view = PDFView()
@@ -135,5 +157,10 @@ struct PDFKitView: NSViewRepresentable {
 
     func updateNSView(_ view: PDFView, context: Context) {
         if view.document?.documentURL != url { view.document = PDFDocument(url: url) }
+        guard let pageRequest, context.coordinator.handledRequest != pageRequest,
+            let page = view.document?.page(at: pageRequest.page - 1)
+        else { return }
+        context.coordinator.handledRequest = pageRequest
+        view.go(to: page)
     }
 }
