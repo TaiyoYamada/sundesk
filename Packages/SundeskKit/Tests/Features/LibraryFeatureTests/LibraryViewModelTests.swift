@@ -86,7 +86,7 @@ struct LibraryViewModelTests {
         await viewModel.load()
 
         #expect(viewModel.parameters.map(\.value) == ["uniform", "50", "1"])
-        #expect(viewModel.metrics.first?.value == "11.5000")
+        #expect(viewModel.metrics.first?.value == "11.5")
         #expect(viewModel.objective == "cut を最小化（最適値 12）")
         #expect(viewModel.charts.first?.points.count == 3)
     }

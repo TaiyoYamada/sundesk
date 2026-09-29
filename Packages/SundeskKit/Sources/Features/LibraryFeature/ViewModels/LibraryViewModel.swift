@@ -269,8 +269,7 @@ public struct ExperimentRow: Identifiable, Hashable, Sendable {
         status = experiment.status.title
         isDone = experiment.status == .done
         date = experiment.created?.formatted(date: .abbreviated, time: .omitted) ?? ""
-        let best = experiment.metrics.first { $0.key.hasPrefix("best") } ?? experiment.metrics.first
-        headline = best.map { "\($0.key) \(ExperimentFormat.number($0.value))" }
+        headline = experiment.headlineMetric.map { "\($0.name) \(ExperimentFormat.number($0.value))" }
         folderPath = experiment.folderPath
     }
 }
@@ -304,6 +303,7 @@ public struct FileRow: Identifiable, Hashable, Sendable {
 enum ExperimentFormat {
     static func number(_ value: Double) -> String {
         if value == value.rounded() && abs(value) < 1e9 { return String(Int64(value)) }
-        return abs(value) >= 1e4 || abs(value) < 1e-3 ? String(format: "%.4g", value) : String(format: "%.4f", value)
+        // 有効数字 7 桁（エネルギーの mHa の桁まで見える）。末尾の 0 は付けない
+        return String(format: "%.7g", value)
     }
 }

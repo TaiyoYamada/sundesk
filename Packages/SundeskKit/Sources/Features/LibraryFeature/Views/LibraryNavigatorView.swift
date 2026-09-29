@@ -95,6 +95,7 @@ public struct LibraryNavigatorView<Notes: View>: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+            .accessibilityIdentifier("library-section")
             addMenu
         }
         .padding(.horizontal, 10)
@@ -193,6 +194,7 @@ private struct PaperListView: View {
             }
         }
         .listStyle(.sidebar)
+        .accessibilityIdentifier("paper-list")
         .overlay {
             if viewModel.papers.isEmpty {
                 ContentUnavailableView(
@@ -256,6 +258,7 @@ private struct ExperimentListView: View {
             }
         }
         .listStyle(.sidebar)
+        .accessibilityIdentifier("experiment-list")
         .onChange(of: viewModel.selectedExperiments) { _, keys in
             if keys.count == 1, let key = keys.first { open(key) }
         }
@@ -301,6 +304,7 @@ private struct FileListView: View {
             }
         }
         .listStyle(.sidebar)
+        .accessibilityIdentifier("file-list")
         .overlay {
             if viewModel.files.isEmpty {
                 ContentUnavailableView(

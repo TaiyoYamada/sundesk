@@ -267,3 +267,25 @@ public enum ExperimentComparison {
         Set(experiments.flatMap(\.metrics.keys)).sorted()
     }
 }
+
+// MARK: - 一覧に出す指標
+
+extension ResearchExperiment {
+    /// 一覧で結果を一目で見せる指標。目的の名前の指標、`best` で始まる指標、所要時間以外の指標の順に選ぶ。
+    ///
+    /// 辞書の順番は毎回変わるので、同じ優先度の中では名前の順に決める。
+    public var headlineMetric: (name: String, value: Double)? {
+        let names = metrics.keys.sorted()
+        let objective = objective?.name.lowercased()
+        let isTime = { (name: String) in name.lowercased().contains("time") || name.lowercased().contains("seconds") }
+        let candidates: [String?] = [
+            objective.flatMap { goal in names.first { $0.lowercased() == goal } },
+            objective.flatMap { goal in names.first { $0.lowercased().contains(goal) } },
+            names.first { $0.lowercased().hasPrefix("best") },
+            names.first { !isTime($0) },
+            names.first,
+        ]
+        guard let name = candidates.lazy.compactMap({ $0 }).first, let value = metrics[name] else { return nil }
+        return (name, value)
+    }
+}
