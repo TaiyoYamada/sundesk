@@ -6,6 +6,7 @@
 //
 
 import AppKit
+import SundeskDesignSystem
 import SundeskEditorUI
 import SwiftUI
 
@@ -37,7 +38,7 @@ struct ScratchView: View {
             .listStyle(.sidebar)
             .frame(width: 200)
             Divider()
-            VSplitView {
+            SplitPane(.vertical, fraction: 0.6, minFirst: 200, minSecond: 160) {
                 VStack(spacing: 0) {
                     toolbar
                     Divider()
@@ -47,9 +48,8 @@ struct ScratchView: View {
                     )
                     .accessibilityIdentifier("scratch-editor")
                 }
-                .frame(minHeight: 200)
+            } second: {
                 ScratchOutputView(viewModel: viewModel)
-                    .frame(minHeight: 160)
             }
         }
         .task { await viewModel.load() }

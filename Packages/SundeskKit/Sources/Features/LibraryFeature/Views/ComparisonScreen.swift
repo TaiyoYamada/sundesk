@@ -12,10 +12,10 @@ import SwiftUI
 /// 実験を並べて比べるタブ。収束の曲線を重ね、指標と、値の違うパラメータを表にする。
 public struct ComparisonScreen: View {
     @Bindable private var viewModel: ComparisonViewModel
-    private let open: (String) -> Void
+    private let open: (_ key: String, _ title: String) -> Void
 
-    /// - Parameter open: 実験を開く（キー）。
-    public init(viewModel: ComparisonViewModel, open: @escaping (String) -> Void) {
+    /// - Parameter open: 実験を開く（キーと題名）。
+    public init(viewModel: ComparisonViewModel, open: @escaping (_ key: String, _ title: String) -> Void) {
         self.viewModel = viewModel
         self.open = open
     }
@@ -41,6 +41,7 @@ public struct ComparisonScreen: View {
             }
             .padding(20)
         }
+        .accessibilityIdentifier("comparison-screen")
         .task { await viewModel.load() }
     }
 
@@ -58,7 +59,7 @@ public struct ComparisonScreen: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .chartYScale(type: viewModel.logScaleY ? .log : .linear)
+        .chartYScale(domain: .automatic(includesZero: false), type: viewModel.logScaleY ? .log : .linear)
         .chartLegend(position: .bottom, alignment: .leading)
     }
 
@@ -79,7 +80,7 @@ public struct ComparisonScreen: View {
                     }
                     ForEach(viewModel.rows) { row in
                         GridRow {
-                            Button(row.title) { open(row.key) }.buttonStyle(.link).lineLimit(1)
+                            Button(row.title) { open(row.key, row.title) }.buttonStyle(.link).lineLimit(1)
                             Text(row.algorithm)
                             ForEach(Array(row.metrics.enumerated()), id: \.offset) { index, value in
                                 Text(value)

@@ -42,15 +42,19 @@ struct EditorView: View {
                             showTag: showTag
                         )
                     case .paper(let key):
+                        // 同じ種類のタブを切り替えても読み直すよう、キーごとに別の画面にする
                         PaperScreen(viewModel: screens.paper(key)) { note(for: tab) }
+                            .id(tab.id)
                     case .experiment(let key):
                         ExperimentScreen(viewModel: screens.experiment(key), openPath: openLibraryPath) {
                             note(for: tab)
                         }
+                        .id(tab.id)
                     case .comparison(let keys):
-                        ComparisonScreen(viewModel: screens.comparison(keys)) { key in
-                            workspace.open(experiment: key, title: key)
+                        ComparisonScreen(viewModel: screens.comparison(keys)) { key, title in
+                            workspace.open(experiment: key, title: title)
                         }
+                        .id(tab.id)
                     case .tool(.graph):
                         GraphScreen(viewModel: graph)
                     case .tool(.chat):

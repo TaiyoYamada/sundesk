@@ -24,17 +24,16 @@ public struct PaperScreen<Note: View>: View {
     }
 
     public var body: some View {
-        HSplitView {
+        SplitPane(.horizontal, fraction: 0.55, minFirst: 320, minSecond: 320) {
             pdf
-                .frame(minWidth: 320, idealWidth: 560)
-            VSplitView {
+        } second: {
+            SplitPane(.vertical, fraction: 0.4, minFirst: 160, minSecond: 200) {
                 ScrollView { details.padding(14) }
-                    .frame(minHeight: 160, idealHeight: 260)
+            } second: {
                 note
-                    .frame(minHeight: 200)
             }
-            .frame(minWidth: 320, idealWidth: 420)
         }
+        .accessibilityIdentifier("paper-screen")
         .task { await viewModel.load() }
         .fileImporter(isPresented: $isAttaching, allowedContentTypes: [.pdf]) { result in
             if case .success(let url) = result { Task { await viewModel.attachPDF(url) } }
@@ -85,7 +84,7 @@ public struct PaperScreen<Note: View>: View {
                 }
             }
             .font(.callout)
-            HStack {
+            FlowLayout(spacing: 12) {
                 Button("書誌情報を取り直す", systemImage: "arrow.clockwise") { Task { await viewModel.refresh() } }
                     .disabled(viewModel.isWorking || (viewModel.arxiv.isEmpty && viewModel.doi.isEmpty))
                 Button("BibTeX をコピー", systemImage: "doc.on.doc") {
@@ -110,7 +109,7 @@ public struct PaperScreen<Note: View>: View {
     private func field(_ label: String, _ text: Binding<String>) -> some View {
         GridRow {
             Text(label).foregroundStyle(.secondary)
-            TextField(label, text: text)
+            TextField(label, text: text, prompt: Text("なし"))
                 .textFieldStyle(.plain)
                 .labelsHidden()
                 .onSubmit(save)

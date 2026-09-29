@@ -28,7 +28,7 @@ public struct ExperimentScreen<Note: View>: View {
     }
 
     public var body: some View {
-        VSplitView {
+        SplitPane(.vertical, fraction: 0.65, minFirst: 240, minSecond: 160) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
@@ -67,14 +67,14 @@ public struct ExperimentScreen<Note: View>: View {
                 .padding(18)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(minHeight: 240, idealHeight: 480)
             .dropDestination(for: URL.self) { urls, _ in
                 Task { await viewModel.attach(urls) }
                 return true
             }
+        } second: {
             note
-                .frame(minHeight: 160)
         }
+        .accessibilityIdentifier("experiment-screen")
         .task { await viewModel.load() }
         .fileImporter(
             isPresented: $isAttaching, allowedContentTypes: [.commaSeparatedText, .json, .image, .pdf, .data],
@@ -172,6 +172,8 @@ struct ConvergenceChart: View {
                 }
             }
             .chartXAxisLabel(chart.xLabel)
+            // 0 から描くと、Max-Cut の 600〜700 のような値の差がつぶれて見えない
+            .chartYScale(domain: .automatic(includesZero: false))
             .frame(height: 220)
         }
     }
