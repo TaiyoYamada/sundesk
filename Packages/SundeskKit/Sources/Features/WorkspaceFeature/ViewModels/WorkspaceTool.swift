@@ -35,14 +35,4 @@ public enum WorkspaceTool: String, CaseIterable, Identifiable, Codable, Sendable
         case .models: "shippingbox"
         }
     }
-
-    /// 実装する予定のフェーズ（docs/requirements.md の作る順番）。
-    public var plannedPhase: Int {
-        switch self {
-        case .graph: 2
-        case .chat: 3
-        case .lab, .models: 4
-        case .images: 5
-        }
-    }
 }

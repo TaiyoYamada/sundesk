@@ -179,7 +179,12 @@ extension Container {
                 engineStatus: self.engineStatusViewModel(),
                 makeWorkspace: { self.workspaceViewModel() },
                 makeSearch: { self.searchViewModel() },
-                makeTags: { self.tagsViewModel() }
+                makeTags: { self.tagsViewModel() },
+                makeGraph: { self.graphViewModel() },
+                makeChat: { self.chatViewModel() },
+                makeLab: { self.labViewModel() },
+                makeModels: { self.modelsViewModel() },
+                makeImages: { self.imagesViewModel() }
             )
         }
     }

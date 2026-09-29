@@ -79,6 +79,13 @@ public struct OutlineItem: Identifiable, Hashable, Sendable {
     public let title: String
     /// ファイル全体での行番号（1 始まり）。
     public let line: Int
+
+    public init(index: Int, level: Int, title: String, line: Int) {
+        self.index = index
+        self.level = level
+        self.title = title
+        self.line = line
+    }
 }
 
 /// インスペクタの「ファイル」に出す情報（表示用に整えた文字列）。

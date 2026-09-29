@@ -81,6 +81,8 @@ public final class DocumentViewModel {
     @ObservationIgnored private var lastEditingMode: DisplayMode
     @ObservationIgnored private var autosaveTask: Task<Void, Never>?
     @ObservationIgnored private var saveInFlight: Task<Void, Never>?
+    /// 読み込んだら移る行（`reveal(line:)`）。
+    @ObservationIgnored private var pendingLine: Int?
     /// ファイルに書かれている本文（読み込んだもの、または最後に保存したもの）。
     private var savedText: String?
 
@@ -221,6 +223,20 @@ public final class DocumentViewModel {
         locateFile(path)
     }
 
+    /// 指定の行へ移る（出典や知識グラフから開いたとき）。読み込む前なら、読み込んでから移る。
+    public func reveal(line: Int) {
+        pendingLine = line
+        applyPendingLine()
+    }
+
+    private func applyPendingLine() {
+        guard let line = pendingLine, document != nil else { return }
+        pendingLine = nil
+        let heading = outline.last { $0.line <= line }
+        scrollTarget = OutlineItem(
+            index: heading?.index ?? 0, level: heading?.level ?? 1, title: heading?.title ?? "", line: line)
+    }
+
     // MARK: - 読み込み
 
     /// ファイルを読み直す。Vault が変わったときにも呼ぶ。
@@ -242,6 +258,7 @@ public final class DocumentViewModel {
         } catch {
             errorMessage = error.message
         }
+        applyPendingLine()
         await loadBacklinks()
     }
 

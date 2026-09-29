@@ -5,7 +5,11 @@
 //  Created by 山田大陽 on 2026/09/29.
 //
 
+import ChatFeature
 import EngineFeature
+import GraphFeature
+import ImagesFeature
+import LabFeature
 import NotesFeature
 
 /// ウインドウを作るのに必要なもの。AppFeature（Composition Root）が組み立てて渡す。
@@ -20,18 +24,33 @@ public struct WorkspaceDependencies {
     public let makeWorkspace: () -> WorkspaceViewModel
     public let makeSearch: () -> SearchViewModel
     public let makeTags: () -> TagsViewModel
+    public let makeGraph: () -> GraphViewModel
+    public let makeChat: () -> ChatViewModel
+    public let makeLab: () -> LabViewModel
+    public let makeModels: () -> ModelsViewModel
+    public let makeImages: () -> ImagesViewModel
 
     public init(
         fileNavigator: FileNavigatorViewModel,
         engineStatus: EngineStatusViewModel,
         makeWorkspace: @escaping () -> WorkspaceViewModel,
         makeSearch: @escaping () -> SearchViewModel,
-        makeTags: @escaping () -> TagsViewModel
+        makeTags: @escaping () -> TagsViewModel,
+        makeGraph: @escaping () -> GraphViewModel,
+        makeChat: @escaping () -> ChatViewModel,
+        makeLab: @escaping () -> LabViewModel,
+        makeModels: @escaping () -> ModelsViewModel,
+        makeImages: @escaping () -> ImagesViewModel
     ) {
         self.fileNavigator = fileNavigator
         self.engineStatus = engineStatus
         self.makeWorkspace = makeWorkspace
         self.makeSearch = makeSearch
         self.makeTags = makeTags
+        self.makeGraph = makeGraph
+        self.makeChat = makeChat
+        self.makeLab = makeLab
+        self.makeModels = makeModels
+        self.makeImages = makeImages
     }
 }

@@ -5,6 +5,10 @@
 //  Created by 山田大陽 on 2026/09/29.
 //
 
+import ChatFeature
+import GraphFeature
+import ImagesFeature
+import LabFeature
 import NotesFeature
 import SwiftUI
 
@@ -12,6 +16,9 @@ import SwiftUI
 struct EditorView: View {
     let workspace: WorkspaceViewModel
     let cache: DocumentViewCache
+    let graph: GraphViewModel
+    let chat: ChatViewModel
+    let tools: ToolViewModels
     let showTag: (String) -> Void
 
     var body: some View {
@@ -32,8 +39,16 @@ struct EditorView: View {
                             },
                             showTag: showTag
                         )
-                    case .tool(let tool):
-                        ToolPlaceholderView(tool: tool)
+                    case .tool(.graph):
+                        GraphScreen(viewModel: graph)
+                    case .tool(.chat):
+                        ChatScreen(viewModel: chat) { path, line in workspace.open(path: path, line: line) }
+                    case .tool(.lab):
+                        LabScreen(viewModel: tools.lab)
+                    case .tool(.models):
+                        ModelsScreen(viewModel: tools.models)
+                    case .tool(.images):
+                        ImagesScreen(viewModel: tools.images)
                     }
                 } else {
                     ContentUnavailableView {
@@ -48,15 +63,10 @@ struct EditorView: View {
     }
 }
 
-/// まだ作っていない機能の画面。
-struct ToolPlaceholderView: View {
-    let tool: WorkspaceTool
-
-    var body: some View {
-        ContentUnavailableView {
-            Label(tool.title, systemImage: tool.systemImage)
-        } description: {
-            Text("フェーズ \(tool.plannedPhase) で実装します。")
-        }
-    }
+/// ファイル以外のタブの ViewModel（ウインドウごと）。
+@MainActor
+struct ToolViewModels {
+    let lab: LabViewModel
+    let models: ModelsViewModel
+    let images: ImagesViewModel
 }

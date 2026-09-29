@@ -70,6 +70,12 @@ public final class WorkspaceViewModel {
         open(.document(path))
     }
 
+    /// ファイルを開き、指定の行へ移る。
+    public func open(path: String, line: Int) {
+        open(.document(path))
+        document(for: path).reveal(line: line)
+    }
+
     public func open(tool: WorkspaceTool) {
         open(.tool(tool))
     }

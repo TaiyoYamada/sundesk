@@ -5,7 +5,11 @@
 //  Created by 山田大陽 on 2026/09/29.
 //
 
+import ChatFeature
 import EngineFeature
+import GraphFeature
+import ImagesFeature
+import LabFeature
 import NotesFeature
 import SwiftUI
 
@@ -15,6 +19,9 @@ public struct MainWindowView: View {
     @State private var workspace: WorkspaceViewModel
     @State private var search: SearchViewModel
     @State private var tags: TagsViewModel
+    @State private var graph: GraphViewModel
+    @State private var chat: ChatViewModel
+    @State private var tools: ToolViewModels
     @State private var cache = DocumentViewCache()
 
     public init(dependencies: WorkspaceDependencies) {
@@ -22,6 +29,11 @@ public struct MainWindowView: View {
         _workspace = State(initialValue: dependencies.makeWorkspace())
         _search = State(initialValue: dependencies.makeSearch())
         _tags = State(initialValue: dependencies.makeTags())
+        _graph = State(initialValue: dependencies.makeGraph())
+        _chat = State(initialValue: dependencies.makeChat())
+        _tools = State(
+            initialValue: ToolViewModels(
+                lab: dependencies.makeLab(), models: dependencies.makeModels(), images: dependencies.makeImages()))
     }
 
     public var body: some View {
@@ -29,7 +41,7 @@ public struct MainWindowView: View {
             NavigatorView(workspace: workspace, navigator: dependencies.fileNavigator, search: search, tags: tags)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 400)
         } detail: {
-            EditorView(workspace: workspace, cache: cache, showTag: showTag)
+            EditorView(workspace: workspace, cache: cache, graph: graph, chat: chat, tools: tools, showTag: showTag)
         }
         .inspector(isPresented: $workspace.isInspectorPresented) {
             inspector
@@ -72,6 +84,10 @@ public struct MainWindowView: View {
         }
         .task { await dependencies.engineStatus.observe() }
         .task { await dependencies.fileNavigator.observe() }
+        .task { await graph.observe() }
+        .task { await graph.observeBuildProgress() }
+        .task { await chat.observe() }
+        .task { await chat.observeBuildProgress() }
     }
 
     /// タグのノートの一覧を、ナビゲータに出す。
@@ -83,7 +99,13 @@ public struct MainWindowView: View {
 
     @ViewBuilder
     private var inspector: some View {
-        if let document = workspace.selectedDocument {
+        if workspace.selectedTab?.content == .tool(.graph) {
+            GraphInspectorView(viewModel: graph) { path, line in workspace.open(path: path, line: line) }
+        } else if workspace.selectedTab?.content == .tool(.chat) {
+            ChatInspectorView(viewModel: chat) { path, line in workspace.open(path: path, line: line) }
+        } else if workspace.selectedTab?.content == .tool(.images) {
+            ImagesInspectorView(viewModel: tools.images)
+        } else if let document = workspace.selectedDocument {
             DocumentInspectorView(
                 document: document,
                 open: { workspace.open(path: $0) },

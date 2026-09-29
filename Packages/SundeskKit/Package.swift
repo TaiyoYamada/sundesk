@@ -73,7 +73,8 @@ let package = Package(
         .target(
             name: "AppFeature",
             dependencies: [
-                "WorkspaceFeature", "NotesFeature", "EngineFeature", "SettingsFeature",
+                "WorkspaceFeature", "NotesFeature", "GraphFeature", "ChatFeature", "LabFeature", "ImagesFeature",
+                "EngineFeature", "SettingsFeature",
                 "SundeskDomain", "SundeskData", "SundeskDesignSystem",
                 "SundeskEngineClient", "SundeskMarkdown",
                 .product(name: "FactoryKit", package: "Factory"),
@@ -86,7 +87,10 @@ let package = Package(
 
         .target(
             name: "WorkspaceFeature",
-            dependencies: ["NotesFeature", "EngineFeature", "SundeskDomain", "SundeskDesignSystem"],
+            dependencies: [
+                "NotesFeature", "GraphFeature", "ChatFeature", "LabFeature", "ImagesFeature", "EngineFeature",
+                "SundeskDomain", "SundeskDesignSystem",
+            ],
             path: "Sources/Features/WorkspaceFeature",
             swiftSettings: uiSettings
         ),
@@ -94,6 +98,30 @@ let package = Package(
             name: "NotesFeature",
             dependencies: ["SundeskDomain", "SundeskDesignSystem", "SundeskEditorUI", "SundeskWebView"],
             path: "Sources/Features/NotesFeature",
+            swiftSettings: uiSettings
+        ),
+        .target(
+            name: "GraphFeature",
+            dependencies: ["SundeskDomain", "SundeskDesignSystem", "SundeskGraphRenderer"],
+            path: "Sources/Features/GraphFeature",
+            swiftSettings: uiSettings
+        ),
+        .target(
+            name: "ChatFeature",
+            dependencies: ["SundeskDomain", "SundeskDesignSystem"],
+            path: "Sources/Features/ChatFeature",
+            swiftSettings: uiSettings
+        ),
+        .target(
+            name: "LabFeature",
+            dependencies: ["SundeskDomain", "SundeskDesignSystem"],
+            path: "Sources/Features/LabFeature",
+            swiftSettings: uiSettings
+        ),
+        .target(
+            name: "ImagesFeature",
+            dependencies: ["SundeskDomain", "SundeskDesignSystem"],
+            path: "Sources/Features/ImagesFeature",
             swiftSettings: uiSettings
         ),
         .target(
@@ -171,6 +199,11 @@ let package = Package(
             swiftSettings: uiSettings
         ),
         .target(
+            name: "SundeskGraphRenderer",
+            path: "Sources/UI/SundeskGraphRenderer",
+            swiftSettings: uiSettings
+        ),
+        .target(
             name: "SundeskWebView",
             path: "Sources/UI/SundeskWebView",
             swiftSettings: uiSettings
@@ -199,6 +232,30 @@ let package = Package(
             name: "WorkspaceFeatureTests",
             dependencies: ["WorkspaceFeature", "NotesFeature", "SundeskDomain"],
             path: "Tests/Features/WorkspaceFeatureTests",
+            swiftSettings: uiSettings
+        ),
+        .testTarget(
+            name: "GraphFeatureTests",
+            dependencies: ["GraphFeature", "SundeskDomain"],
+            path: "Tests/Features/GraphFeatureTests",
+            swiftSettings: uiSettings
+        ),
+        .testTarget(
+            name: "ChatFeatureTests",
+            dependencies: ["ChatFeature", "SundeskDomain"],
+            path: "Tests/Features/ChatFeatureTests",
+            swiftSettings: uiSettings
+        ),
+        .testTarget(
+            name: "LabFeatureTests",
+            dependencies: ["LabFeature", "SundeskDomain"],
+            path: "Tests/Features/LabFeatureTests",
+            swiftSettings: uiSettings
+        ),
+        .testTarget(
+            name: "ImagesFeatureTests",
+            dependencies: ["ImagesFeature", "SundeskDomain"],
+            path: "Tests/Features/ImagesFeatureTests",
             swiftSettings: uiSettings
         ),
         .testTarget(
@@ -241,6 +298,12 @@ let package = Package(
             name: "SundeskEditorUITests",
             dependencies: ["SundeskEditorUI", "SundeskMarkdown", "SundeskCodeHighlight"],
             path: "Tests/UI/SundeskEditorUITests",
+            swiftSettings: uiSettings
+        ),
+        .testTarget(
+            name: "SundeskGraphRendererTests",
+            dependencies: ["SundeskGraphRenderer"],
+            path: "Tests/UI/SundeskGraphRendererTests",
             swiftSettings: uiSettings
         ),
         .testTarget(
