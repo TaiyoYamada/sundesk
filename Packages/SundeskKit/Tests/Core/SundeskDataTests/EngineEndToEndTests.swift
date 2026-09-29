@@ -133,7 +133,10 @@ struct EngineEndToEndTests {
 
         var built: [String] = []
         for (name, job) in [
-            ("3bit", ForgeJob.quantize(model: Self.model, method: .affine(bits: 3, groupSize: 64, mixed: nil), overrides: [])),
+            (
+                "3bit",
+                ForgeJob.quantize(model: Self.model, method: .affine(bits: 3, groupSize: 64, mixed: nil), overrides: [])
+            ),
             ("sim6", .quantize(model: Self.model, method: .simulated(bits: 6), overrides: [])),
             ("pruned", .prune(model: Self.model, dropLayers: [20, 21], dropHeads: [AttentionHead(layer: 3, head: 1)])),
         ] {
@@ -156,7 +159,8 @@ struct EngineEndToEndTests {
             if case .result(let result) = event { results.append(result) }
         }
         for result in results {
-            print("評価: \((result.target.model as NSString).lastPathComponent) PPL \(result.perplexity)、\(result.samples.first ?? "")")
+            let name = (result.target.model as NSString).lastPathComponent
+            print("評価: \(name) PPL \(result.perplexity)、\(result.samples.first ?? "")")
         }
         #expect(results.count == 4)
 
