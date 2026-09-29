@@ -68,6 +68,7 @@ sundesk/
 │   │   ├── Features/
 │   │   │   ├── WorkspaceFeature/           ウインドウ（ナビゲータ、タブ、インスペクタ）
 │   │   │   ├── NotesFeature/               ファイルの木、検索、タグ、ファイルの表示と編集、インスペクタ
+│   │   │   ├── LibraryFeature/             研究ライブラリ（種類ごとの一覧、論文、実験、比べる画面）
 │   │   │   ├── GraphFeature/               知識グラフ
 │   │   │   ├── ChatFeature/                ノートを根拠に答えるチャット
 │   │   │   ├── LabFeature/                 LLM の実験室（覗く・いじる）と、モデルの管理
@@ -89,7 +90,8 @@ sundesk/
 │   │       └── SundeskWebView/             HTML ファイルの表示（WebKit）
 │   └── Tests/                              モジュールごとのテスト（Sources と同じグループ分け）
 ├── engine/                       Python エンジン（uv で管理。LLM、画像生成、埋め込み、NLP、グラフ計算）
-├── SampleVault/                  モックの Vault（既定で開くノート）
+├── SampleLibrary/                研究向けの見本のライブラリ（開発とテスト用）
+├── tools/sundesk-log/            実験のコードから結果を送る Python の記録用ライブラリ
 ├── Configurations/               xcconfig（バンドル ID、対象 OS、Swift の設定）
 ├── scripts/                      補助スクリプト（カバレッジの集計など）
 └── docs/                         要件、アーキテクチャ、ADR
@@ -198,6 +200,17 @@ public final class ChatViewModel {
 4. `LinkResolver` が、Obsidian と同じ順（完全なパス → 末尾の一致 → ファイル名）でリンク先を決める
 5. `SwiftDataNoteIndex` に保存する（ノート、リンク、メタデータの 3 つのモデル。Vault ごとに別のファイル）
 6. Vault の変更は FSEvents で見張り、変わるたびに 1〜5 をくり返す
+
+## 7.5. 研究ライブラリ
+
+形式は [library-format.md](library-format.md)、判断の理由は [ADR 0015](adr/0015-research-library.md)。
+
+- ライブラリはアプリのデータフォルダの中のふつうのファイル。ノート、論文、実験、データ、資料、取り込み箱のフォルダに分ける
+- 左のナビゲータ（⌘1）は種類ごとの一覧。論文は読んだ状態で絞り込み、題名や年で並べ替える。実験は複数選ぶと比べられる
+- 論文のタブ: PDF（PDFKit）、書誌情報、論文メモ（エディタ）。arXiv の ID か DOI から書誌情報を取る（`OnlineBibliography`。アプリで唯一の通信）
+- 実験のタブ: 設定、指標、収束の曲線（Swift Charts。最適値の線つき）、図、仮説と考察のメモ。CSV や画像をドロップすると取り込む
+- 比べるタブ: 収束の曲線を重ね（最適値との差を対数で見ることもできる）、指標の最もよい値と、値の違うパラメータを表にする
+- 取り込み箱: 記録用ライブラリが `Inbox/<ID>/` に書き、`.complete` を置く。ライブラリの変化を見張っていて、見つけたら `Experiments/` に移す
 
 ## 8. 知識グラフ（フェーズ 2）
 

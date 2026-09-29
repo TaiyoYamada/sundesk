@@ -19,5 +19,6 @@
 | [0012](0012-knowledge-and-rag.md) | 知識は毎回まとめて作り直し、RAG は 3 つの検索を順位で組み合わせる | 採用 |
 | [0013](0013-lab-and-image-generation.md) | 実験室は mlx-lm の計算を差し替えて覗き、画像生成は mflux を使う | 採用 |
 | [0014](0014-forge-and-scratch.md) | 実験室に工房と Python のスクラッチを置く | 採用 |
+| [0015](0015-research-library.md) | 研究の一次資料を、アプリの中の研究ライブラリに置く | 採用 |
 
 新しく書くときは [template.md](template.md) を写して使う。
