@@ -15,6 +15,8 @@ import SundeskDomain
 public final class ImagesViewModel {
     public private(set) var models: [ImageModelItem] = []
     public var modelID = "z-image-turbo"
+    /// 一度モデルを選んだら、開き直しても勝手に変えない。
+    @ObservationIgnored private var hasChosenModel = false
     public var prompt = ""
     public var size = 1024
     public static let sizes = [512, 768, 1024]
@@ -43,7 +45,14 @@ public final class ImagesViewModel {
         await reloadImages()
         do {
             models = try await generation.models().map(ImageModelItem.init)
-            if !models.contains(where: { $0.id == modelID }), let first = models.first { modelID = first.id }
+            let current = models.first { $0.id == modelID }
+            // 初めて開いたときは、ダウンロード済みのモデルを選んでおく（何 GB も落とさずにすぐ試せる）
+            if !hasChosenModel, current?.isDownloaded != true, let downloaded = models.first(where: \.isDownloaded) {
+                modelID = downloaded.id
+            } else if current == nil, let first = models.first {
+                modelID = first.id
+            }
+            hasChosenModel = true
         } catch {
             errorMessage = error.message
         }
@@ -124,10 +133,12 @@ public struct ImageModelItem: Identifiable, Hashable, Sendable {
     public let id: String
     public let name: String
     public let detail: String
+    public let isDownloaded: Bool
 
     init(_ option: ImageModelOption) {
         id = option.id
         name = option.name
+        isDownloaded = option.isDownloaded
         detail = option.isDownloaded ? "\(option.defaultSteps) ステップ" : "最初に使うときにダウンロードします"
     }
 }

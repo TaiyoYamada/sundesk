@@ -77,7 +77,9 @@ public struct ImagesScreen: View {
         if viewModel.images.isEmpty {
             ContentUnavailableView(
                 "まだ画像はありません", systemImage: "photo.on.rectangle.angled",
-                description: Text("mflux で、手元の Mac だけで画像を作ります。初回はモデルのダウンロードに時間がかかります。"))
+                description: Text("mflux で、手元の Mac だけで画像を作ります。初回はモデルのダウンロードに時間がかかります。")
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 12)], spacing: 12) {
