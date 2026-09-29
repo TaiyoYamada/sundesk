@@ -23,5 +23,3 @@ htmlcov/
 # make でのビルド
 build/
 
-# renderer（Node）
-renderer/node_modules/
