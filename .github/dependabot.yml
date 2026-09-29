@@ -29,6 +29,21 @@ updates:
       dev-tools:
         dependency-type: development
 
+  - package-ecosystem: npm
+    directory: /renderer
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      dev-tools:
+        dependency-type: development
+
   - package-ecosystem: github-actions
     directory: /
     target-branch: develop
