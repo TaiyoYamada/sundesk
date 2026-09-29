@@ -8,7 +8,7 @@
 import NotesFeature
 import SwiftUI
 
-/// 左のナビゲータ。上のアイコンで「ファイル」「検索」「タグ」を切り替える（Xcode と同じ）。
+/// 左のナビゲータ。上のアイコンの列（Xcode と同じ）で、「ファイル」「検索」「タグ」を切り替え、機能をタブで開く。
 struct NavigatorView: View {
     @Bindable var workspace: WorkspaceViewModel
     let navigator: FileNavigatorViewModel
@@ -16,7 +16,7 @@ struct NavigatorView: View {
     let tags: TagsViewModel
 
     var body: some View {
-        // サイドバーはツールバーの下まで伸びるので、機能と切り替えのアイコンはリストの上端の余白に置く
+        // サイドバーはツールバーの下まで伸びるので、アイコンの列はリストの上端の余白に置く
         Group {
             switch workspace.navigatorMode {
             case .files:
@@ -31,48 +31,47 @@ struct NavigatorView: View {
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             VStack(spacing: 0) {
-                ToolBarView(workspace: workspace)
+                NavigatorBar(workspace: workspace)
                 Divider()
-                Picker("ナビゲータ", selection: $workspace.navigatorMode) {
-                    ForEach(WorkspaceViewModel.NavigatorMode.allCases) { mode in
-                        Image(systemName: mode.systemImage)
-                            .help(mode.title)
-                            .accessibilityLabel(mode.title)
-                            .tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
             }
         }
     }
 }
 
-/// ナビゲータの上に並べる機能（タブで開く）。場所を取らないよう、アイコンを 1 行に並べる。
-private struct ToolBarView: View {
+/// ナビゲータの上のアイコンの列。左の 3 つでナビゲータを切り替え、右の 5 つで機能をタブで開く。
+private struct NavigatorBar: View {
     let workspace: WorkspaceViewModel
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(WorkspaceTool.allCases) { tool in
-                let isSelected = workspace.selectedTab?.content == .tool(tool)
-                Button {
-                    workspace.open(tool: tool)
-                } label: {
-                    Image(systemName: tool.systemImage)
-                        .imageScale(.large)
-                        .frame(maxWidth: .infinity, minHeight: 28)
-                        .contentShape(.rect)
+            ForEach(WorkspaceViewModel.NavigatorMode.allCases) { mode in
+                item(mode.title, mode.systemImage, isSelected: workspace.navigatorMode == mode) {
+                    workspace.navigatorMode = mode
                 }
-                .buttonStyle(.borderless)
-                .foregroundStyle(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-                .help(tool.title)
-                .accessibilityLabel(tool.title)
+                .accessibilityAddTraits(workspace.navigatorMode == mode ? .isSelected : [])
+            }
+            Divider().frame(height: 16).padding(.horizontal, 2)
+            ForEach(WorkspaceTool.allCases) { tool in
+                item(tool.title, tool.systemImage, isSelected: workspace.selectedTab?.content == .tool(tool)) {
+                    workspace.open(tool: tool)
+                }
             }
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 6)
         .padding(.vertical, 6)
+    }
+
+    private func item(
+        _ title: String, _ systemImage: String, isSelected: Bool, action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .frame(maxWidth: .infinity, minHeight: 24)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.borderless)
+        .foregroundStyle(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+        .help(title)
+        .accessibilityLabel(title)
     }
 }
