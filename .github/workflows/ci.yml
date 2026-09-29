@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  swift:
+    name: Swift
+    runs-on: xcode-27
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+
+      # 結合テストで本物の Python エンジンを起動するので、uv も入れる
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          cache-dependency-glob: engine/uv.lock
+
+      - name: ツールのバージョン
+        run: |
+          xcodebuild -version
+          swift --version
+          uv --version
+
+      - name: SwiftLint を用意する
+        run: command -v swiftlint || brew install swiftlint
+
+      - name: 静的チェック
+        run: make lint-swift
+
+      - name: パッケージのテスト（結合テストを含む）
+        env:
+          SUNDESK_INTEGRATION: "1"
+        run: make test-package
+
+      - name: カバレッジ
+        run: |
+          {
+            echo "## Swift パッケージのカバレッジ"
+            echo
+            scripts/swift-coverage.sh
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: アプリのユニットテスト
+        run: make test-app XCODEBUILD_FLAGS="CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="
+
+  python:
+    name: Python
+    runs-on: macos-26
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          cache-dependency-glob: engine/uv.lock
+
+      - name: 依存関係をそろえる
+        run: uv sync --locked
+
+      - name: 静的チェック
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run pyright
+
+      - name: テスト
+        run: uv run pytest --cov
+
+      - name: カバレッジ
+        run: |
+          {
+            echo "## Python エンジンのカバレッジ"
+            echo
+            uv run coverage report --format=markdown
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,41 @@
+# 依存関係の更新を、毎週プルリクエストで知らせる。取り込み先は git flow の develop。
+version: 2
+updates:
+  - package-ecosystem: swift
+    directory: /Packages/SundeskKit
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    commit-message:
+      prefix: build
+      include: scope
+
+  - package-ecosystem: uv
+    directory: /engine
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      # 開発用の道具（ruff、pyright、pytest など）はまとめて 1 つのプルリクエストにする
+      dev-tools:
+        dependency-type: development
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    commit-message:
+      prefix: ci
