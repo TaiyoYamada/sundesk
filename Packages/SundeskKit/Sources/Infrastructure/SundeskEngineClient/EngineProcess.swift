@@ -187,15 +187,29 @@ public actor EngineProcess {
     }
 
     /// エンジンに渡す環境変数。
-    static func environment(_ configuration: EngineConfiguration, token: String) -> [Environment.Key: String] {
-        var values: [Environment.Key: String] = [
+    static func environment(
+        _ configuration: EngineConfiguration, token: String,
+        inherited: [String: String] = ProcessInfo.processInfo.environment
+    ) -> [Environment.Key: String?] {
+        var values: [Environment.Key: String?] = [
             "SUNDESK_ENGINE_TOKEN": token,
             // アプリが強制終了されても、エンジンがこれを見て自分で終了する
             "SUNDESK_PARENT_PID": String(ProcessInfo.processInfo.processIdentifier),
             "PYTHONUNBUFFERED": "1",
         ]
         if let models = configuration.modelsDirectory { values["SUNDESK_MODELS_DIR"] = models.path }
+        // Xcode から実行すると、Metal の検証（MTL_*、METAL_*）と差し込むライブラリが環境変数で入る。
+        // エンジンに引き継ぐと、PyTorch や MLX の Metal のカーネルが検証に引っかかって落ちるので渡さない
+        for key in inherited.keys where Self.isDebuggerOnly(key) {
+            values[Environment.Key(stringLiteral: key)] = .some(nil)
+        }
         return values
+    }
+
+    /// Xcode のデバッグ実行のときだけ入る、エンジンに渡さない環境変数か。
+    static func isDebuggerOnly(_ key: String) -> Bool {
+        key.hasPrefix("MTL_") || key.hasPrefix("METAL_") || key == "DYLD_INSERT_LIBRARIES"
+            || key == "__XPC_DYLD_INSERT_LIBRARIES"
     }
 
     /// プロセスを起動し、終了するまで出力をログに流す。
