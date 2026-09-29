@@ -12,12 +12,14 @@ import SundeskEngineClient
 import SundeskMarkdown
 import Testing
 
-/// 本物のエンジンと小さなモデルで、アプリの流れを端から端まで確かめる。`SUNDESK_INTEGRATION=1` のときだけ走る。
+/// 本物のエンジンと小さなモデルで、アプリの流れを端から端まで確かめる。`SUNDESK_MODELS=1` のときだけ走る。
+///
+/// モデル（合わせて約 1GB）をダウンロードし、量子化や蒸留も動かすので重い。CI では走らせない。
 ///
 /// 使うモデル（Qwen3-0.6B の 4bit と ruri-v3-130m、合わせて約 0.9GB）は、手元になければ取り込む。
 @Suite(
     "エンジンとの結合", .serialized,
-    .enabled(if: ProcessInfo.processInfo.environment["SUNDESK_INTEGRATION"] == "1"),
+    .enabled(if: ProcessInfo.processInfo.environment["SUNDESK_MODELS"] == "1"),
     .timeLimit(.minutes(20))
 )
 struct EngineEndToEndTests {

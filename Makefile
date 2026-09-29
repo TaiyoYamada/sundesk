@@ -54,7 +54,7 @@ format: ## Swift と Python のコードを自動で整形する
 
 # MARK: - テスト
 
-.PHONY: test test-package test-integration test-app test-ui test-python test-log coverage
+.PHONY: test test-package test-integration test-models test-app test-ui test-python test-log coverage
 test: test-package test-app test-python test-log ## UI テスト以外のすべてのテスト
 
 test-package: ## Swift パッケージのテスト
@@ -62,6 +62,9 @@ test-package: ## Swift パッケージのテスト
 
 test-integration: ## 本物の Python エンジンを起動する結合テスト
 	SUNDESK_INTEGRATION=1 swift test --package-path $(PACKAGE) --filter EngineProcessTests
+
+test-models: ## 本物のモデルで、知識、チャット、実験室、工房を端から端まで確かめる（約 1GB をダウンロードする）
+	SUNDESK_MODELS=1 swift test --package-path $(PACKAGE) --filter EngineEndToEndTests
 
 test-app: ## アプリのユニットテスト
 	$(XCODEBUILD) test -only-testing:sundeskTests
