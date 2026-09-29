@@ -91,15 +91,29 @@ public enum NoteIndexStore {
 
     /// Vault ごとに別のファイルにする（Vault を切り替えても索引が混ざらない）。
     public static func defaultURL(forVault vault: URL) throws -> URL {
-        let directory = try FileManager.default
-            .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-            .appending(path: "com.taiyou.sundesk/NoteIndex", directoryHint: .isDirectory)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try defaultURL(forVault: vault, folder: "NoteIndex")
+    }
+
+    /// アプリのデータフォルダの `<folder>/<Vault のパスのハッシュ>.store`。
+    static func defaultURL(forVault vault: URL, folder: String) throws -> URL {
+        let directory = try AppDataDirectory.url(folder)
         var hash: UInt64 = 0xcbf2_9ce4_8422_2325
         for byte in vault.standardizedFileURL.path.utf8 {
             hash ^= UInt64(byte)
             hash = hash &* 0x0000_0100_0000_01b3
         }
         return directory.appending(path: "\(String(hash, radix: 16)).store")
+    }
+}
+
+/// アプリのデータフォルダ（`~/Library/Application Support/com.taiyou.sundesk/`）。
+public enum AppDataDirectory {
+    /// その下のフォルダ。なければ作る。
+    public static func url(_ folder: String) throws -> URL {
+        let directory = try FileManager.default
+            .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            .appending(path: "com.taiyou.sundesk/\(folder)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
     }
 }
