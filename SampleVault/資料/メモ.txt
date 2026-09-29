@@ -1,0 +1,7 @@
+読みたいもの
+- Nielsen & Chuang 4 章（量子回路）
+- barren plateau の論文（McClean et al., 2018）
+- Swift の Observation の実装
+
+買うもの
+- ホワイトボード用のマーカー

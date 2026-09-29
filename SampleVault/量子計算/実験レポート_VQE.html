@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>実験レポート: VQE による H₂ の基底エネルギー</title>
+<style>
+  :root { color-scheme: light dark; --accent: #7a4fd6; }
+  body { font: 15px/1.7 -apple-system, "Hiragino Sans", sans-serif; max-width: 760px; margin: 40px auto; padding: 0 24px; }
+  h1 { font-size: 1.6em; border-bottom: 2px solid var(--accent); padding-bottom: .3em; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  th, td { border: 1px solid color-mix(in srgb, currentColor 20%, transparent); padding: 6px 10px; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  .result { background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 8px; padding: 12px 16px; }
+  figure { margin: 1.5em 0; }
+  figcaption { font-size: .85em; opacity: .7; text-align: center; }
+</style>
+</head>
+<body>
+<h1>実験レポート: VQE による H₂ の基底エネルギー</h1>
+<p>2026-09-29 ／ 変分量子固有値ソルバ（VQE）で、水素分子の基底状態エネルギーを結合長ごとに求めた。</p>
+
+<h2>条件</h2>
+<ul>
+  <li>アンザッツ: UCCSD（パラメータ 3 個）</li>
+  <li>最適化: COBYLA、最大 200 回</li>
+  <li>シミュレータ: 状態ベクトル（ノイズなし）</li>
+</ul>
+
+<h2>結果</h2>
+<table>
+  <tr><th>結合長 (Å)</th><th>VQE (Ha)</th><th>厳密解 (Ha)</th><th>誤差 (mHa)</th></tr>
+  <tr><td>0.50</td><td>-1.0552</td><td>-1.0551</td><td>0.1</td></tr>
+  <tr><td>0.74</td><td>-1.1372</td><td>-1.1373</td><td>0.1</td></tr>
+  <tr><td>1.00</td><td>-1.1011</td><td>-1.1012</td><td>0.1</td></tr>
+  <tr><td>1.50</td><td>-0.9981</td><td>-0.9984</td><td>0.3</td></tr>
+  <tr><td>2.00</td><td>-0.9486</td><td>-0.9486</td><td>0.0</td></tr>
+</table>
+
+<figure>
+<svg viewBox="0 0 400 220" width="100%" role="img" aria-label="結合長とエネルギーのグラフ">
+  <g stroke="currentColor" stroke-opacity=".35" fill="none">
+    <line x1="40" y1="190" x2="380" y2="190"/><line x1="40" y1="20" x2="40" y2="190"/>
+  </g>
+  <polyline fill="none" stroke="#7a4fd6" stroke-width="2.5"
+    points="40,150 125,40 210,78 295,150 380,176"/>
+  <g fill="#7a4fd6">
+    <circle cx="40" cy="150" r="4"/><circle cx="125" cy="40" r="4"/><circle cx="210" cy="78" r="4"/>
+    <circle cx="295" cy="150" r="4"/><circle cx="380" cy="176" r="4"/>
+  </g>
+  <g font-size="11" fill="currentColor" fill-opacity=".7">
+    <text x="40" y="206" text-anchor="middle">0.5</text><text x="125" y="206" text-anchor="middle">0.74</text>
+    <text x="210" y="206" text-anchor="middle">1.0</text><text x="295" y="206" text-anchor="middle">1.5</text>
+    <text x="380" y="206" text-anchor="middle">2.0</text>
+  </g>
+</svg>
+<figcaption>図 1: 結合長（Å）に対する基底エネルギー。0.74 Å で最小。</figcaption>
+</figure>
+
+<div class="result"><strong>まとめ:</strong> どの結合長でも化学的精度（1.6 mHa）以内に収まった。次はノイズありで試す。</div>
+</body>
+</html>
