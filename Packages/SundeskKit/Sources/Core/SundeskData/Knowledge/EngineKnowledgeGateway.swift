@@ -20,11 +20,16 @@ public struct EngineKnowledgeGateway: KnowledgeEngine {
         self.embeddingModel = embeddingModel
     }
 
+    /// 埋め込みの既定のモデル（エンジンの既定と同じ）。
+    public static let defaultEmbeddingModel = "cl-nagoya/ruri-v3-130m"
+
     public func embed(_ texts: [String], kind: EmbeddingKind) async throws(KnowledgeError) -> EmbeddingBatch {
         let client = try await client()
+        let model = embeddingModel() ?? Self.defaultEmbeddingModel
+        try await call { try await EngineModelEnsurer.shared.ensure(model, client: client) }
         let response = try await call {
             try await client.post(
-                "embeddings", body: EmbeddingRequest(texts: texts, kind: kind.rawValue, model: embeddingModel()),
+                "embeddings", body: EmbeddingRequest(texts: texts, kind: kind.rawValue, model: model),
                 as: EmbeddingResponse.self)
         }
         return EmbeddingBatch(model: response.model, vectors: response.vectors)

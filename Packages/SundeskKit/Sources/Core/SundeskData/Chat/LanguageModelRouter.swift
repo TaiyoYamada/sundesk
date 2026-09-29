@@ -58,6 +58,9 @@ public struct LanguageModelRouter: LanguageModelService {
                     } catch let error as EngineProcessError {
                         throw ChatError.model(EngineMapper.failure(from: error).message)
                     }
+                    try await EngineModelEnsurer.shared.ensure(model, client: client) {
+                        continuation.yield(.loading)
+                    }
                     let request = ChatRequest(
                         model: model, messages: messages.map { .init(role: $0.role.rawValue, content: $0.content) },
                         maxTokens: settings.maxTokens, temperature: settings.temperature, topP: 0.95, adapter: nil)

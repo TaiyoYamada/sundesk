@@ -216,12 +216,17 @@ struct SteeringRequest: Encodable {
     let strength: Double
     let maxTokens: Int
     let temperature: Double
-    let seed: Int
+    let seed: Int?
 }
 
 struct SteeringResponse: Decodable {
     let baseline: String
     let steered: String
+}
+
+struct Size: Decodable {
+    let width: Int
+    let height: Int
 }
 
 struct ImageModelsResponse: Decodable {
@@ -231,7 +236,7 @@ struct ImageModelsResponse: Decodable {
         let repo: String
         let downloaded: Bool
         let defaultSteps: Int
-        let defaultSize: Int
+        let defaultSize: Size
     }
 
     let models: [Model]

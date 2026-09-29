@@ -39,6 +39,7 @@ public struct EngineLabGateway: ModelRepository, LabEngine, ImageEngine {
     public func delete(_ id: String) async throws(LabError) {
         let client = try await client()
         _ = try await call { try await client.delete("models/\(id)", as: DeletedResponse.self) }
+        await EngineModelEnsurer.shared.forget(id)
     }
 
     public func loadedModels() async throws(LabError) -> LoadedModels {
@@ -54,6 +55,7 @@ public struct EngineLabGateway: ModelRepository, LabEngine, ImageEngine {
     // MARK: - 覗く
 
     public func tokenize(_ prompt: LabPrompt) async throws(LabError) -> [TokenPiece] {
+        try await ensure(prompt.model)
         let response: TokenizeResponse = try await post(
             "lab/tokenize", TokenizeRequest(model: prompt.model, text: prompt.text))
         return response.tokens.map { TokenPiece(id: $0.id, text: $0.text, start: $0.start, end: $0.end) }
@@ -62,6 +64,7 @@ public struct EngineLabGateway: ModelRepository, LabEngine, ImageEngine {
     public func nextToken(_ prompt: LabPrompt, topK: Int, temperature: Double) async throws(LabError)
         -> NextTokenDistribution
     {
+        try await ensure(prompt.model)
         let response: NextTokenResponse = try await post(
             "lab/next-token",
             NextTokenRequest(
@@ -77,7 +80,7 @@ public struct EngineLabGateway: ModelRepository, LabEngine, ImageEngine {
             model: prompt.model, prompt: prompt.text, chatTemplate: prompt.chatTemplate, maxTokens: settings.maxTokens,
             temperature: settings.temperature, topP: settings.topP, topK: settings.topK, seed: settings.seed,
             alternatives: alternatives, adapter: adapter)
-        return stream("lab/generate", body: request, as: GenerateLine.self) { line in
+        return stream("lab/generate", body: request, as: GenerateLine.self, ensuring: prompt.model) { line in
             switch line.type {
             case "loading": .loading
             case "token":
@@ -93,6 +96,7 @@ public struct EngineLabGateway: ModelRepository, LabEngine, ImageEngine {
     }
 
     public func attention(_ prompt: LabPrompt, layer: Int) async throws(LabError) -> AttentionMap {
+        try await ensure(prompt.model)
         let response: AttentionResponse = try await post(
             "lab/attention",
             LayerRequest(model: prompt.model, prompt: prompt.text, chatTemplate: prompt.chatTemplate, layer: layer))
@@ -102,6 +106,7 @@ public struct EngineLabGateway: ModelRepository, LabEngine, ImageEngine {
     }
 
     public func logitLens(_ prompt: LabPrompt, topK: Int) async throws(LabError) -> LogitLens {
+        try await ensure(prompt.model)
         let response: LogitLensResponse = try await post(
             "lab/logit-lens",
             TopKRequest(model: prompt.model, prompt: prompt.text, chatTemplate: prompt.chatTemplate, topK: topK))
@@ -111,6 +116,7 @@ public struct EngineLabGateway: ModelRepository, LabEngine, ImageEngine {
     }
 
     public func activations(_ prompt: LabPrompt) async throws(LabError) -> ActivationNorms {
+        try await ensure(prompt.model)
         let response: ActivationsResponse = try await post(
             "lab/activations",
             PromptRequest(model: prompt.model, prompt: prompt.text, chatTemplate: prompt.chatTemplate))
@@ -126,7 +132,7 @@ public struct EngineLabGateway: ModelRepository, LabEngine, ImageEngine {
             model: model, texts: texts, adapterPath: adapterPath, iterations: settings.iterations, rank: settings.rank,
             learningRate: settings.learningRate, batchSize: settings.batchSize,
             maxSeqLength: settings.maxSequenceLength, numLayers: settings.layerCount)
-        return stream("lora/train", body: request, as: LoRALine.self) { line in
+        return stream("lora/train", body: request, as: LoRALine.self, ensuring: model) { line in
             switch line.type {
             case "loading": .loading
             case "progress":
@@ -141,6 +147,7 @@ public struct EngineLabGateway: ModelRepository, LabEngine, ImageEngine {
     public func steeringVector(
         model: String, layer: Int, positive: [String], negative: [String]
     ) async throws(LabError) -> SteeringVector {
+        try await ensure(model)
         let response: SteeringVectorResponse = try await post(
             "steering/vector", SteeringVectorRequest(model: model, layer: layer, positive: positive, negative: negative)
         )
@@ -155,7 +162,7 @@ public struct EngineLabGateway: ModelRepository, LabEngine, ImageEngine {
             SteeringRequest(
                 model: prompt.model, prompt: prompt.text, chatTemplate: prompt.chatTemplate, layer: vector.layer,
                 vector: vector.values, strength: strength, maxTokens: settings.maxTokens,
-                temperature: settings.temperature, seed: settings.seed ?? 0))
+                temperature: settings.temperature, seed: settings.seed))
         return SteeringComparison(baseline: response.baseline, steered: response.steered)
     }
 
@@ -167,7 +174,7 @@ public struct EngineLabGateway: ModelRepository, LabEngine, ImageEngine {
             ImageModelOption(
                 id: $0.id, name: $0.name, repository: $0.repo, isDownloaded: $0.downloaded,
                 defaultSteps: $0.defaultSteps,
-                defaultSize: $0.defaultSize)
+                defaultSize: $0.defaultSize.width)
         }
     }
 
@@ -177,7 +184,7 @@ public struct EngineLabGateway: ModelRepository, LabEngine, ImageEngine {
         let body = ImageGenerateRequest(
             model: request.model, prompt: request.prompt, width: request.width, height: request.height,
             steps: request.steps, seed: request.seed, quantize: request.quantize, outputPath: outputPath)
-        return stream("images/generate", body: body, as: ImageLine.self) { line in
+        return stream("images/generate", body: body, as: ImageLine.self, ensuringImage: request.model) { line in
             switch line.type {
             case "loading": .loading
             case "progress": .progress(step: line.step ?? 0, total: line.total ?? 0)
@@ -200,6 +207,12 @@ public struct EngineLabGateway: ModelRepository, LabEngine, ImageEngine {
         } catch {
             throw .engine(EngineMapper.failure(from: error).message)
         }
+    }
+
+    /// モデルが手元になければ取り込む。
+    private func ensure(_ model: String) async throws(LabError) {
+        let client = try await client()
+        try await call { try await EngineModelEnsurer.shared.ensure(model, client: client) }
     }
 
     private func get<Response: Decodable>(_ path: String) async throws(LabError) -> Response {
@@ -226,7 +239,8 @@ public struct EngineLabGateway: ModelRepository, LabEngine, ImageEngine {
 
     /// NDJSON を読み、1 行ずつ Domain の出来事に直す（nil を返した行は捨てる）。
     private func stream<Body: Encodable & Sendable, Line: Decodable & Sendable, Event: Sendable>(
-        _ path: String, body: Body, as type: Line.Type, map: @escaping @Sendable (Line) -> Event?
+        _ path: String, body: Body, as type: Line.Type, ensuring model: String? = nil,
+        ensuringImage image: String? = nil, map: @escaping @Sendable (Line) -> Event?
     ) -> AsyncThrowingStream<Event, any Error> {
         let process = process
         return AsyncThrowingStream { continuation in
@@ -237,6 +251,16 @@ public struct EngineLabGateway: ModelRepository, LabEngine, ImageEngine {
                         client = try await process.runningClient()
                     } catch let error as EngineProcessError {
                         throw LabError.engine(EngineMapper.failure(from: error).message)
+                    }
+                    if let model {
+                        try await EngineModelEnsurer.shared.ensure(model, client: client)
+                    }
+                    if let image {
+                        // 画像モデルは、カタログの ID から Hugging Face のリポジトリを引いて取り込む
+                        let catalog = try await client.get("images/models", as: ImageModelsResponse.self)
+                        if let repository = catalog.models.first(where: { $0.id == image })?.repo {
+                            try await EngineModelEnsurer.shared.ensure(repository, client: client)
+                        }
                     }
                     for try await line in client.stream(path, body: body, as: Line.self) {
                         if let event = map(line) { continuation.yield(event) }

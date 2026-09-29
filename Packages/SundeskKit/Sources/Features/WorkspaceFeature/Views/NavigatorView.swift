@@ -16,7 +16,7 @@ struct NavigatorView: View {
     let tags: TagsViewModel
 
     var body: some View {
-        // サイドバーはツールバーの下まで伸びるので、切り替えのアイコンはリストの上端の余白に置く
+        // サイドバーはツールバーの下まで伸びるので、機能と切り替えのアイコンはリストの上端の余白に置く
         Group {
             switch workspace.navigatorMode {
             case .files:
@@ -30,29 +30,27 @@ struct NavigatorView: View {
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
-            Picker("ナビゲータ", selection: $workspace.navigatorMode) {
-                ForEach(WorkspaceViewModel.NavigatorMode.allCases) { mode in
-                    Image(systemName: mode.systemImage)
-                        .help(mode.title)
-                        .accessibilityLabel(mode.title)
-                        .tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
-                Divider()
                 ToolBarView(workspace: workspace)
+                Divider()
+                Picker("ナビゲータ", selection: $workspace.navigatorMode) {
+                    ForEach(WorkspaceViewModel.NavigatorMode.allCases) { mode in
+                        Image(systemName: mode.systemImage)
+                            .help(mode.title)
+                            .accessibilityLabel(mode.title)
+                            .tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
             }
         }
     }
 }
 
-/// ナビゲータの下に並べる機能（タブで開く）。場所を取らないよう、アイコンを 1 行に並べる。
+/// ナビゲータの上に並べる機能（タブで開く）。場所を取らないよう、アイコンを 1 行に並べる。
 private struct ToolBarView: View {
     let workspace: WorkspaceViewModel
 

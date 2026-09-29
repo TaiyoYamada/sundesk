@@ -70,6 +70,7 @@ public struct MarkdownReadingView: View {
                 scrollToHeading = nil
             }
         }
+        .background(Color(nsColor: .textBackgroundColor))
         .task(id: source) { document = await Self.parse(source, notePath: notePath) }
         .accessibilityIdentifier("reading-view")
     }
