@@ -26,7 +26,7 @@ with open(sys.argv[1]) as f:
 covered = defaultdict(int)
 total = defaultdict(int)
 for file in data["data"][0]["files"]:
-    match = re.search(r"/Sources/([^/]+)/", file["filename"])
+    match = re.search(r"/Sources/(?:App|Features|Core|Infrastructure|UI)/([^/]+)/", file["filename"])
     if not match or "/.build/" in file["filename"]:
         continue  # テストや依存パッケージは数えない
     lines = file["summary"]["lines"]
