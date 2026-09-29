@@ -22,6 +22,7 @@ import mlx.core as mx
 
 from sundesk_engine.errors import BadRequestError, UnsupportedError
 from sundesk_engine.lab.arrays import evaluate
+from sundesk_engine.paths import confined_path
 from sundesk_engine.runtime.hub import directory_size
 from sundesk_engine.streaming import Emit, Event
 
@@ -128,9 +129,7 @@ def vocabulary(tokenizer: Any) -> dict[str, int]:
 
 def check_output_dir(value: str) -> Path:
     """書き出し先を確かめる。絶対パスで、まだないか空のフォルダでなければ 400 にする。"""
-    path = Path(value).expanduser()
-    if not path.is_absolute():
-        raise BadRequestError(f"output_dir は絶対パスで指定してください: {value}")
+    path = Path(confined_path(value, "output_dir "))
     if path.exists() and (not path.is_dir() or any(path.iterdir())):
         raise BadRequestError(f"output_dir にはもう中身があります。別の場所にしてください: {value}")
     return path

@@ -263,3 +263,13 @@ def test_unexpected_errors_become_json_500() -> None:
 
     assert response.status_code == 500
     assert "こわれた" in response.json()["detail"]
+
+
+def test_confined_path_allows_home_and_temp_only(tmp_path: Path) -> None:
+    from sundesk_engine.paths import confined_path
+
+    assert confined_path(str(tmp_path / "out"), "出力") == str(tmp_path / "out")
+    assert confined_path("~/models/a", "出力").endswith("/models/a")
+    for bad in ["relative/path", "/etc/passwd", "~/../../etc"]:
+        with pytest.raises(BadRequestError):
+            confined_path(bad, "出力")

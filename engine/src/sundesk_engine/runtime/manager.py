@@ -19,8 +19,9 @@ from typing import Any, Literal, Protocol
 import numpy as np
 from numpy.typing import NDArray
 
-from sundesk_engine.errors import BadRequestError, NotFoundError
+from sundesk_engine.errors import NotFoundError
 from sundesk_engine.images.catalog import ImageModelSpec
+from sundesk_engine.paths import confined_path
 from sundesk_engine.runtime.hub import Hub
 
 DEFAULT_EMBEDDING_MODEL = "cl-nagoya/ruri-v3-130m"
@@ -106,9 +107,7 @@ def release_memory() -> None:
 
 
 def check_adapter(adapter: str) -> Path:
-    path = Path(adapter)
-    if not path.is_absolute():
-        raise BadRequestError(f"アダプタは絶対パスで指定してください: {adapter}")
+    path = Path(confined_path(adapter, "アダプタ"))
     if (
         not (path / "adapter_config.json").is_file()
         or not (path / "adapters.safetensors").is_file()
