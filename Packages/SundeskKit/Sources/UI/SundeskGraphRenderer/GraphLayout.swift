@@ -16,14 +16,19 @@ struct LayoutParams: Equatable {
     var damping: Float
     var maxStep: Float
     var alpha: Float
+    /// これより遠い点からは反発を受けない（距離の 2 乗）。
+    ///
+    /// すべての点から反発を受けると、どこにもつながらない点が、固まりの全体に押されて遠くへ飛んでいき、
+    /// 全体を画面に収めたときに固まりが小さくつぶれて見える（d3-force の distanceMax と同じ考え）。
+    var cutoff2: Float
 
     /// 理想の距離（点と点の間隔）。
     static let spacing: Float = 30
 
     static func standard(nodeCount: Int, alpha: Float) -> LayoutParams {
         LayoutParams(
-            nodeCount: UInt32(nodeCount), repulsion: spacing * spacing, attraction: 1 / spacing, gravity: 0.02,
-            damping: 0.6, maxStep: 20, alpha: alpha)
+            nodeCount: UInt32(nodeCount), repulsion: spacing * spacing, attraction: 1 / spacing, gravity: 0.05,
+            damping: 0.6, maxStep: 20, alpha: alpha, cutoff2: (spacing * 8) * (spacing * 8))
     }
 }
 
@@ -163,7 +168,9 @@ enum GraphLayoutReference {
             var force = SIMD2<Float>.zero
             for other in positions.indices where other != index {
                 let delta = position - positions[other]
-                force += delta * (params.repulsion / max((delta * delta).sum(), 0.01))
+                let distance2 = max((delta * delta).sum(), 0.01)
+                guard distance2 <= params.cutoff2 else { continue }
+                force += delta * (params.repulsion / distance2)
             }
             for edge in Int(adjacency.offsets[index])..<Int(adjacency.offsets[index + 1]) {
                 let delta = positions[Int(adjacency.neighbors[edge])] - position

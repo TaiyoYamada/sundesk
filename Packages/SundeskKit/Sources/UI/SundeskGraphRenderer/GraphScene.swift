@@ -58,11 +58,20 @@ public struct GraphScene: Equatable, Sendable {
         let weights: [Float]
     }
 
+    ///
+    /// ばねの強さは、両端の点の次数の小さいほうで割る（d3-force と同じ）。
+    /// 割らないと、つながりの多い点ほど強く引かれ、よくつながった固まりが 1 点につぶれる。
     var adjacency: Adjacency {
+        var degrees = [Int](repeating: 0, count: nodes.count)
+        for edge in edges {
+            degrees[edge.source] += 1
+            degrees[edge.target] += 1
+        }
         var lists = [[(UInt32, Float)]](repeating: [], count: nodes.count)
         for edge in edges {
-            lists[edge.source].append((UInt32(edge.target), edge.weight))
-            lists[edge.target].append((UInt32(edge.source), edge.weight))
+            let weight = edge.weight / Float(max(min(degrees[edge.source], degrees[edge.target]), 1))
+            lists[edge.source].append((UInt32(edge.target), weight))
+            lists[edge.target].append((UInt32(edge.source), weight))
         }
         var offsets: [UInt32] = [0]
         var neighbors: [UInt32] = []

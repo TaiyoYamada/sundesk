@@ -41,12 +41,14 @@ public final class GraphCanvasModel {
     @ObservationIgnored private var indexByID: [Int: Int] = [:]
     @ObservationIgnored private var neighborIndices: [[Int]] = []
     @ObservationIgnored private var appearanceIsDark = false
+    /// 配置が落ち着くまで、全体が収まるようにカメラを合わせ続ける。拡大や移動をしたらやめる。
+    @ObservationIgnored private var followsLayout = false
 
     public init() {
         renderer = GraphRenderer()
         isAvailable = renderer != nil
         renderer?.uniformsProvider = { [weak self] in self?.uniforms() ?? Self.emptyUniforms }
-        renderer?.didDraw = { [weak self] in self?.frame &+= 1 }
+        renderer?.didDraw = { [weak self] in self?.didDraw() }
     }
 
     private static let emptyUniforms = GraphUniforms(
@@ -68,8 +70,16 @@ public final class GraphCanvasModel {
         renderer?.load(scene, positions: positions)
         center = .zero
         let radius = LayoutParams.spacing * Float(max(scene.nodes.count, 1)).squareRoot() * 0.8
-        zoom = Float(min(viewSize.width, viewSize.height)) / (radius * 2.6)
+        zoom = max(Float(min(viewSize.width, viewSize.height)) / (radius * 2.6), 0.02)
+        followsLayout = true
         updateColors()
+    }
+
+    private func didDraw() {
+        frame &+= 1
+        guard followsLayout else { return }
+        fitAll()
+        if isSettled { followsLayout = false }
     }
 
     /// 点を選ぶ。nil なら選択を外す。
@@ -82,6 +92,7 @@ public final class GraphCanvasModel {
     /// 点を画面の中央に持ってくる。
     public func focus(on nodeID: Int) {
         guard let index = indexByID[nodeID], let position = positions()[safe: index] else { return }
+        followsLayout = false
         center = position
         zoom = max(zoom, 1.2)
     }
@@ -96,9 +107,10 @@ public final class GraphCanvasModel {
             lower = simd_min(lower, position)
             upper = simd_max(upper, position)
         }
+        guard viewSize.width > 0, viewSize.height > 0 else { return }
         center = (lower + upper) / 2
         let extent = simd_max(upper - lower, [1, 1])
-        zoom = min(Float(viewSize.width) / extent.x, Float(viewSize.height) / extent.y) * 0.9
+        zoom = min(max(min(Float(viewSize.width) / extent.x, Float(viewSize.height) / extent.y) * 0.85, 0.02), 20)
     }
 
     /// 点の配置をもう一度動かす。
@@ -142,10 +154,12 @@ public final class GraphCanvasModel {
     // MARK: - 操作
 
     func pan(by delta: CGSize) {
+        followsLayout = false
         center -= SIMD2(Float(delta.width), Float(delta.height)) / zoom
     }
 
     func zoom(by factor: CGFloat, around point: CGPoint) {
+        followsLayout = false
         let anchor = world(at: point)
         zoom = min(max(zoom * Float(factor), 0.02), 20)
         let offset = SIMD2(Float(point.x - viewSize.width / 2), Float(point.y - viewSize.height / 2))

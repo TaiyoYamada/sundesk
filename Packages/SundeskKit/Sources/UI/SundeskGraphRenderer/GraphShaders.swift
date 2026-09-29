@@ -21,6 +21,7 @@ enum GraphShaders {
             float damping;     // 速度の減衰
             float maxStep;     // 1 回に動ける距離の上限
             float alpha;       // 温度（だんだん下げて落ち着かせる）
+            float cutoff2;     // これより遠い点からは反発を受けない（距離の 2 乗）
         };
 
         kernel void layoutStep(device const float2 *positions [[buffer(0)]],
@@ -39,6 +40,7 @@ enum GraphShaders {
                 if (j == id) continue;
                 float2 d = p - positions[j];
                 float distance2 = max(dot(d, d), 0.01);
+                if (distance2 > params.cutoff2) continue;
                 force += d * (params.repulsion / distance2);
             }
             for (uint e = offsets[id]; e < offsets[id + 1]; e++) {

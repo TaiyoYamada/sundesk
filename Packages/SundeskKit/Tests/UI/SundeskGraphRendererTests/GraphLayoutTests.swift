@@ -8,6 +8,7 @@
 import Foundation
 import Metal
 import Testing
+import simd
 
 @testable import SundeskGraphRenderer
 
@@ -73,6 +74,34 @@ struct GraphLayoutTests {
         }
         #expect(distance(0, 1) < distance(0, 4))
         #expect(distance(2, 3) < distance(2, 5))
+    }
+
+    /// 実際の知識グラフに近い形（よくつながった固まりと、どこにもつながらない点）。
+    @Test("よくつながった固まりはつぶれず、どこにもつながらない点も遠くへ飛ばない")
+    func denseGraphStaysReadable() throws {
+        var generator = SeededGenerator(seed: 42)
+        let (core, isolated) = (250, 40)
+        let nodes = (0..<(core + isolated)).map { GraphScene.Node(id: $0, label: "\($0)", radius: 5, group: 0) }
+        let edges = (0..<2000).map { _ in
+            GraphScene.Edge(
+                source: Int.random(in: 0..<core, using: &generator),
+                target: Int.random(in: 0..<core, using: &generator),
+                weight: Float.random(in: 0.5...2, using: &generator))
+        }
+        let scene = GraphScene(nodes: nodes, edges: edges)
+        let renderer = try #require(GraphRenderer())
+        renderer.load(scene, positions: scene.initialPositions(spacing: LayoutParams.spacing))
+        renderer.layout.run(steps: 400)
+        let positions = renderer.layout.readPositions()
+
+        let radii = positions.map { ($0 * $0).sum().squareRoot() }
+        let coreRadius = radii[0..<core].sorted()[core * 9 / 10]
+        let outer = try #require(radii[core...].max())
+        #expect(outer < coreRadius * 4, "つながらない点が \(outer) まで飛んだ（固まりは \(coreRadius)）")
+        let nearest = (0..<core).map { index in
+            (0..<core).filter { $0 != index }.map { simd_distance(positions[index], positions[$0]) }.min() ?? 0
+        }
+        #expect(nearest.sorted()[core / 2] > LayoutParams.spacing * 0.4, "固まりがつぶれている")
     }
 
     @Test("画面の座標とグラフの座標を行き来でき、押した点を選べる")
