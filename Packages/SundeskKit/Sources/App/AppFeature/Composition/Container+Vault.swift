@@ -183,6 +183,8 @@ extension Container {
                 makeGraph: { self.graphViewModel() },
                 makeChat: { self.chatViewModel() },
                 makeLab: { self.labViewModel() },
+                makeForge: { self.forgeViewModel() },
+                makeScratch: { self.scratchViewModel() },
                 makeModels: { self.modelsViewModel() },
                 makeImages: { self.imagesViewModel() }
             )

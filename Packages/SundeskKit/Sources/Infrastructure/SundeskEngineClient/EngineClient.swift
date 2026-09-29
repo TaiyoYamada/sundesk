@@ -88,9 +88,10 @@ public struct EngineClient: Sendable {
 
     /// JSON を `POST` して、NDJSON（1 行に 1 つの JSON）を 1 行ずつ読む。
     ///
-    /// `{"type": "error"}` の行が届いたら、`EngineClientError.stream` で終える。
+    /// `{"type": "error"}` の行が届いたら、`EngineClientError.stream` で終える
+    /// （`passesErrorLines` が true なら、ほかの行と同じく `Event` として渡す）。
     public func stream<Body: Encodable, Event: Decodable & Sendable>(
-        _ path: String, body: Body, as type: Event.Type
+        _ path: String, body: Body, as type: Event.Type, passesErrorLines: Bool = false
     ) -> AsyncThrowingStream<Event, any Error> {
         let session = session
         let request: URLRequest
@@ -111,7 +112,8 @@ public struct EngineClient: Sendable {
                     }
                     for try await line in bytes.lines where !line.isEmpty {
                         let data = Data(line.utf8)
-                        if let failure = try? Self.decoder.decode(StreamError.self, from: data), failure.type == "error"
+                        if !passesErrorLines, let failure = try? Self.decoder.decode(StreamError.self, from: data),
+                            failure.type == "error"
                         {
                             throw EngineClientError.stream(failure.message)
                         }

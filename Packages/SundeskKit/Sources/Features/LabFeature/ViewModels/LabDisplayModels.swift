@@ -158,6 +158,9 @@ public struct ExperimentItem: Identifiable, Hashable, Sendable {
             case .activations: "活性"
             case .lora: "LoRA"
             case .steering: "Steering"
+            case .forge: "工房"
+            case .evaluate: "評価"
+            case .script: "スクリプト"
             }
         model = experiment.model.split(separator: "/").last.map(String.init) ?? experiment.model
         prompt = experiment.prompt

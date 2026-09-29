@@ -64,6 +64,8 @@ public protocol LabRecordRepository: Sendable {
 public protocol LabFileLocations: Sendable {
     /// 新しいアダプタのフォルダ。
     func newAdapterDirectory(name: String) -> String
+    /// 新しく作るモデルのフォルダ（エンジンが一覧に出す場所）。
+    func newModelDirectory(name: String) -> String
     /// 新しい画像のファイル。
     func newImagePath() -> String
     /// ファイルやフォルダを消す。

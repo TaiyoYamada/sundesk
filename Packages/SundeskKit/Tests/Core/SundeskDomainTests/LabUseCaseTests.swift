@@ -215,6 +215,7 @@ final class FilesStub: LabFileLocations {
     let removed = Box()
 
     func newAdapterDirectory(name: String) -> String { "/adapters/\(name)" }
+    func newModelDirectory(name: String) -> String { "/models/\(name)" }
     func newImagePath() -> String { "/images/new.png" }
     func remove(_ path: String) { removed.value.append(path) }
 }

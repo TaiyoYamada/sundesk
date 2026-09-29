@@ -48,7 +48,7 @@ public struct ModelsScreen: View {
                     description: Text("右から Hugging Face のモデルを取り込めます。エンジンが止まっていれば、起動してから一覧を読みます。"))
             } else {
                 Table(viewModel.models) {
-                    TableColumn("モデル", value: \.id)
+                    TableColumn("モデル", value: \.name)
                     TableColumn("種類", value: \.kind).width(min: 60, ideal: 80)
                     TableColumn("大きさ", value: \.size).width(min: 60, ideal: 80)
                 }

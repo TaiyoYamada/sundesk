@@ -25,7 +25,8 @@ extension Container {
                 let resolved = settings.load().resolved(with: settings.defaults)
                 return EngineConfiguration(
                     engineDirectory: URL(filePath: resolved.engineDirectory, directoryHint: .isDirectory),
-                    uvExecutable: URL(filePath: resolved.uvExecutable)
+                    uvExecutable: URL(filePath: resolved.uvExecutable),
+                    modelsDirectory: try? AppDataDirectory.url("Models")
                 )
             })
         }

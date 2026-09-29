@@ -42,6 +42,14 @@ extension Container {
         self { EngineLabGateway(process: self.engineProcess()) }
     }
 
+    var forgeGateway: Factory<EngineForgeGateway> {
+        self { EngineForgeGateway(process: self.engineProcess()) }
+    }
+
+    var scriptRepository: Factory<any ScriptRepository> {
+        self { FileSystemScriptRepository() }
+    }
+
     var labFiles: Factory<any LabFileLocations> {
         self { AppDataLabFiles() }
     }
@@ -57,12 +65,26 @@ extension Container {
     }
 
     var modelManagement: Factory<any ModelManagementUseCase> {
-        self { ModelManagementInteractor(repository: self.labGateway()) }
+        self { ModelManagementInteractor(repository: self.labGateway(), files: self.labFiles()) }
     }
 
     var imageGeneration: Factory<any ImageGenerationUseCase> {
         self {
             ImageGenerationInteractor(engine: self.labGateway(), records: self.labRecords(), files: self.labFiles())
+        }
+    }
+
+    var forgeUseCases: Factory<any ForgeUseCases> {
+        self {
+            ForgeInteractor(
+                engine: self.forgeGateway(), records: self.labRecords(), vault: self.vaultRepository(),
+                markdown: self.markdownParser(), files: self.labFiles())
+        }
+    }
+
+    var scratchUseCase: Factory<any ScratchUseCase> {
+        self {
+            ScratchInteractor(engine: self.forgeGateway(), scripts: self.scriptRepository(), records: self.labRecords())
         }
     }
 
@@ -78,6 +100,20 @@ extension Container {
             LabViewModel(
                 lab: self.labUseCases(), modelManagement: self.modelManagement(), loadVaultTree: self.loadVaultTree())
         }
+    }
+
+    @MainActor
+    var forgeViewModel: Factory<ForgeViewModel> {
+        self {
+            ForgeViewModel(
+                forge: self.forgeUseCases(), modelManagement: self.modelManagement(), records: self.labUseCases(),
+                loadVaultTree: self.loadVaultTree())
+        }
+    }
+
+    @MainActor
+    var scratchViewModel: Factory<ScratchViewModel> {
+        self { ScratchViewModel(scratch: self.scratchUseCase(), modelManagement: self.modelManagement()) }
     }
 
     @MainActor

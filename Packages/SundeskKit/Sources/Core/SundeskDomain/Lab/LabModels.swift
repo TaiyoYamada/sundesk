@@ -295,6 +295,10 @@ public struct Experiment: Hashable, Sendable, Identifiable {
         case activations
         case lora
         case steering
+        /// 量子化、変換、焼き込み、合成、枝刈り、蒸留。
+        case forge
+        case evaluate
+        case script
     }
 
     public let id: UUID

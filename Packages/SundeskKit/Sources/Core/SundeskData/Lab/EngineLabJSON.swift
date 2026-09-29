@@ -5,6 +5,7 @@
 //  Created by 山田大陽 on 2026/09/29.
 //
 
+import Foundation
 import SundeskDomain
 
 // エンジンとやりとりする JSON の形（docs/engine-api.md）。キーは snake_case に自動で直す。
@@ -15,6 +16,10 @@ struct ModelsResponse: Decodable {
         let kind: String
         let sizeBytes: Int64
         let path: String
+        /// 表示名（キャッシュならリポジトリ名、手元ならフォルダ名）。
+        let name: String?
+        /// `hub`（Hugging Face のキャッシュ）か `local`（作ったモデル）。
+        let source: String?
     }
 
     let models: [Model]

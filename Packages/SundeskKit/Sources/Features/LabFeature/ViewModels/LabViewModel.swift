@@ -14,7 +14,10 @@ import SundeskDomain
 @Observable
 public final class LabViewModel {
     public enum Section: String, CaseIterable, Identifiable, Sendable {
-        case tokens, nextToken, generate, attention, logitLens, activations, lora, steering, records
+        case tokens, nextToken, generate, attention, logitLens, activations
+        case lora, steering, distill
+        case quantize, convertMerge, prune
+        case evaluate, script, records
 
         public var id: Self { self }
 
@@ -28,6 +31,12 @@ public final class LabViewModel {
             case .activations: "活性"
             case .lora: "LoRA"
             case .steering: "Steering"
+            case .distill: "蒸留"
+            case .quantize: "量子化"
+            case .convertMerge: "変換と合成"
+            case .prune: "枝刈り"
+            case .evaluate: "評価"
+            case .script: "スクリプト"
             case .records: "記録"
             }
         }
@@ -42,12 +51,20 @@ public final class LabViewModel {
             case .activations: "waveform.path.ecg"
             case .lora: "slider.horizontal.below.square.and.square.filled"
             case .steering: "arrow.triangle.turn.up.right.diamond"
+            case .distill: "drop.degreesign"
+            case .quantize: "square.stack.3d.down.right"
+            case .convertMerge: "arrow.triangle.merge"
+            case .prune: "scissors"
+            case .evaluate: "chart.xyaxis.line"
+            case .script: "curlybraces.square"
             case .records: "clock.arrow.circlepath"
             }
         }
 
         /// プロンプトを使う画面か。
-        public var usesPrompt: Bool { ![.lora, .records].contains(self) }
+        public var usesPrompt: Bool {
+            [.tokens, .nextToken, .generate, .attention, .logitLens, .activations, .steering].contains(self)
+        }
     }
 
     public var section: Section = .tokens
@@ -175,7 +192,7 @@ public final class LabViewModel {
         case .activations: perform { self.activations = ActivationsItem(try await self.lab(activationsOf: prompt)) }
         case .lora: startTraining()
         case .steering: perform { try await self.steer(prompt) }
-        case .records: break
+        case .distill, .quantize, .convertMerge, .prune, .evaluate, .script, .records: break
         }
     }
 
@@ -267,7 +284,11 @@ public final class LabViewModel {
             }
         }
     }
+}
 
+// MARK: - steering と記録
+
+extension LabViewModel {
     private func steer(_ prompt: LabPrompt) async throws {
         let lines: (String) -> [String] = {
             $0.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }

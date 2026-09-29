@@ -262,6 +262,18 @@ public struct AppDataLabFiles: LabFileLocations {
         return directory.appending(path: "\(safe)-\(stamp)", directoryHint: .isDirectory).path
     }
 
+    public func newModelDirectory(name: String) -> String {
+        let safe = name.replacing(/[\/:\\]/, with: "-")
+        let directory = (try? AppDataDirectory.url("Models")) ?? FileManager.default.temporaryDirectory
+        var candidate = directory.appending(path: safe, directoryHint: .isDirectory)
+        var number = 2
+        while FileManager.default.fileExists(atPath: candidate.path) {
+            candidate = directory.appending(path: "\(safe)-\(number)", directoryHint: .isDirectory)
+            number += 1
+        }
+        return candidate.path
+    }
+
     public func newImagePath() -> String {
         let stamp = Date.now.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: true))
             .replacing(":", with: "")

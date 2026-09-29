@@ -192,3 +192,149 @@
 |---|---|
 | `POST /steering/vector` `{"model", "layer", "positive": [str], "negative": [str]}` | `{"layer", "vector": [f], "norm"}` 指定した層の残差ストリームの平均の差（positive − negative。最後のトークンの位置） |
 | `POST /steering/generate` `{"model", "prompt", "chat_template", "layer", "vector", "strength", "max_tokens", "temperature", "seed"}` | `{"baseline": str, "steered": str}` 同じ種で、ベクトルを足さない生成と足した生成（`seed` が null なら毎回変える） |
+
+## フェーズ 7: 工房（作る・比べる・書く）
+
+モデルを量子化し、変換し、混ぜ、枝を刈り、蒸留して、できたものを比べる。Python を書いて、載せたモデルを直接いじることもできる。
+
+### 作ったモデルの置き場所
+
+- 作ったモデル（量子化、変換、焼き込み、合成、枝刈り、蒸留）は、アプリが決めた `output_dir`（絶対パス）に MLX の形式で書く
+  （`config.json`、重み、トークナイザ。`mlx_lm.load(output_dir)` でそのまま読めること）
+- アプリはエンジンの起動時に、環境変数 `SUNDESK_MODELS_DIR` でそのフォルダの親を渡す。`GET /models` は、Hugging Face のキャッシュに加えて、
+  ここにあるフォルダも返す（`id` は絶対パス）
+- `GET /models` の各項目に `name`（表示名。キャッシュならリポジトリ名、手元ならフォルダ名）と `source`（`"hub"` か `"local"`）を足す
+
+作る処理はどれも NDJSON で、次の形の行を流す。
+
+```
+{"type": "loading", "model": "…"}
+{"type": "progress", "stage": "quantizing", "fraction": 0.42, "message": "層 12/28"}
+{"type": "done", "output_dir": "/…", "size_bytes": 412345678, "bits_per_weight": 4.5}
+```
+
+`stage` は処理ごとに決める（`loading`、`converting`、`quantizing`、`merging`、`pruning`、`saving` など）。`fraction` は分からなければ null。
+
+### `POST /forge/quantize`
+
+```json
+{"model": "mlx-community/Qwen3-0.6B-bf16", "output_dir": "/…/Models/qwen3-0.6b-3bit",
+ "method": "affine", "bits": 3, "group_size": 64, "mixed": null, "overrides": [{"pattern": "lm_head", "bits": 8}]}
+```
+
+| 項目 | 内容 |
+|---|---|
+| `method: "affine"` | MLX の本物の量子化。`bits` は 2、3、4、5、6、8。`group_size` は 32、64、128 |
+| `mixed` | 層ごとにビット数を変える、mlx-lm の決まった配分（`mixed_2_6`、`mixed_3_4`、`mixed_3_6`、`mixed_4_6`）。null なら使わない |
+| `overrides` | 重みの名前（部分一致）ごとに、ビット数を上書きする。`bits` が null ならその重みは量子化しない |
+| `method: "simulated"` | 量子化してすぐ戻した値を、ふつうの数（float16）で保存する。`bits` は 1〜8 の整数。`ternary: true` なら −1、0、+1 の 3 値（1.58 ビット）。本物の量子化にない、変わったビットの効き目を試すため |
+
+元のモデルがすでに量子化されていれば、いったん戻してから量子化し直す。`done` の `bits_per_weight` は、重み 1 つあたりの平均のビット数。
+
+### `POST /forge/convert`
+
+Hugging Face の PyTorch や safetensors のモデル（transformers の形式）を、MLX の形式に変換する。
+
+```json
+{"model": "Qwen/Qwen3-0.6B", "output_dir": "/…", "dtype": "bfloat16", "quantize": {"bits": 4, "group_size": 64}}
+```
+
+`dtype` は `float16`、`bfloat16`、`float32`。`quantize` は null なら量子化しない。手元になければ 404（取り込みは `/models/download`）。
+
+### `POST /forge/fuse`
+
+LoRA のアダプタを本体に焼き込み、1 つのモデルにする。
+
+```json
+{"model": "…", "adapter": "/…/Adapters/名前", "output_dir": "/…", "dequantize": false}
+```
+
+### `POST /forge/merge`
+
+同じ構造の 2 つのモデルを混ぜる。構造が違えば 422。
+
+```json
+{"models": ["…", "…"], "output_dir": "/…", "method": "slerp", "t": 0.5}
+```
+
+`method` は `linear`（`(1 − t)·A + t·B`）か `slerp`（球面の線形補間）。量子化されたモデルは戻してから混ぜ、float16 で保存する。
+
+### `POST /forge/prune`
+
+層やヘッドを抜いて、影響を見る。
+
+```json
+{"model": "…", "output_dir": "/…", "drop_layers": [20, 21], "drop_heads": [{"layer": 3, "head": 5}]}
+```
+
+- `drop_layers`: その層を取り除く（`num_hidden_layers` も減らす）
+- `drop_heads`: その層の Attention のそのヘッドの出力を 0 にする（形は変えない）
+- `done` に `num_layers` を足す
+
+### `POST /forge/distill`
+
+大きい先生モデルの出力の確率分布を、小さい生徒モデルに学ばせる（知識の蒸留）。語彙が違えば 422。
+
+```json
+{"teacher": "mlx-community/Qwen3-4B-Instruct-2507-4bit", "student": "mlx-community/Qwen3-0.6B-bf16",
+ "texts": ["…"], "output_dir": "/…", "iterations": 200, "learning_rate": 1e-5, "temperature": 2.0, "alpha": 0.5,
+ "max_seq_length": 512, "batch_size": 1, "lora_rank": 8}
+```
+
+- 損失は `alpha × KL(先生 ‖ 生徒, 温度 T) × T² + (1 − alpha) × 次のトークンの交差エントロピー`
+- `lora_rank` があれば、生徒に LoRA を付けて学習し、`output_dir` にアダプタを書く。null なら生徒の全体を学習し、モデルとして書く
+- 先生と生徒は同時にメモリに載せる（このときだけ、大きいモデル 1 つの決まりの例外）。学習が終わったら両方外す
+- 進み具合: `{"type": "progress", "iteration", "total", "loss", "kl", "ce"}`、検証: `{"type": "validation", "iteration", "loss"}`、
+  終わり: `{"type": "done", "output_dir", "kind": "adapter" | "model"}`
+
+### `POST /forge/evaluate`（NDJSON）
+
+いくつかのモデルを、同じ文章と同じプロンプトで比べる。
+
+```json
+{"models": [{"model": "…", "adapter": null}], "texts": ["…"], "prompts": ["…"], "max_tokens": 64, "seed": 0}
+```
+
+モデルごとに次の行を流し、最後に `{"type": "done"}`。
+
+```
+{"type": "loading", "model": "…"}
+{"type": "result", "model": "…", "adapter": null, "perplexity": 12.3, "tokens": 5120, "seconds": 4.1,
+ "tokens_per_second": 58.2, "size_bytes": 351000000, "peak_memory_bytes": 812000000, "samples": ["…"]}
+```
+
+`perplexity` は `texts` の続きを当てる難しさ（小さいほどよい）。`samples` は `prompts` への生成（同じ種）。
+
+### Python のスクラッチ
+
+エンジンの中で Python を実行する。ノートブックのように、同じ `session` の中では変数が残る。
+
+`POST /scratch/run`（NDJSON）
+
+```json
+{"session": "b3f…", "code": "print(model.args.num_hidden_layers)", "model": "mlx-community/Qwen3-0.6B-4bit", "adapter": null}
+```
+
+| 名前 | 中身 |
+|---|---|
+| `model`、`tokenizer` | `model` を渡したときに載せたもの（mlx-lm） |
+| `mx`、`nn`、`np`、`plt` | `mlx.core`、`mlx.nn`、`numpy`、`matplotlib.pyplot`（画面に出さない描き方） |
+| `generate(prompt, **kwargs)` | 載せたモデルで生成した文字列を返す |
+| `show(x)` | 図（matplotlib）、表（dict の list、または 2 次元の配列）、画像を出力に出す |
+
+出力の行:
+
+```
+{"type": "stdout", "text": "28\n"}
+{"type": "stderr", "text": "…"}
+{"type": "image", "png_base64": "…"}
+{"type": "table", "columns": ["層", "ノルム"], "rows": [[0, 1.2]]}
+{"type": "value", "repr": "…"}          ← 最後の式の値（None でなければ）
+{"type": "done", "seconds": 0.8}
+{"type": "error", "message": "NameError: …", "traceback": "…"}
+```
+
+- `plt` で描いて `show(plt.gcf())` すると画像になる。実行の終わりに開いたままの図があれば、自動で画像にして閉じる
+- 接続が切れたら実行を中断する
+- `POST /scratch/reset` `{"session"}` → `{"reset": true}` 変数を消す
+- 手元の Mac の上で、自分の書いたコードを動かすためのもの。エンジンは 127.0.0.1 とトークンでしか受け付けない

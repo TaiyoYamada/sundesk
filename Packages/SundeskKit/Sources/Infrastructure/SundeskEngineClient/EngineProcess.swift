@@ -186,6 +186,18 @@ public actor EngineProcess {
         case cancelled
     }
 
+    /// エンジンに渡す環境変数。
+    static func environment(_ configuration: EngineConfiguration, token: String) -> [Environment.Key: String] {
+        var values: [Environment.Key: String] = [
+            "SUNDESK_ENGINE_TOKEN": token,
+            // アプリが強制終了されても、エンジンがこれを見て自分で終了する
+            "SUNDESK_PARENT_PID": String(ProcessInfo.processInfo.processIdentifier),
+            "PYTHONUNBUFFERED": "1",
+        ]
+        if let models = configuration.modelsDirectory { values["SUNDESK_MODELS_DIR"] = models.path }
+        return values
+    }
+
     /// プロセスを起動し、終了するまで出力をログに流す。
     ///
     /// 呼び出し元のタスクがキャンセルされると、Subprocess が SIGTERM を送り、
@@ -202,12 +214,7 @@ public actor EngineProcess {
                     "run", "--project", configuration.engineDirectory.path,
                     "sundesk-engine", "--host", "127.0.0.1", "--port", String(port),
                 ],
-                environment: .inherit.updating([
-                    "SUNDESK_ENGINE_TOKEN": token,
-                    // アプリが強制終了されても、エンジンがこれを見て自分で終了する
-                    "SUNDESK_PARENT_PID": String(ProcessInfo.processInfo.processIdentifier),
-                    "PYTHONUNBUFFERED": "1",
-                ]),
+                environment: .inherit.updating(environment(configuration, token: token)),
                 workingDirectory: FilePath(configuration.engineDirectory.path),
                 platformOptions: options,
                 input: .none,

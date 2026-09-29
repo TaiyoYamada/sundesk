@@ -33,7 +33,8 @@ public struct MainWindowView: View {
         _chat = State(initialValue: dependencies.makeChat())
         _tools = State(
             initialValue: ToolViewModels(
-                lab: dependencies.makeLab(), models: dependencies.makeModels(), images: dependencies.makeImages()))
+                lab: dependencies.makeLab(), forge: dependencies.makeForge(), scratch: dependencies.makeScratch(),
+                models: dependencies.makeModels(), images: dependencies.makeImages()))
     }
 
     public var body: some View {

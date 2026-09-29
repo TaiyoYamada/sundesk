@@ -94,7 +94,7 @@ struct LabViewModelTests {
     }
 }
 
-private struct LabStub: LabUseCases {
+struct LabStub: LabUseCases {
     let failure: LabError?
 
     func callAsFunction(_ prompt: LabPrompt) async throws(LabError) -> [TokenPiece] {
@@ -157,7 +157,7 @@ private struct LabStub: LabUseCases {
     func changes() -> AsyncStream<Void> { AsyncStream { $0.finish() } }
 }
 
-private struct ModelsStub: ModelManagementUseCase {
+struct ModelsStub: ModelManagementUseCase {
     func localModels() async throws(LabError) -> [LocalModel] {
         [
             LocalModel(id: "mlx-community/gemma-3-1b-it-4bit", kind: .llm, sizeBytes: 1, path: "/a"),
@@ -178,7 +178,7 @@ private struct ModelsStub: ModelManagementUseCase {
     func unload(_ kind: ModelKind?) async throws(LabError) {}
 }
 
-private struct TreeStub: LoadVaultTreeUseCase {
+struct TreeStub: LoadVaultTreeUseCase {
     func callAsFunction() async throws(VaultError) -> VaultNode {
         VaultNode(
             id: "", name: "Vault", kind: .folder,

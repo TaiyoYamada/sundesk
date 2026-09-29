@@ -21,7 +21,8 @@ actor EngineModelEnsurer {
     func ensure(
         _ id: String, client: EngineClient, downloading: @Sendable () -> Void = {}
     ) async throws(EngineClientError) {
-        guard !present.contains(id) else { return }
+        // 手元のフォルダ（絶対パス）はそのまま使う
+        guard !id.hasPrefix("/"), !present.contains(id) else { return }
         let models = try await client.get("models", as: ModelsResponse.self)
         present.formUnion(models.models.map(\.id))
         guard !present.contains(id) else { return }

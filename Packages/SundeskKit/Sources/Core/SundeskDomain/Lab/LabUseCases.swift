@@ -153,7 +153,7 @@ public struct LabInteractor: LabUseCases {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    let texts = try await noteTexts(in: folder)
+                    let texts = try await NoteTexts.read(in: folder, vault: vault, markdown: markdown)
                     guard texts.count >= 2 else {
                         throw LabError.engine("学習に使えるノートが足りません（2 本以上必要です）")
                     }
@@ -232,19 +232,6 @@ public struct LabInteractor: LabUseCases {
             Experiment(kind: kind, model: prompt.model, prompt: prompt.text, parameters: parameters, summary: summary))
     }
 
-    /// 学習に使うノートの本文（フロントマターを除く）。
-    private func noteTexts(in folder: String) async throws -> [String] {
-        let tree = try await vault.loadTree()
-        let prefix = folder.isEmpty ? "" : folder.hasSuffix("/") ? folder : folder + "/"
-        var texts: [String] = []
-        for file in tree.files where file.kind == .markdown && file.path.hasPrefix(prefix) {
-            guard let source = try? await vault.readText(at: file.path) else { continue }
-            let body = markdown.analyze(source, path: file.path).body.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !body.isEmpty { texts.append(body) }
-        }
-        return texts
-    }
-
     static func parameters(_ settings: SamplingSettings) -> [String: String] {
         var parameters = [
             "温度": "\(settings.temperature)", "top-p": "\(settings.topP)", "最大トークン": "\(settings.maxTokens)",
@@ -271,9 +258,11 @@ public protocol ModelManagementUseCase: Sendable {
 
 public struct ModelManagementInteractor: ModelManagementUseCase {
     private let repository: any ModelRepository
+    private let files: any LabFileLocations
 
-    public init(repository: any ModelRepository) {
+    public init(repository: any ModelRepository, files: any LabFileLocations) {
         self.repository = repository
+        self.files = files
     }
 
     public func localModels() async throws(LabError) -> [LocalModel] {
@@ -284,8 +273,14 @@ public struct ModelManagementInteractor: ModelManagementUseCase {
         repository.download(id.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
+    /// Hugging Face のキャッシュのモデルはエンジンで消し、工房で作ったモデル（絶対パス）はフォルダを消す。
     public func delete(_ id: String) async throws(LabError) {
-        try await repository.delete(id)
+        if id.hasPrefix("/") {
+            try? await repository.unload(nil)
+            files.remove(id)
+        } else {
+            try await repository.delete(id)
+        }
     }
 
     public func loadedModels() async throws(LabError) -> LoadedModels {

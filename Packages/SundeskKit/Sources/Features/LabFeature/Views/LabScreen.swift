@@ -11,29 +11,23 @@ import SwiftUI
 /// 実験室のタブ。左で何を見るかを選び、上でモデルとプロンプトを決めて実行する。
 public struct LabScreen: View {
     @Bindable private var viewModel: LabViewModel
+    private let forge: ForgeViewModel
+    private let scratch: ScratchViewModel
 
-    public init(viewModel: LabViewModel) {
+    public init(viewModel: LabViewModel, forge: ForgeViewModel, scratch: ScratchViewModel) {
         self.viewModel = viewModel
+        self.forge = forge
+        self.scratch = scratch
     }
 
     public var body: some View {
         HStack(spacing: 0) {
             List(selection: $viewModel.section) {
-                Section("覗く") {
-                    ForEach([LabViewModel.Section.tokens, .nextToken, .generate, .attention, .logitLens, .activations])
-                    {
-                        Label($0.title, systemImage: $0.systemImage).tag($0)
-                    }
-                }
-                Section("いじる") {
-                    ForEach([LabViewModel.Section.lora, .steering]) {
-                        Label($0.title, systemImage: $0.systemImage).tag($0)
-                    }
-                }
-                Section {
-                    Label(LabViewModel.Section.records.title, systemImage: LabViewModel.Section.records.systemImage)
-                        .tag(LabViewModel.Section.records)
-                }
+                group("覗く", [.tokens, .nextToken, .generate, .attention, .logitLens, .activations])
+                group("いじる", [.lora, .steering, .distill])
+                group("作る", [.quantize, .convertMerge, .prune])
+                group("比べる・書く", [.evaluate, .script])
+                group("", [.records])
             }
             .listStyle(.sidebar)
             .frame(width: 180)
@@ -61,6 +55,17 @@ public struct LabScreen: View {
         }
         .task { await viewModel.load() }
         .task { await viewModel.observeRecords() }
+        .task(id: viewModel.section) {
+            if [.distill, .quantize, .convertMerge, .prune, .evaluate].contains(viewModel.section) {
+                await forge.load()
+            }
+        }
+    }
+
+    private func group(_ title: String, _ sections: [LabViewModel.Section]) -> some View {
+        Section(title) {
+            ForEach(sections) { Label($0.title, systemImage: $0.systemImage).tag($0) }
+        }
     }
 
     @ViewBuilder
@@ -74,6 +79,12 @@ public struct LabScreen: View {
         case .activations: ActivationsView(viewModel: viewModel)
         case .lora: LoRAView(viewModel: viewModel)
         case .steering: SteeringView(viewModel: viewModel)
+        case .distill: DistillView(viewModel: forge)
+        case .quantize: QuantizeView(viewModel: forge)
+        case .convertMerge: ConvertMergeView(viewModel: forge)
+        case .prune: PruneView(viewModel: forge)
+        case .evaluate: EvaluateView(viewModel: forge)
+        case .script: ScratchView(viewModel: scratch)
         case .records: RecordsView(viewModel: viewModel)
         }
     }

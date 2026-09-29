@@ -44,7 +44,7 @@ struct EditorView: View {
                     case .tool(.chat):
                         ChatScreen(viewModel: chat) { path, line in workspace.open(path: path, line: line) }
                     case .tool(.lab):
-                        LabScreen(viewModel: tools.lab)
+                        LabScreen(viewModel: tools.lab, forge: tools.forge, scratch: tools.scratch)
                     case .tool(.models):
                         ModelsScreen(viewModel: tools.models)
                     case .tool(.images):
@@ -67,6 +67,8 @@ struct EditorView: View {
 @MainActor
 struct ToolViewModels {
     let lab: LabViewModel
+    let forge: ForgeViewModel
+    let scratch: ScratchViewModel
     let models: ModelsViewModel
     let images: ImagesViewModel
 }

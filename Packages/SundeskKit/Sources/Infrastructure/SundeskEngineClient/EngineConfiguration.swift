@@ -15,11 +15,16 @@ public struct EngineConfiguration: Sendable, Equatable {
     public var uvExecutable: URL
     /// 起動してから応答が返るまで待つ時間。初回は依存関係の取得で時間がかかる。
     public var startupTimeout: Duration
+    /// 作ったモデル（量子化、蒸留など）を置くフォルダ。エンジンはここにあるモデルも一覧に出す。
+    public var modelsDirectory: URL?
 
-    public init(engineDirectory: URL, uvExecutable: URL, startupTimeout: Duration = .seconds(600)) {
+    public init(
+        engineDirectory: URL, uvExecutable: URL, startupTimeout: Duration = .seconds(600), modelsDirectory: URL? = nil
+    ) {
         self.engineDirectory = engineDirectory
         self.uvExecutable = uvExecutable
         self.startupTimeout = startupTimeout
+        self.modelsDirectory = modelsDirectory
     }
 }
 

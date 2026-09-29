@@ -105,12 +105,15 @@ public final class ModelsViewModel {
 
 public struct LocalModelItem: Identifiable, Hashable, Sendable {
     public let id: String
+    /// 表示名（工房で作ったモデルは 🛠 とフォルダ名）。
+    public let name: String
     public let kind: String
     public let size: String
     public let path: String
 
     init(_ model: LocalModel) {
         id = model.id
+        name = model.id.hasPrefix("/") ? "🛠 " + (model.id as NSString).lastPathComponent : model.id
         kind =
             switch model.kind {
             case .llm: "LLM"

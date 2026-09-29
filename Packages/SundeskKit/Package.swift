@@ -114,7 +114,7 @@ let package = Package(
         ),
         .target(
             name: "LabFeature",
-            dependencies: ["SundeskDomain", "SundeskDesignSystem"],
+            dependencies: ["SundeskDomain", "SundeskDesignSystem", "SundeskEditorUI"],
             path: "Sources/Features/LabFeature",
             swiftSettings: uiSettings
         ),

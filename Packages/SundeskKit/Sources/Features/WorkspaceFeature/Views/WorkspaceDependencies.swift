@@ -27,6 +27,8 @@ public struct WorkspaceDependencies {
     public let makeGraph: () -> GraphViewModel
     public let makeChat: () -> ChatViewModel
     public let makeLab: () -> LabViewModel
+    public let makeForge: () -> ForgeViewModel
+    public let makeScratch: () -> ScratchViewModel
     public let makeModels: () -> ModelsViewModel
     public let makeImages: () -> ImagesViewModel
 
@@ -39,6 +41,8 @@ public struct WorkspaceDependencies {
         makeGraph: @escaping () -> GraphViewModel,
         makeChat: @escaping () -> ChatViewModel,
         makeLab: @escaping () -> LabViewModel,
+        makeForge: @escaping () -> ForgeViewModel,
+        makeScratch: @escaping () -> ScratchViewModel,
         makeModels: @escaping () -> ModelsViewModel,
         makeImages: @escaping () -> ImagesViewModel
     ) {
@@ -50,6 +54,8 @@ public struct WorkspaceDependencies {
         self.makeGraph = makeGraph
         self.makeChat = makeChat
         self.makeLab = makeLab
+        self.makeForge = makeForge
+        self.makeScratch = makeScratch
         self.makeModels = makeModels
         self.makeImages = makeImages
     }
