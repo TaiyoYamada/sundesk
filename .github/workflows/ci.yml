@@ -89,3 +89,36 @@ jobs:
             echo
             uv run coverage report --format=markdown
           } >> "$GITHUB_STEP_SUMMARY"
+
+  log:
+    name: 記録用ライブラリ（Python ${{ matrix.python }}）
+    runs-on: macos-26
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        # 対応する最も古い版と、手元で使っている版
+        python: ["3.10", "3.13"]
+    defaults:
+      run:
+        working-directory: tools/sundesk-log
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: tools/sundesk-log/uv.lock
+          python-version: ${{ matrix.python }}
+
+      - name: 依存関係をそろえる
+        run: uv sync --locked
+
+      - name: 静的チェック
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run pyright
+
+      - name: テスト
+        run: uv run pytest --cov
