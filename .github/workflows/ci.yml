@@ -46,11 +46,21 @@ jobs:
         run: uv sync --locked
 
       - name: パッケージのテスト（結合テストを含む）
-        # ジョブの上限で打ち切られるとログが残らないので、手前で止める
+        # ジョブの上限で打ち切られるとログが残らないので、25 分で自分から止め、どこで止まったかを記録に残す
         timeout-minutes: 30
         env:
           SUNDESK_INTEGRATION: "1"
-        run: make test-package
+        run: |
+          set -o pipefail
+          perl -e 'alarm shift; exec @ARGV' 1500 make test-package 2>&1 | tee swift-test.log
+
+      - name: テストの記録を残す
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: swift-test-log
+          path: swift-test.log
+          if-no-files-found: ignore
 
       - name: カバレッジ
         run: |
