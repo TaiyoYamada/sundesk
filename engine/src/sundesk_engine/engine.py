@@ -7,8 +7,9 @@ from typing import Annotated, cast
 from fastapi import Depends, Request
 
 from sundesk_engine.images.catalog import IMAGE_MODELS
-from sundesk_engine.runtime.hub import Hub, HuggingFaceHub
+from sundesk_engine.runtime.hub import Hub, HuggingFaceHub, models_dir_from_env
 from sundesk_engine.runtime.manager import ModelManager
+from sundesk_engine.scratch.session import ScratchSessions
 
 
 def _mlx_executor() -> ThreadPoolExecutor:
@@ -21,6 +22,8 @@ class Engine:
     models: ModelManager
     mlx_executor: ThreadPoolExecutor = field(default_factory=_mlx_executor)
     """LLM と画像生成の計算は、すべてこの 1 本のスレッドで順番に行う"""
+    scratch: ScratchSessions = field(default_factory=ScratchSessions)
+    """Python のスクラッチの、セッションごとの変数"""
 
     @classmethod
     def create_default(cls) -> "Engine":
@@ -29,7 +32,9 @@ class Engine:
         from sundesk_engine.runtime.embedding import SentenceTransformerBackend
         from sundesk_engine.runtime.mlx_backend import MlxLmBackend
 
-        hub = HuggingFaceHub(image_repos=[spec.repo for spec in IMAGE_MODELS])
+        hub = HuggingFaceHub(
+            image_repos=[spec.repo for spec in IMAGE_MODELS], models_dir=models_dir_from_env()
+        )
         models = ModelManager(
             hub=hub,
             llm_backend=MlxLmBackend(),

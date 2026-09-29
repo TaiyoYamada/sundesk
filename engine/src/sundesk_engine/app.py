@@ -8,7 +8,19 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 
 from sundesk_engine import __version__
-from sundesk_engine.api import chat, embeddings, graph, health, images, lab, lora, models, steering
+from sundesk_engine.api import (
+    chat,
+    embeddings,
+    forge,
+    graph,
+    health,
+    images,
+    lab,
+    lora,
+    models,
+    scratch,
+    steering,
+)
 from sundesk_engine.engine import Engine
 from sundesk_engine.errors import install_handlers
 
@@ -48,6 +60,8 @@ def create_app(token: str | None = None, engine: Engine | None = None) -> FastAP
         images.router,
         lora.router,
         steering.router,
+        forge.router,
+        scratch.router,
     ):
         app.include_router(router)
 

@@ -1,4 +1,4 @@
-"""Hugging Face のキャッシュ（`~/.cache/huggingface/hub`）にあるモデルの管理。
+"""Hugging Face のキャッシュ（`~/.cache/huggingface/hub`）と、手元のフォルダにあるモデルの管理。
 
 キャッシュの構造は次のとおり。
 
@@ -6,9 +6,13 @@
         blobs/<etag>                ← 実体
         refs/main                   ← 最新のコミット
         snapshots/<commit>/<file>   ← blobs への symlink
+
+アプリが作ったモデル（量子化や蒸留の結果）は、環境変数 `SUNDESK_MODELS_DIR` のフォルダの直下に
+1 つずつフォルダとして置く。これらは絶対パスを ID にして一覧に加える。
 """
 
 import json
+import os
 import shutil
 import threading
 from collections.abc import Callable, Sequence
@@ -20,6 +24,9 @@ from typing import Any, Literal, Protocol
 from sundesk_engine.errors import BadRequestError, InternalError, NotFoundError
 
 type ModelKind = Literal["llm", "embedding", "image", "other"]
+type ModelSource = Literal["hub", "local"]
+
+MODELS_DIR_ENV = "SUNDESK_MODELS_DIR"
 
 # 同じ重みの別形式（PyTorch、ONNX など）は落とさない
 DEFAULT_IGNORE_PATTERNS = [
@@ -45,6 +52,9 @@ class LocalModel:
     kind: ModelKind
     size_bytes: int
     path: str
+    name: str
+    """表示名。キャッシュならリポジトリ名、手元のフォルダならフォルダ名"""
+    source: ModelSource
 
 
 @dataclass(frozen=True)
@@ -94,6 +104,54 @@ def default_cache_dir() -> Path:
     from huggingface_hub import constants
 
     return Path(constants.HF_HUB_CACHE)
+
+
+def models_dir_from_env() -> Path | None:
+    """アプリが渡す、作ったモデルの置き場（絶対パスのときだけ使う）。"""
+    value = os.environ.get(MODELS_DIR_ENV, "").strip()
+    if not value:
+        return None
+    path = Path(value).expanduser()
+    return path if path.is_absolute() else None
+
+
+def directory_size(path: Path) -> int:
+    """フォルダの中のファイルの大きさの合計。symlink はリンク先の大きさを数える。"""
+    total = 0
+    for root, _dirs, files in os.walk(path):
+        for name in files:
+            try:
+                total += (Path(root) / name).stat().st_size
+            except OSError:
+                continue
+    return total
+
+
+def list_local_models(models_dir: Path, image_repos: Sequence[str] = ()) -> list[LocalModel]:
+    """`models_dir` の直下にある、`config.json` を持つフォルダをモデルとして返す。
+
+    名前が `.` で始まるフォルダ（作っている途中のものなど）は数えない。
+    """
+    if not models_dir.is_dir():
+        return []
+    models: list[LocalModel] = []
+    for folder in sorted(models_dir.iterdir()):
+        if folder.name.startswith(".") or not folder.is_dir():
+            continue
+        if not (folder / "config.json").is_file():
+            continue
+        path = str(folder)
+        models.append(
+            LocalModel(
+                id=path,
+                kind=classify(path, folder, image_repos),
+                size_bytes=directory_size(folder),
+                path=path,
+                name=folder.name,
+                source="local",
+            )
+        )
+    return models
 
 
 def repo_folder_name(model_id: str) -> str:
@@ -212,10 +270,13 @@ class HuggingFaceHub:
         cache_dir: Path | None = None,
         image_repos: Sequence[str] = (),
         poll_interval: float = 0.5,
+        models_dir: Path | None = None,
     ) -> None:
         self.cache_dir = cache_dir or default_cache_dir()
         self.image_repos = tuple(image_repos)
         self.poll_interval = poll_interval
+        self.models_dir = models_dir
+        """アプリが作ったモデルの置き場。None なら手元のフォルダは一覧に出さない"""
 
     def _repo_dir(self, model_id: str) -> Path:
         validate_model_id(model_id)
@@ -243,6 +304,12 @@ class HuggingFaceHub:
         return all(any(match.exists() for match in snapshot.glob(pattern)) for pattern in required)
 
     def list_models(self) -> list[LocalModel]:
+        models = self._list_cached()
+        if self.models_dir is not None:
+            models.extend(list_local_models(self.models_dir, self.image_repos))
+        return models
+
+    def _list_cached(self) -> list[LocalModel]:
         if not self.cache_dir.is_dir():
             return []
         models: list[LocalModel] = []
@@ -257,6 +324,8 @@ class HuggingFaceHub:
                     kind=classify(model_id, snapshot, self.image_repos),
                     size_bytes=_blobs_size(repo_dir / "blobs"),
                     path=str(snapshot),
+                    name=model_id.split("/", 1)[-1],
+                    source="hub",
                 )
             )
         return models

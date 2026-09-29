@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sundesk_engine.engine import EngineDep
 from sundesk_engine.errors import NotFoundError
 from sundesk_engine.images.catalog import find_image_repo
-from sundesk_engine.runtime.hub import DEFAULT_IGNORE_PATTERNS, ModelKind
+from sundesk_engine.runtime.hub import DEFAULT_IGNORE_PATTERNS, ModelKind, ModelSource
 from sundesk_engine.streaming import Emit, ndjson_response, run_blocking
 
 router = APIRouter()
@@ -20,6 +20,8 @@ class ModelOut(BaseModel):
     kind: ModelKind
     size_bytes: int
     path: str
+    name: str
+    source: ModelSource
 
 
 class ModelsResponse(BaseModel):
@@ -54,7 +56,14 @@ async def get_models(engine: EngineDep) -> ModelsResponse:
     models = await run_blocking(None, engine.hub.list_models)
     return ModelsResponse(
         models=[
-            ModelOut(id=model.id, kind=model.kind, size_bytes=model.size_bytes, path=model.path)
+            ModelOut(
+                id=model.id,
+                kind=model.kind,
+                size_bytes=model.size_bytes,
+                path=model.path,
+                name=model.name,
+                source=model.source,
+            )
             for model in models
         ]
     )
@@ -100,6 +109,7 @@ async def post_models_unload(request: UnloadRequest, engine: EngineDep) -> Unloa
 
 @router.delete("/models/{model_id:path}")
 async def delete_model(model_id: str, engine: EngineDep) -> DeleteResponse:
+    # 消せるのは Hugging Face のキャッシュのモデルだけ。手元のフォルダはアプリが消す
     def work() -> bool:
         engine.models.forget(model_id)
         return engine.hub.delete(model_id)

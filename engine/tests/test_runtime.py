@@ -13,7 +13,13 @@ from fastapi.testclient import TestClient
 
 from sundesk_engine.errors import BadRequestError, NotFoundError, install_handlers
 from sundesk_engine.lab.sampling import SamplingOptions, entropy, sample, top_indices
-from sundesk_engine.runtime.hub import DownloadPlan, HuggingFaceHub, RemoteFile
+from sundesk_engine.runtime.hub import (
+    MODELS_DIR_ENV,
+    DownloadPlan,
+    HuggingFaceHub,
+    RemoteFile,
+    models_dir_from_env,
+)
 from sundesk_engine.streaming import Emit, ndjson_response
 
 
@@ -62,6 +68,52 @@ def test_hub_lists_and_classifies_models(tmp_path: Path) -> None:
     tiny = models["mlx-community/Tiny-4bit"]
     assert tiny.size_bytes == len(json.dumps({"architectures": ["Qwen3ForCausalLM"]})) + 10
     assert tiny.path.endswith("snapshots/abc")
+
+
+def test_hub_lists_local_model_folders(tmp_path: Path) -> None:
+    make_repo(
+        tmp_path / "cache",
+        "mlx-community/Tiny-4bit",
+        {"config.json": json.dumps({"architectures": ["Qwen3ForCausalLM"]})},
+    )
+    models_dir = tmp_path / "Models"
+    local = models_dir / "tiny-3bit"
+    local.mkdir(parents=True)
+    (local / "config.json").write_text(json.dumps({"architectures": ["Qwen3ForCausalLM"]}))
+    (local / "model.safetensors").write_bytes(b"x" * 100)
+    (models_dir / ".tiny.partial-1234").mkdir()
+    (models_dir / ".tiny.partial-1234" / "config.json").write_text("{}")
+    (models_dir / "notes").mkdir()
+    (models_dir / "stray.txt").write_text("a")
+    hub = HuggingFaceHub(tmp_path / "cache", models_dir=models_dir)
+
+    models = hub.list_models()
+
+    assert [(model.id, model.name, model.source) for model in models] == [
+        ("mlx-community/Tiny-4bit", "Tiny-4bit", "hub"),
+        (str(local), "tiny-3bit", "local"),
+    ]
+    assert models[1].kind == "llm"
+    assert models[1].path == str(local)
+    assert models[1].size_bytes == 100 + len(json.dumps({"architectures": ["Qwen3ForCausalLM"]}))
+    assert hub.resolve(str(local)) == local
+    # 手元のフォルダは消さない（アプリが消す）
+    with pytest.raises(BadRequestError):
+        hub.delete(str(local))
+    assert (
+        HuggingFaceHub(tmp_path / "cache", models_dir=tmp_path / "missing").list_models()[1:] == []
+    )
+
+
+def test_models_dir_comes_from_the_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(MODELS_DIR_ENV, str(tmp_path))
+    assert models_dir_from_env() == tmp_path
+    monkeypatch.setenv(MODELS_DIR_ENV, "relative/path")
+    assert models_dir_from_env() is None
+    monkeypatch.delenv(MODELS_DIR_ENV)
+    assert models_dir_from_env() is None
 
 
 def test_hub_resolve_and_delete(tmp_path: Path) -> None:

@@ -252,6 +252,19 @@ class ModelManager:
             self._release()
         return unloaded
 
+    def make_room(self) -> None:
+        """モデルを作る処理（量子化や蒸留）の前に、載せている大きいモデルを捨てる。
+
+        作る処理が読むモデルは、この係の外で持ち、終わったら `release` で片付ける。
+        """
+        with self._lock:
+            self._drop_large()
+            self._tokenizer = None
+
+    def release(self) -> None:
+        """捨てたモデルのメモリを返す。"""
+        self._release()
+
     def forget(self, model_id: str) -> list[str]:
         """消すモデル（Hugging Face の ID）が載っていれば捨てる。"""
         with self._lock:

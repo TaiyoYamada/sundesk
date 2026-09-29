@@ -14,5 +14,10 @@ def to_float(array: mx.array) -> NDArray[np.float64]:
     return np.asarray(array.astype(mx.float32), dtype=np.float64)
 
 
+def to_scalar(array: mx.array) -> float:
+    """要素が 1 つの配列を、Python の数にする。"""
+    return float(to_float(array).reshape(-1)[0])
+
+
 def to_int(array: mx.array) -> NDArray[np.int64]:
     return np.asarray(array.astype(mx.int64), dtype=np.int64)

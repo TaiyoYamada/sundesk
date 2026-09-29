@@ -1393,6 +1393,7 @@ source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "huggingface-hub" },
+    { name = "matplotlib" },
     { name = "mflux" },
     { name = "mlx", version = "0.32.2", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux'" },
     { name = "mlx", version = "0.32.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
@@ -1419,6 +1420,7 @@ dev = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.141.1" },
     { name = "huggingface-hub", specifier = ">=1.33.0" },
+    { name = "matplotlib", specifier = ">=3.11.2" },
     { name = "mflux", specifier = ">=0.20.0" },
     { name = "mlx", specifier = ">=0.32.2" },
     { name = "mlx-lm", specifier = ">=0.31.3" },

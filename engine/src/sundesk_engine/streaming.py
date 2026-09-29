@@ -52,17 +52,24 @@ def encode_event(event: Event) -> bytes:
     return (json.dumps(event, ensure_ascii=False) + "\n").encode()
 
 
-def ndjson_response(work: Callable[[Emit], None], executor: Executor | None) -> StreamingResponse:
+def ndjson_response(
+    work: Callable[[Emit], None],
+    executor: Executor | None,
+    on_cancel: Callable[[], None] | None = None,
+) -> StreamingResponse:
     """`work(emit)` をワーカースレッドで動かし、`emit` されたイベントを NDJSON で流す。
 
     `work` が例外を投げたら `{"type": "error", "message": ...}` を流して終える。
     受け手が接続を切ると、次の `emit` が `StreamCancelledError` を投げて処理を止める。
+    `emit` をしばらく呼ばない処理（利用者の書いたコードなど）を止めたいときは、`on_cancel` を渡す。
+    `work` が終わる前に接続が切れると、イベントループから 1 度だけ呼ぶ。
     """
 
     async def body() -> AsyncIterator[bytes]:
         loop = asyncio.get_running_loop()
         queue: asyncio.Queue[bytes | None] = asyncio.Queue()
         cancelled = threading.Event()
+        finished = threading.Event()
 
         def put(item: bytes | None) -> None:
             try:
@@ -87,6 +94,7 @@ def ndjson_response(work: Callable[[Emit], None], executor: Executor | None) -> 
                 with contextlib.suppress(StreamCancelledError):
                     put(encode_event({"type": "error", "message": describe(error)}))
             finally:
+                finished.set()
                 with contextlib.suppress(StreamCancelledError):
                     put(None)
 
@@ -97,5 +105,7 @@ def ndjson_response(work: Callable[[Emit], None], executor: Executor | None) -> 
                 yield item
         finally:
             cancelled.set()
+            if on_cancel is not None and not finished.is_set():
+                on_cancel()
 
     return StreamingResponse(body(), media_type=NDJSON_MEDIA_TYPE)

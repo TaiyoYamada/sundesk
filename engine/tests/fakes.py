@@ -44,7 +44,7 @@ _CHAT_TEMPLATE = (
 
 
 @cache
-def _hf_tokenizer() -> Any:
+def _hf_tokenizer(vocab_size: int = 400) -> Any:
     from transformers import PreTrainedTokenizerFast
 
     # tokenizers には型の情報がないので、モジュールを Any として読み込む
@@ -55,7 +55,7 @@ def _hf_tokenizer() -> Any:
     tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
     tokenizer.decoder = decoders.ByteLevel()
     trainer: Any = trainers.BpeTrainer(
-        vocab_size=400,
+        vocab_size=vocab_size,
         special_tokens=["<|endoftext|>", "<|im_start|>", "<|im_end|>"],
         initial_alphabet=pre_tokenizers.ByteLevel.alphabet(),
     )
@@ -67,35 +67,77 @@ def _hf_tokenizer() -> Any:
     return hf
 
 
-def tiny_tokenizer() -> Any:
+def tiny_tokenizer(vocab_size: int = 400) -> Any:
     from mlx_lm.tokenizer_utils import BPEStreamingDetokenizer, TokenizerWrapper
 
     detokenizer: Any = BPEStreamingDetokenizer
-    return TokenizerWrapper(_hf_tokenizer(), detokenizer_class=detokenizer)
+    return TokenizerWrapper(_hf_tokenizer(vocab_size), detokenizer_class=detokenizer)
 
 
-def tiny_model() -> Any:
+def tiny_config(
+    *,
+    hidden_size: int = HIDDEN_SIZE,
+    num_layers: int = NUM_LAYERS,
+    head_dim: int = 8,
+    intermediate_size: int = 64,
+    vocab_size: int = 400,
+) -> dict[str, Any]:
+    return {
+        "model_type": "qwen3",
+        "architectures": ["Qwen3ForCausalLM"],
+        "hidden_size": hidden_size,
+        "num_hidden_layers": num_layers,
+        "intermediate_size": intermediate_size,
+        "num_attention_heads": NUM_HEADS,
+        "rms_norm_eps": 1e-6,
+        "vocab_size": len(_hf_tokenizer(vocab_size)),
+        "num_key_value_heads": 2,
+        "max_position_embeddings": 1024,
+        "rope_theta": 10000.0,
+        "head_dim": head_dim,
+        "tie_word_embeddings": True,
+    }
+
+
+def tiny_model(seed: int = 0, config: dict[str, Any] | None = None) -> Any:
     from mlx_lm.models import qwen3
 
-    mx.random.seed(0)
-    args = qwen3.ModelArgs(
-        model_type="qwen3",
-        hidden_size=HIDDEN_SIZE,
-        num_hidden_layers=NUM_LAYERS,
-        intermediate_size=64,
-        num_attention_heads=NUM_HEADS,
-        rms_norm_eps=1e-6,
-        vocab_size=len(_hf_tokenizer()),
-        num_key_value_heads=2,
-        max_position_embeddings=1024,
-        rope_theta=10000.0,
-        head_dim=8,
-        tie_word_embeddings=True,
-    )
-    model: Any = qwen3.Model(args)
+    mx.random.seed(seed)
+    values = dict(config or tiny_config())
+    values.pop("architectures", None)
+    arguments: Any = qwen3.ModelArgs
+    model: Any = qwen3.Model(arguments.from_dict(values))
     mx.eval(model.parameters())  # pyright: ignore[reportUnknownMemberType]
     model.eval()
     return model
+
+
+def write_tiny_model(
+    path: Path,
+    *,
+    seed: int = 0,
+    num_layers: int = NUM_LAYERS,
+    head_dim: int = 16,
+    vocab_size: int = 400,
+) -> Path:
+    """小さなランダムの Qwen3 を、mlx-lm が読めるフォルダとして書く。
+
+    量子化のグループ（32、64）で割り切れるよう、ふだんの偽物より少し大きくする。
+    """
+    utils: Any = import_module("mlx_lm.utils")
+    config = tiny_config(
+        hidden_size=64,
+        num_layers=num_layers,
+        head_dim=head_dim,
+        intermediate_size=128,
+        vocab_size=vocab_size,
+    )
+    model = tiny_model(seed, config)
+    path.mkdir(parents=True, exist_ok=True)
+    utils.save_model(path, model)
+    utils.save_config(dict(config), config_path=path / "config.json")
+    tiny_tokenizer(vocab_size).save_pretrained(str(path))
+    return path
 
 
 class FakeLLMBackend:
@@ -104,6 +146,11 @@ class FakeLLMBackend:
 
     def load(self, path: Path, adapter: Path | None) -> tuple[Any, Any]:
         self.loads.append((path, adapter))
+        if (path / "config.json").is_file():
+            # 本物のフォルダ（工房で作ったものなど）は、mlx-lm で読む
+            from sundesk_engine.runtime.mlx_backend import MlxLmBackend
+
+            return MlxLmBackend().load(path, adapter)
         model = tiny_model()
         if adapter is not None:
             from mlx_lm.tuner.utils import load_adapters
@@ -196,6 +243,11 @@ class FakeHub:
         return path
 
     def resolve(self, model_id: str) -> Path:
+        local = Path(model_id)
+        if local.is_absolute():
+            if local.is_dir():
+                return local
+            raise NotFoundError(f"モデルのディレクトリが見つかりません: {model_id}")
         if model_id not in self.models:
             raise NotFoundError(f"モデルが手元にありません: {model_id}")
         return self.root / model_id.replace("/", "--")
@@ -204,9 +256,20 @@ class FakeHub:
         del required
         return model_id in self.models
 
+    def add_disk_model(self, model_id: str, **options: Any) -> Path:
+        """本物のファイルを持つ小さなモデルを加える（工房のテスト用）。"""
+        return write_tiny_model(self.add(model_id), **options)
+
     def list_models(self) -> list[LocalModel]:
         return [
-            LocalModel(id=model_id, kind=kind, size_bytes=123, path=str(self.resolve(model_id)))  # pyright: ignore[reportArgumentType]
+            LocalModel(
+                id=model_id,
+                kind=kind,  # pyright: ignore[reportArgumentType]
+                size_bytes=123,
+                path=str(self.resolve(model_id)),
+                name=model_id.split("/", 1)[-1],
+                source="hub",
+            )
             for model_id, kind in sorted(self.models.items())
         ]
 

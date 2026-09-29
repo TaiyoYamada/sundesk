@@ -14,7 +14,9 @@ def test_list_models(client: TestClient) -> None:
     models = {model["id"]: model for model in response.json()["models"]}
     assert set(models) == {LLM_ID, EMBEDDING_ID, IMAGE_REPO}
     assert models[LLM_ID]["kind"] == "llm"
-    assert set(models[LLM_ID]) == {"id", "kind", "size_bytes", "path"}
+    assert set(models[LLM_ID]) == {"id", "kind", "size_bytes", "path", "name", "source"}
+    assert models[LLM_ID]["name"] == "tiny-llm"
+    assert models[LLM_ID]["source"] == "hub"
 
 
 def test_loaded_is_empty_at_start(client: TestClient) -> None:
