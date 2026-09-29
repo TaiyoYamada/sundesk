@@ -1,0 +1,10 @@
+Bundled license information:
+
+@mdit/plugin-katex/dist/index.js:
+  /* istanbul ignore else -- @preserve */
+
+@mdit/plugin-tasklist/dist/index.js:
+  /* istanbul ignore next -- @preserve */
+
+markdown-it/dist/markdown-it.mjs:
+  /*! markdown-it 15.0.2 https://github.com/markdown-it/markdown-it @license MIT */

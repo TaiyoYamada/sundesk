@@ -20,6 +20,7 @@ let package = Package(
         .library(name: "SundeskData", targets: ["SundeskData"]),
         .library(name: "SundeskPresentation", targets: ["SundeskPresentation"]),
         .library(name: "SundeskComposition", targets: ["SundeskComposition"]),
+        .library(name: "SundeskRenderer", targets: ["SundeskRenderer"]),
     ],
     dependencies: [
         .package(url: "https://github.com/hmlongco/Factory", .upToNextMajor(from: "3.4.1")),
@@ -43,6 +44,13 @@ let package = Package(
         .target(
             name: "SundeskData",
             dependencies: ["SundeskDomain", "SundeskEngine"],
+            swiftSettings: swiftSettings
+        ),
+        // Infrastructure（画面用）: WebKit の中で Markdown、数式、コードを描く。
+        // Resources/Renderer は renderer/（TypeScript）を `npm run build` した成果物。
+        .target(
+            name: "SundeskRenderer",
+            resources: [.copy("Resources/Renderer")],
             swiftSettings: swiftSettings
         ),
         // Presentation: ViewModel。Domain の UseCase だけを知る。
@@ -85,9 +93,15 @@ let package = Package(
             swiftSettings: swiftSettings
         ),
         .testTarget(
+            name: "SundeskRendererTests",
+            dependencies: ["SundeskRenderer"],
+            swiftSettings: swiftSettings
+        ),
+        .testTarget(
             name: "SundeskCompositionTests",
             dependencies: [
                 "SundeskComposition",
+                "SundeskData",
                 "SundeskEngine",
                 "SundeskPresentation",
                 .product(name: "FactoryTesting", package: "Factory"),
