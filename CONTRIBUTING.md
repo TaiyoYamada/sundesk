@@ -53,7 +53,7 @@ docs: アーキテクチャの図を更新する
 | `chore` | その他の雑務 |
 | `revert` | 以前のコミットの取り消し |
 
-- 範囲（任意）は、モジュールや機能の名前にする（`domain`、`data`、`graph`、`rag`、`lab`、`image`、`engine`、`app` など）
+- 範囲（任意）は、モジュールや機能の名前にする（`domain`、`data`、`vault`、`renderer`、`graph`、`rag`、`lab`、`image`、`engine`、`app` など）
 - 要約は「〜する」で終える。句点は付けない
 - 互換性を壊す変更は、`feat!:` のように `!` を付け、フッターに `BREAKING CHANGE:` と書く
 

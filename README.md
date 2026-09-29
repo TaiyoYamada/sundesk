@@ -14,12 +14,12 @@ Attention を覗いたり、LoRA で学習させたり、画像を生成した�
 
 ## 状態
 
-フェーズ 0（基盤）。アプリの外枠と、Python エンジンの起動・停止までができている。
+フェーズ 1（ノートの表示）。Vault のファイルをタブで開き、Markdown、HTML、コード、画像、PDF を表示できる。
 
 | フェーズ | 内容 | 状態 |
 |---|---|---|
-| 0 | 基盤（開発環境、CI、アプリの外枠、エンジン） | 進行中 |
-| 1 | ノートの取り込みと表示 | |
+| 0 | 基盤（開発環境、CI、アプリの外枠、エンジン） | 完了 |
+| 1 | ノートの表示（Markdown、HTML、コード、画像、PDF）と索引 | 進行中 |
 | 2 | 知識グラフ（Metal で描画） | |
 | 3 | RAG（出典つきのチャット） | |
 | 4 | LLM 実験室（確率分布、Attention、logit lens） | |
@@ -43,6 +43,8 @@ Attention を覗いたり、LoRA で学習させたり、画像を生成した�
 | `sundesk/` | アプリ本体（View、ウインドウ、メニュー） |
 | `Packages/SundeskKit/` | 画面以外のすべて（Clean Architecture の各層） |
 | `engine/` | Python の AI エンジン（uv で管理） |
+| `renderer/` | Markdown、数式、コードの描画（TypeScript） |
+| `SampleVault/` | モックのノート（既定で開く Vault） |
 | `Configurations/` | ビルド設定（xcconfig） |
 | `docs/` | 要件、アーキテクチャ、ADR |
 
@@ -53,6 +55,7 @@ Attention を覗いたり、LoRA で学習させたり、画像を生成した�
 - Apple シリコンの Mac（メモリ 16GB 以上）
 - macOS 27、Xcode 27（Swift 6.4）
 - [Homebrew](https://brew.sh)（SwiftLint、uv、actionlint を入れるため）
+- Node.js 22（renderer をビルドするとき）
 
 ## はじめかた
 
@@ -68,12 +71,13 @@ make run         # ビルドして起動する
 `make` だけで、使える操作の一覧が出る。
 
 ```sh
-make lint        # SwiftLint、swift-format、ruff、pyright、actionlint
+make lint        # SwiftLint、swift-format、ruff、pyright、TypeScript、actionlint
 make format      # 自動で整形する
 make test        # UI テスト以外のすべてのテスト
 make test-ui     # UI テスト
 make coverage    # Swift パッケージのカバレッジ
 make engine      # エンジンだけを単独で起動する
+make renderer    # renderer をビルドし直す（renderer/ を変えたとき）
 ```
 
 ブランチ、コミットメッセージ、コードの書き方は [CONTRIBUTING.md](CONTRIBUTING.md) を参照。
