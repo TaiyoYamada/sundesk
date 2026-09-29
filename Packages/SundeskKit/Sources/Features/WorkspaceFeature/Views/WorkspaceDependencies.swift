@@ -10,6 +10,7 @@ import EngineFeature
 import GraphFeature
 import ImagesFeature
 import LabFeature
+import LibraryFeature
 import NotesFeature
 
 /// ウインドウを作るのに必要なもの。AppFeature（Composition Root）が組み立てて渡す。
@@ -25,6 +26,10 @@ public struct WorkspaceDependencies {
     public let makeSearch: () -> SearchViewModel
     public let makeTags: () -> TagsViewModel
     public let makeGraph: () -> GraphViewModel
+    public let makeLibrary: () -> LibraryViewModel
+    public let makePaper: (String) -> PaperViewModel
+    public let makeExperiment: (String) -> ExperimentViewModel
+    public let makeComparison: ([String]) -> ComparisonViewModel
     public let makeChat: () -> ChatViewModel
     public let makeLab: () -> LabViewModel
     public let makeForge: () -> ForgeViewModel
@@ -39,6 +44,10 @@ public struct WorkspaceDependencies {
         makeSearch: @escaping () -> SearchViewModel,
         makeTags: @escaping () -> TagsViewModel,
         makeGraph: @escaping () -> GraphViewModel,
+        makeLibrary: @escaping () -> LibraryViewModel,
+        makePaper: @escaping (String) -> PaperViewModel,
+        makeExperiment: @escaping (String) -> ExperimentViewModel,
+        makeComparison: @escaping ([String]) -> ComparisonViewModel,
         makeChat: @escaping () -> ChatViewModel,
         makeLab: @escaping () -> LabViewModel,
         makeForge: @escaping () -> ForgeViewModel,
@@ -52,6 +61,10 @@ public struct WorkspaceDependencies {
         self.makeSearch = makeSearch
         self.makeTags = makeTags
         self.makeGraph = makeGraph
+        self.makeLibrary = makeLibrary
+        self.makePaper = makePaper
+        self.makeExperiment = makeExperiment
+        self.makeComparison = makeComparison
         self.makeChat = makeChat
         self.makeLab = makeLab
         self.makeForge = makeForge

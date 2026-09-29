@@ -20,7 +20,7 @@ struct SettingsView: View {
             Tab("一般", systemImage: "gearshape") {
                 AppearanceSettingsView()
             }
-            Tab("Vault", systemImage: "books.vertical") {
+            Tab("ライブラリ", systemImage: "books.vertical") {
                 VaultSettingsView(settings: vaultSettings)
             }
             Tab("エンジン", systemImage: "cpu") {

@@ -14,17 +14,27 @@ public struct WorkspaceTab: Identifiable, Hashable, Sendable {
         /// Vault のルートからのパス。
         case document(String)
         case tool(WorkspaceTool)
+        /// 論文（キー）。
+        case paper(String)
+        /// 実験（キー）。
+        case experiment(String)
+        /// 実験を並べて比べる（キーの並び）。
+        case comparison([String])
     }
 
     public let id: UUID
     public let content: Content
+    /// 論文や実験の題名（タブに出す）。
+    public let customTitle: String?
 
-    public init(id: UUID = UUID(), content: Content) {
+    public init(id: UUID = UUID(), content: Content, title: String? = nil) {
         self.id = id
         self.content = content
+        self.customTitle = title
     }
 
     public var title: String {
+        if let customTitle { return customTitle }
         switch content {
         case .document(let path):
             let name = path.split(separator: "/").last.map(String.init) ?? path
@@ -35,6 +45,10 @@ public struct WorkspaceTab: Identifiable, Hashable, Sendable {
             return name
         case .tool(let tool):
             return tool.title
+        case .paper(let key), .experiment(let key):
+            return key
+        case .comparison(let keys):
+            return "\(keys.count) 件の比較"
         }
     }
 
@@ -42,10 +56,19 @@ public struct WorkspaceTab: Identifiable, Hashable, Sendable {
         switch content {
         case .document(let path): FileIcon.systemImage(forPath: path)
         case .tool(let tool): tool.systemImage
+        case .paper: "doc.text.magnifyingglass"
+        case .experiment: "testtube.2"
+        case .comparison: "chart.xyaxis.line"
         }
     }
 
+    /// タブの中で編集するノート（論文と実験は、そのメモ）。インスペクタや保存に使う。
     public var documentPath: String? {
-        if case .document(let path) = content { path } else { nil }
+        switch content {
+        case .document(let path): path
+        case .paper(let key): "Papers/\(key)/note.md"
+        case .experiment(let key): "Experiments/\(key)/note.md"
+        case .tool, .comparison: nil
+        }
     }
 }

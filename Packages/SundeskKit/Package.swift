@@ -73,7 +73,8 @@ let package = Package(
         .target(
             name: "AppFeature",
             dependencies: [
-                "WorkspaceFeature", "NotesFeature", "GraphFeature", "ChatFeature", "LabFeature", "ImagesFeature",
+                "WorkspaceFeature", "NotesFeature", "LibraryFeature", "GraphFeature", "ChatFeature", "LabFeature",
+                "ImagesFeature",
                 "EngineFeature", "SettingsFeature",
                 "SundeskDomain", "SundeskData", "SundeskDesignSystem",
                 "SundeskEngineClient", "SundeskMarkdown",
@@ -88,8 +89,8 @@ let package = Package(
         .target(
             name: "WorkspaceFeature",
             dependencies: [
-                "NotesFeature", "GraphFeature", "ChatFeature", "LabFeature", "ImagesFeature", "EngineFeature",
-                "SundeskDomain", "SundeskDesignSystem",
+                "NotesFeature", "LibraryFeature", "GraphFeature", "ChatFeature", "LabFeature", "ImagesFeature",
+                "EngineFeature", "SundeskDomain", "SundeskDesignSystem",
             ],
             path: "Sources/Features/WorkspaceFeature",
             swiftSettings: uiSettings
@@ -122,6 +123,12 @@ let package = Package(
             name: "ImagesFeature",
             dependencies: ["SundeskDomain", "SundeskDesignSystem"],
             path: "Sources/Features/ImagesFeature",
+            swiftSettings: uiSettings
+        ),
+        .target(
+            name: "LibraryFeature",
+            dependencies: ["SundeskDomain", "SundeskDesignSystem"],
+            path: "Sources/Features/LibraryFeature",
             swiftSettings: uiSettings
         ),
         .target(
@@ -256,6 +263,12 @@ let package = Package(
             name: "ImagesFeatureTests",
             dependencies: ["ImagesFeature", "SundeskDomain"],
             path: "Tests/Features/ImagesFeatureTests",
+            swiftSettings: uiSettings
+        ),
+        .testTarget(
+            name: "LibraryFeatureTests",
+            dependencies: ["LibraryFeature", "SundeskDomain"],
+            path: "Tests/Features/LibraryFeatureTests",
             swiftSettings: uiSettings
         ),
         .testTarget(

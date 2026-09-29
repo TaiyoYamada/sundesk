@@ -9,6 +9,7 @@ import ChatFeature
 import GraphFeature
 import ImagesFeature
 import LabFeature
+import LibraryFeature
 import NotesFeature
 import SwiftUI
 
@@ -16,6 +17,7 @@ import SwiftUI
 struct EditorView: View {
     let workspace: WorkspaceViewModel
     let cache: DocumentViewCache
+    let screens: LibraryScreenCache
     let graph: GraphViewModel
     let chat: ChatViewModel
     let tools: ToolViewModels
@@ -39,6 +41,16 @@ struct EditorView: View {
                             },
                             showTag: showTag
                         )
+                    case .paper(let key):
+                        PaperScreen(viewModel: screens.paper(key)) { note(for: tab) }
+                    case .experiment(let key):
+                        ExperimentScreen(viewModel: screens.experiment(key), openPath: openLibraryPath) {
+                            note(for: tab)
+                        }
+                    case .comparison(let keys):
+                        ComparisonScreen(viewModel: screens.comparison(keys)) { key in
+                            workspace.open(experiment: key, title: key)
+                        }
                     case .tool(.graph):
                         GraphScreen(viewModel: graph)
                     case .tool(.chat):
@@ -60,6 +72,66 @@ struct EditorView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+}
+
+extension EditorView {
+    /// 論文や実験のタブの中の、メモのエディタ。
+    @ViewBuilder
+    fileprivate func note(for tab: WorkspaceTab) -> some View {
+        if let path = tab.documentPath {
+            DocumentView(
+                document: workspace.document(for: path), cache: cache,
+                openLink: { target, isExactPath in Task { await workspace.openLink(target, isExactPath: isExactPath) }
+                },
+                showTag: showTag)
+        }
+    }
+
+    /// ライブラリのパス（論文や実験のフォルダ、ファイル）を開く。
+    fileprivate func openLibraryPath(_ path: String) {
+        let parts = path.split(separator: "/").map(String.init)
+        if parts.count >= 2, parts[0] == "Papers" {
+            workspace.open(paper: parts[1], title: parts[1])
+        } else if parts.count >= 2, parts[0] == "Experiments" {
+            workspace.open(experiment: parts[1], title: parts[1])
+        } else {
+            workspace.open(path: path)
+        }
+    }
+}
+
+/// 論文、実験、比べる画面の ViewModel（タブを切り替えても作り直さない）。
+@MainActor
+final class LibraryScreenCache {
+    private let dependencies: WorkspaceDependencies
+    private var papers: [String: PaperViewModel] = [:]
+    private var experiments: [String: ExperimentViewModel] = [:]
+    private var comparisons: [[String]: ComparisonViewModel] = [:]
+
+    init(dependencies: WorkspaceDependencies) {
+        self.dependencies = dependencies
+    }
+
+    func paper(_ key: String) -> PaperViewModel {
+        if let model = papers[key] { return model }
+        let model = dependencies.makePaper(key)
+        papers[key] = model
+        return model
+    }
+
+    func experiment(_ key: String) -> ExperimentViewModel {
+        if let model = experiments[key] { return model }
+        let model = dependencies.makeExperiment(key)
+        experiments[key] = model
+        return model
+    }
+
+    func comparison(_ keys: [String]) -> ComparisonViewModel {
+        if let model = comparisons[keys] { return model }
+        let model = dependencies.makeComparison(keys)
+        comparisons[keys] = model
+        return model
     }
 }
 

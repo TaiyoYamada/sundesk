@@ -20,7 +20,7 @@ extension Container {
         self {
             UserDefaultsSettingsRepository(
                 defaults: SettingsDefaults(
-                    vaultDirectory: AppPaths.sampleVault.path,
+                    vaultDirectory: AppPaths.library.path,
                     engineDirectory: EngineLocator.defaultEngineDirectory().path,
                     uvExecutable: EngineLocator.findUV()?.path ?? "/opt/homebrew/bin/uv"
                 )
@@ -51,7 +51,11 @@ extension Container {
 
     @MainActor
     var vaultSettingsViewModel: Factory<VaultSettingsViewModel> {
-        self { VaultSettingsViewModel(loadSettings: self.loadSettings(), updateSettings: self.updateSettings()) }
+        self {
+            VaultSettingsViewModel(
+                loadSettings: self.loadSettings(), updateSettings: self.updateSettings(),
+                library: self.manageLibrary(), samplePath: AppPaths.sampleLibrary.path)
+        }
     }
 
     @MainActor

@@ -12,15 +12,26 @@ import SwiftUI
 public struct FileTreeView: View {
     @Bindable private var navigator: FileNavigatorViewModel
     private let selectedPath: String?
+    private let rootPath: String?
     private let open: (String) -> Void
 
     /// - Parameters:
     ///   - selectedPath: 今開いているファイル。木の選択と連動させる。
+    ///   - rootPath: このフォルダの下だけを出す（nil ならすべて）。
     ///   - open: ファイルを選んだときに呼ぶ。
-    public init(navigator: FileNavigatorViewModel, selectedPath: String?, open: @escaping (String) -> Void) {
+    public init(
+        navigator: FileNavigatorViewModel, selectedPath: String?, rootPath: String? = nil,
+        open: @escaping (String) -> Void
+    ) {
         self.navigator = navigator
         self.selectedPath = selectedPath
+        self.rootPath = rootPath
         self.open = open
+    }
+
+    private var shownItems: [NavigatorItem] {
+        guard let rootPath else { return navigator.items }
+        return navigator.items.first { $0.id == rootPath }?.children ?? []
     }
 
     public var body: some View {
@@ -35,7 +46,7 @@ public struct FileTreeView: View {
                 }
             } else {
                 List(selection: selection) {
-                    OutlineGroup(navigator.items, children: \.children) { item in
+                    OutlineGroup(shownItems, children: \.children) { item in
                         Label(item.name, systemImage: item.systemImage)
                             .lineLimit(1)
                             .truncationMode(.middle)

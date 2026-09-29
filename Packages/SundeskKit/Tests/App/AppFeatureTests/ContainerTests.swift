@@ -42,23 +42,11 @@ struct ContainerTests {
         #expect(viewModel.lastError == "差し替えた")
     }
 
-    @Test("既定の Vault はリポジトリの SampleVault で、中身を開ける")
-    func opensSampleVault() async throws {
-        #expect(AppPaths.sampleVault.lastPathComponent == "SampleVault")
-        let inMemory = try NoteIndexStore.makeContainer(url: nil)
-        Container.shared.noteIndexModelContainer.register { inMemory }
-        Container.shared.settingsRepository.register {
-            UserDefaultsSettingsRepository(
-                userDefaults: UserDefaults(suiteName: "AppFeatureTests")!,
-                defaults: SettingsDefaults(
-                    vaultDirectory: AppPaths.sampleVault.path, engineDirectory: "", uvExecutable: "")
-            )
-        }
-
-        let openDocument = Container.shared.openDocument()
-        let document = try await openDocument(path: "ホーム.md")
-
-        #expect(document.title == "ホーム")
+    @Test("既定のライブラリはアプリのデータフォルダの中、見本はリポジトリの SampleLibrary")
+    func libraryLocations() {
+        #expect(AppPaths.library.lastPathComponent == "Library")
+        #expect(AppPaths.library.path.contains("com.taiyou.sundesk"))
+        #expect(AppPaths.sampleLibrary.lastPathComponent == "SampleLibrary")
     }
 }
 

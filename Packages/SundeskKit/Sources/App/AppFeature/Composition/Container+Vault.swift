@@ -7,6 +7,7 @@
 
 import FactoryKit
 import Foundation
+import LibraryFeature
 import NotesFeature
 import OSLog
 import SundeskData
@@ -181,6 +182,10 @@ extension Container {
                 makeSearch: { self.searchViewModel() },
                 makeTags: { self.tagsViewModel() },
                 makeGraph: { self.graphViewModel() },
+                makeLibrary: { self.libraryViewModel() },
+                makePaper: { PaperViewModel(key: $0, library: self.manageLibrary()) },
+                makeExperiment: { ExperimentViewModel(key: $0, library: self.manageLibrary()) },
+                makeComparison: { ComparisonViewModel(keys: $0, library: self.manageLibrary()) },
                 makeChat: { self.chatViewModel() },
                 makeLab: { self.labViewModel() },
                 makeForge: { self.forgeViewModel() },

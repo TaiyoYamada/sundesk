@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SundeskData
 
 /// リポジトリの中の場所。自分専用のアプリで、リポジトリから直接ビルドして使う前提の既定値。
 nonisolated enum AppPaths {
@@ -17,8 +18,14 @@ nonisolated enum AppPaths {
         return url
     }
 
-    /// 既定の Vault（モックの SampleVault）。
-    static var sampleVault: URL {
-        repositoryRoot().appending(path: "SampleVault", directoryHint: .isDirectory)
+    /// 研究向けの見本のライブラリ（開発とテストで使う）。
+    static var sampleLibrary: URL {
+        repositoryRoot().appending(path: "SampleLibrary", directoryHint: .isDirectory)
+    }
+
+    /// 本物の研究ライブラリ（アプリのデータフォルダの中）。
+    static var library: URL {
+        (try? AppDataDirectory.url("Library"))
+            ?? FileManager.default.temporaryDirectory.appending(path: "sundesk-library", directoryHint: .isDirectory)
     }
 }

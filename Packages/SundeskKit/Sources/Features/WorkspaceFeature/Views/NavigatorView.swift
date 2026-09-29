@@ -5,6 +5,7 @@
 //  Created by 山田大陽 on 2026/09/29.
 //
 
+import LibraryFeature
 import NotesFeature
 import SwiftUI
 
@@ -14,14 +15,26 @@ struct NavigatorView: View {
     let navigator: FileNavigatorViewModel
     let search: SearchViewModel
     let tags: TagsViewModel
+    let library: LibraryViewModel
 
     var body: some View {
         // サイドバーはツールバーの下まで伸びるので、アイコンの列はリストの上端の余白に置く
         Group {
             switch workspace.navigatorMode {
-            case .files:
-                FileTreeView(navigator: navigator, selectedPath: workspace.selectedTab?.documentPath) {
-                    workspace.open(path: $0)
+            case .library:
+                LibraryNavigatorView(viewModel: library, selectedPath: workspace.selectedTab?.documentPath) {
+                    FileTreeView(
+                        navigator: navigator, selectedPath: workspace.selectedTab?.documentPath, rootPath: "Notes"
+                    ) {
+                        workspace.open(path: $0)
+                    }
+                } open: { destination in
+                    switch destination {
+                    case .file(let path): workspace.open(path: path)
+                    case .paper(let key, let title): workspace.open(paper: key, title: title)
+                    case .experiment(let key, let title): workspace.open(experiment: key, title: title)
+                    case .comparison(let keys): workspace.open(comparison: keys)
+                    }
                 }
             case .search:
                 SearchNavigatorView(search: search) { workspace.open(path: $0) }

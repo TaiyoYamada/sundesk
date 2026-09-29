@@ -10,6 +10,7 @@ import EngineFeature
 import GraphFeature
 import ImagesFeature
 import LabFeature
+import LibraryFeature
 import NotesFeature
 import SwiftUI
 
@@ -23,6 +24,8 @@ public struct MainWindowView: View {
     @State private var chat: ChatViewModel
     @State private var tools: ToolViewModels
     @State private var cache = DocumentViewCache()
+    @State private var library: LibraryViewModel
+    @State private var screens: LibraryScreenCache
 
     public init(dependencies: WorkspaceDependencies) {
         self.dependencies = dependencies
@@ -31,6 +34,8 @@ public struct MainWindowView: View {
         _tags = State(initialValue: dependencies.makeTags())
         _graph = State(initialValue: dependencies.makeGraph())
         _chat = State(initialValue: dependencies.makeChat())
+        _library = State(initialValue: dependencies.makeLibrary())
+        _screens = State(initialValue: LibraryScreenCache(dependencies: dependencies))
         _tools = State(
             initialValue: ToolViewModels(
                 lab: dependencies.makeLab(), forge: dependencies.makeForge(), scratch: dependencies.makeScratch(),
@@ -39,10 +44,15 @@ public struct MainWindowView: View {
 
     public var body: some View {
         NavigationSplitView {
-            NavigatorView(workspace: workspace, navigator: dependencies.fileNavigator, search: search, tags: tags)
-                .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 400)
+            NavigatorView(
+                workspace: workspace, navigator: dependencies.fileNavigator, search: search, tags: tags,
+                library: library
+            )
+            .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 400)
         } detail: {
-            EditorView(workspace: workspace, cache: cache, graph: graph, chat: chat, tools: tools, showTag: showTag)
+            EditorView(
+                workspace: workspace, cache: cache, screens: screens, graph: graph, chat: chat, tools: tools,
+                showTag: showTag)
         }
         .inspector(isPresented: $workspace.isInspectorPresented) {
             inspector

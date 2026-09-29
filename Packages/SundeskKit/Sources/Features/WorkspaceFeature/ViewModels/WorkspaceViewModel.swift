@@ -15,7 +15,7 @@ import SundeskDomain
 @Observable
 public final class WorkspaceViewModel {
     public enum NavigatorMode: String, CaseIterable, Identifiable, Sendable {
-        case files
+        case library
         case search
         case tags
 
@@ -23,7 +23,7 @@ public final class WorkspaceViewModel {
 
         public var title: String {
             switch self {
-            case .files: "ファイル"
+            case .library: "ライブラリ"
             case .search: "検索"
             case .tags: "タグ"
             }
@@ -31,7 +31,7 @@ public final class WorkspaceViewModel {
 
         public var systemImage: String {
             switch self {
-            case .files: "folder"
+            case .library: "books.vertical"
             case .search: "magnifyingglass"
             case .tags: "tag"
             }
@@ -40,7 +40,7 @@ public final class WorkspaceViewModel {
 
     public private(set) var tabs: [WorkspaceTab] = []
     public var selectedTabID: WorkspaceTab.ID?
-    public var navigatorMode: NavigatorMode = .files
+    public var navigatorMode: NavigatorMode = .library
     public var isInspectorPresented = true
     /// リンク先が見つからなかったときなどに出すメッセージ。
     public var alertMessage: String?
@@ -78,6 +78,19 @@ public final class WorkspaceViewModel {
 
     public func open(tool: WorkspaceTool) {
         open(.tool(tool))
+    }
+
+    /// 論文、実験、比べる画面をタブで開く。
+    public func open(paper key: String, title: String) {
+        open(.paper(key), title: title)
+    }
+
+    public func open(experiment key: String, title: String) {
+        open(.experiment(key), title: title)
+    }
+
+    public func open(comparison keys: [String]) {
+        open(.comparison(keys))
     }
 
     public func close(_ id: WorkspaceTab.ID) {
@@ -137,12 +150,12 @@ public final class WorkspaceViewModel {
         }
     }
 
-    private func open(_ content: WorkspaceTab.Content) {
+    private func open(_ content: WorkspaceTab.Content, title: String? = nil) {
         if let existing = tabs.first(where: { $0.content == content }) {
             selectedTabID = existing.id
             return
         }
-        let tab = WorkspaceTab(content: content)
+        let tab = WorkspaceTab(content: content, title: title)
         // 選んでいるタブのすぐ右に開く（Safari や Xcode と同じ）
         let index = tabs.firstIndex { $0.id == selectedTabID }.map { $0 + 1 } ?? tabs.endIndex
         tabs.insert(tab, at: index)
