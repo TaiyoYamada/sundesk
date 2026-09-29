@@ -17,7 +17,7 @@ jobs:
   swift:
     name: Swift
     runs-on: xcode-27
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
@@ -39,7 +39,15 @@ jobs:
       - name: 静的チェック
         run: make lint-swift
 
+      # 結合テストがエンジンを起動する前に、依存関係（mlx など）をそろえておく。
+      # テストの中で `uv run` に任せると、最初の起動が待ち時間の上限を超える
+      - name: エンジンの環境を用意する
+        working-directory: engine
+        run: uv sync --locked
+
       - name: パッケージのテスト（結合テストを含む）
+        # ジョブの上限で打ち切られるとログが残らないので、手前で止める
+        timeout-minutes: 30
         env:
           SUNDESK_INTEGRATION: "1"
         run: make test-package
