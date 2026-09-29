@@ -46,6 +46,79 @@ struct EngineClientTests {
     }
 }
 
+@Suite("EngineClient の JSON と NDJSON")
+struct EngineClientJSONTests {
+    private struct Request: Encodable {
+        let noteTitle: String
+    }
+
+    private struct Response: Decodable, Equatable {
+        let conceptCount: Int
+    }
+
+    private struct Event: Decodable, Equatable, Sendable {
+        let type: String
+        let text: String?
+    }
+
+    /// URLProtocol に届いた本文（httpBody か httpBodyStream のどちらかに入る）。
+    private static func body(of request: URLRequest) -> String {
+        if let data = request.httpBody { return String(bytes: data, encoding: .utf8) ?? "" }
+        guard let stream = request.httpBodyStream else { return "" }
+        stream.open()
+        defer { stream.close() }
+        var data = Data()
+        var buffer = [UInt8](repeating: 0, count: 1024)
+        while stream.hasBytesAvailable {
+            let count = stream.read(&buffer, maxLength: buffer.count)
+            guard count > 0 else { break }
+            data.append(buffer, count: count)
+        }
+        return String(bytes: data, encoding: .utf8) ?? ""
+    }
+
+    @Test("POST は本文を snake_case の JSON にし、応答も snake_case で読む")
+    func postEncodesSnakeCase() async throws {
+        let stub = StubServer { request in
+            #expect(request.httpMethod == "POST")
+            #expect(Self.body(of: request) == #"{"note_title":"固有値"}"#)
+            return (200, #"{"concept_count":3}"#)
+        }
+
+        let response = try await stub.client().post("graph/build", body: Request(noteTitle: "固有値"), as: Response.self)
+
+        #expect(response == Response(conceptCount: 3))
+    }
+
+    @Test("失敗の応答は、エンジンのメッセージを返す")
+    func serverErrorCarriesDetail() async {
+        let stub = StubServer { _ in (422, #"{"detail":"このモデルの構造には対応していません"}"#) }
+
+        await #expect(throws: EngineClientError.server(status: 422, message: "このモデルの構造には対応していません")) {
+            try await stub.client().post("lab/attention", body: Request(noteTitle: ""), as: Response.self)
+        }
+    }
+
+    @Test("NDJSON を 1 行ずつ読み、error の行で失敗にする")
+    func streamsLines() async throws {
+        let stub = StubServer { _ in
+            let lines = [
+                #"{"type":"token","text":"固有"}"#, "", #"{"type":"token","text":"値"}"#,
+                #"{"type":"error","message":"メモリが足りません"}"#,
+            ]
+            return (200, lines.joined(separator: "\n") + "\n")
+        }
+        var events: [Event] = []
+
+        await #expect(throws: EngineClientError.stream("メモリが足りません")) {
+            for try await event in stub.client().stream("chat", body: Request(noteTitle: ""), as: Event.self) {
+                events.append(event)
+            }
+        }
+        #expect(events == [Event(type: "token", text: "固有"), Event(type: "token", text: "値")])
+    }
+}
+
 @Suite("EngineLocator")
 struct EngineLocatorTests {
     @Test("既定のエンジンのフォルダは、リポジトリの engine/ を指す")

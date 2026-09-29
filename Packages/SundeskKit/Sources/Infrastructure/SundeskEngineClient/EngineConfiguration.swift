@@ -16,7 +16,7 @@ public struct EngineConfiguration: Sendable, Equatable {
     /// 起動してから応答が返るまで待つ時間。初回は依存関係の取得で時間がかかる。
     public var startupTimeout: Duration
 
-    public init(engineDirectory: URL, uvExecutable: URL, startupTimeout: Duration = .seconds(180)) {
+    public init(engineDirectory: URL, uvExecutable: URL, startupTimeout: Duration = .seconds(600)) {
         self.engineDirectory = engineDirectory
         self.uvExecutable = uvExecutable
         self.startupTimeout = startupTimeout

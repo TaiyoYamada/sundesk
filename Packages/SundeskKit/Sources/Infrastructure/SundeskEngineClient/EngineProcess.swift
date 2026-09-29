@@ -113,6 +113,28 @@ public actor EngineProcess {
         throw fail(.timedOut)
     }
 
+    /// 稼働中のエンジンのクライアント。止まっていれば起動し、起動中なら応答が返るまで待つ。
+    public func runningClient() async throws(EngineProcessError) -> EngineClient {
+        if case .running = state, let client { return client }
+        if case .starting = state {
+            for await state in states() {
+                switch state {
+                case .running:
+                    if let client { return client }
+                case .failed(let error):
+                    throw error
+                case .stopped:
+                    throw .terminated(detail: "エンジンが止まった")
+                case .starting:
+                    continue
+                }
+            }
+        }
+        try await start()
+        guard let client else { throw .terminated(detail: "エンジンが起動していない") }
+        return client
+    }
+
     public func stop() async {
         guard let runTask else {
             state = .stopped
