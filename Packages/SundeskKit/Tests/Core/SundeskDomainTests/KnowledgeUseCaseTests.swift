@@ -69,6 +69,23 @@ struct KnowledgeBuilderTests {
         #expect(await repository.saved.isEmpty)
     }
 
+    @Test("論文の PDF の本文もページごとに区切って保存する（知識グラフには入れない）")
+    func includesPaperPDFs() async throws {
+        let vault = VaultStub(files: ["Papers/vqe/note.md": "# VQE の論文\n本文", "Papers/vqe/paper.pdf": ""])
+        let engine = KnowledgeEngineSpy()
+        let repository = KnowledgeRepositorySpy()
+        let builder = KnowledgeBuilder(
+            vault: vault, markdown: MarkdownParserStub(), chunker: ChunkerStub(), engine: engine,
+            repository: repository, documents: PDFTextStub(), batchSize: 8)
+
+        try await builder.rebuild()
+
+        let pdfChunks = await repository.saved.map(\.chunk).filter { $0.notePath.hasSuffix(".pdf") }
+        #expect(pdfChunks.map(\.headingPath) == [["VQE の論文", "p.1"], ["VQE の論文", "p.2"]])
+        #expect(pdfChunks.map(\.line) == [1, 2])
+        #expect(await engine.graphNotes.allSatisfy { !$0.path.hasSuffix(".pdf") })
+    }
+
     @Test("進み具合を流し、終わったら件数を知らせる（途中は最新のものだけ届く）")
     func reportsProgress() async throws {
         let vault = VaultStub(files: ["a.md": "# A", "b.md": "# B", "c.md": "# C"])
@@ -127,6 +144,12 @@ struct KnowledgeGraphTests {
 }
 
 // MARK: - テスト用の偽物
+
+struct PDFTextStub: DocumentTextExtracting {
+    func pages(of url: URL) -> [String] {
+        [String(repeating: "変分量子固有値ソルバーの本文。", count: 5), String(repeating: "第 2 ページの本文。", count: 6), "短い"]
+    }
+}
 
 struct ChunkerStub: NoteChunking {
     func chunks(for source: String, path: String, title: String) -> [NoteChunk] {

@@ -57,7 +57,8 @@ extension Container {
         self {
             KnowledgeBuilder(
                 vault: self.vaultRepository(), markdown: self.markdownParser(), chunker: self.noteChunker(),
-                engine: self.knowledgeEngine(), repository: self.knowledgeRepository())
+                engine: self.knowledgeEngine(), repository: self.knowledgeRepository(), documents: PDFKitTextExtractor()
+            )
         }
         .singleton
     }

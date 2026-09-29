@@ -50,6 +50,7 @@ public actor KnowledgeBuilder {
     private let chunker: any NoteChunking
     private let engine: any KnowledgeEngine
     private let repository: any KnowledgeRepository
+    private let documents: (any DocumentTextExtracting)?
     private let batchSize: Int
 
     private var running: Task<Void, any Error>?
@@ -64,6 +65,7 @@ public actor KnowledgeBuilder {
         chunker: any NoteChunking,
         engine: any KnowledgeEngine,
         repository: any KnowledgeRepository,
+        documents: (any DocumentTextExtracting)? = nil,
         batchSize: Int = 32
     ) {
         self.vault = vault
@@ -71,6 +73,7 @@ public actor KnowledgeBuilder {
         self.chunker = chunker
         self.engine = engine
         self.repository = repository
+        self.documents = documents
         self.batchSize = batchSize
     }
 
@@ -140,8 +143,11 @@ public actor KnowledgeBuilder {
                 GraphSourceNote(path: file.path, title: title, links: Array(Set(links)).sorted(), chunks: chunks))
         }
 
+        // 論文の PDF の本文も、検索と出典に使う（知識グラフには入れない。英文が多く、概念がそちらに偏るため）
+        let pdfChunks = paperChunks(files: files, notes: notes)
+
         // 2. 埋め込み（変わっていないチャンクは前回のものを使う）
-        let chunks = notes.flatMap(\.chunks)
+        let chunks = notes.flatMap(\.chunks) + pdfChunks
         let hashes = chunks.map { Self.hash($0.text) }
         var model: String?
         var stored: [String: [Float]] = [:]
@@ -171,6 +177,43 @@ public actor KnowledgeBuilder {
         }
         try await repository.replace(chunks: embedded, graph: graph, embeddingModel: model)
         step = .finished(concepts: graph.concepts.count, relations: graph.relations.count, chunks: chunks.count)
+    }
+
+    /// 論文のフォルダ（`Papers/<キー>/`）の PDF を、ページごとに区切る。題名は論文メモから取る。
+    private func paperChunks(files: [VaultNode], notes: [GraphSourceNote]) -> [NoteChunk] {
+        guard let documents else { return [] }
+        let titles = Dictionary(notes.map { ($0.path, $0.title) }, uniquingKeysWith: { first, _ in first })
+        var chunks: [NoteChunk] = []
+        for file in files where file.kind == .pdf && file.path.hasPrefix("Papers/") {
+            let folder = (file.path as NSString).deletingLastPathComponent
+            let title = titles["\(folder)/note.md"] ?? file.name
+            for (index, page) in documents.pages(of: vault.fileURL(for: file.path)).enumerated() {
+                let text = page.replacing(/[ \t]+/, with: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+                guard text.count > 40 else { continue }
+                for piece in Self.pieces(of: text, maxLength: 1200) {
+                    chunks.append(
+                        NoteChunk(
+                            id: "\(file.path)#\(chunks.count)", notePath: file.path, noteTitle: title,
+                            headingPath: [title, "p.\(index + 1)"], text: piece, plainText: piece, line: index + 1))
+                }
+            }
+        }
+        return chunks
+    }
+
+    /// 長い文字を、段落の切れ目でおよそ `maxLength` 文字ずつに分ける。
+    static func pieces(of text: String, maxLength: Int) -> [String] {
+        var pieces: [String] = []
+        var current = ""
+        for paragraph in text.split(separator: "\n", omittingEmptySubsequences: true) {
+            if current.count + paragraph.count > maxLength, !current.isEmpty {
+                pieces.append(current)
+                current = ""
+            }
+            current += (current.isEmpty ? "" : "\n") + paragraph
+        }
+        if !current.isEmpty { pieces.append(current) }
+        return pieces
     }
 
     /// 埋め込む文字列。見出しの階層を前に付けて、どの節の話かを分かるようにする。

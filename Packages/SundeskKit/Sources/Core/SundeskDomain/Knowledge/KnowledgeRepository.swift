@@ -12,6 +12,11 @@ public protocol NoteChunking: Sendable {
     func chunks(for source: String, path: String, title: String) -> [NoteChunk]
 }
 
+/// PDF などの文書から、ページごとの文字を取り出す。実装は Data 層（PDFKit）にある。
+public protocol DocumentTextExtracting: Sendable {
+    func pages(of url: URL) -> [String]
+}
+
 /// 埋め込みの種類（質問か、検索される文書か）。
 public enum EmbeddingKind: String, Sendable {
     case query

@@ -211,3 +211,13 @@ public struct PDFKitInspector: PDFInspecting {
             .first { $0.count > 15 && !$0.lowercased().contains("arxiv") }
     }
 }
+
+/// PDF のページごとの文字（知識を作るときに、論文の本文を検索できるようにする）。
+public struct PDFKitTextExtractor: DocumentTextExtracting {
+    public init() {}
+
+    public func pages(of url: URL) -> [String] {
+        guard let document = PDFDocument(url: url) else { return [] }
+        return (0..<document.pageCount).map { document.page(at: $0)?.string ?? "" }
+    }
+}

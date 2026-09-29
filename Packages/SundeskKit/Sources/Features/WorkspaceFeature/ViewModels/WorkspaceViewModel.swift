@@ -70,8 +70,18 @@ public final class WorkspaceViewModel {
         open(.document(path))
     }
 
-    /// ファイルを開き、指定の行へ移る。
+    /// ファイルを開き、指定の行へ移る。論文や実験のフォルダの中なら、そのタブで開く。
     public func open(path: String, line: Int) {
+        let parts = path.split(separator: "/").map(String.init)
+        if parts.count >= 3, parts[0] == "Papers" || parts[0] == "Experiments" {
+            if parts[0] == "Papers" {
+                open(paper: parts[1], title: parts[1])
+            } else {
+                open(experiment: parts[1], title: parts[1])
+            }
+            if path.hasSuffix("note.md") { document(for: path).reveal(line: line) }
+            return
+        }
         open(.document(path))
         document(for: path).reveal(line: line)
     }
