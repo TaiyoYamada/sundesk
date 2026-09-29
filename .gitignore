@@ -23,3 +23,6 @@ htmlcov/
 # make でのビルド
 build/
 
+
+# カバレッジの途中のファイル
+*.profraw
