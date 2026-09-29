@@ -132,32 +132,33 @@ struct SwiftDataNoteIndexTests {
     }
 }
 
-@Suite("モックの Vault を索引する（結合テスト）")
-struct SampleVaultIndexTests {
-    private static let sampleVault = URL(filePath: #filePath)
+@Suite("研究ライブラリの見本を索引する（結合テスト）")
+struct SampleLibraryIndexTests {
+    private static let sampleLibrary = URL(filePath: #filePath)
         .deletingLastPathComponent()  // SundeskDataTests
         .deletingLastPathComponent()  // Core
         .deletingLastPathComponent()  // Tests
         .deletingLastPathComponent()  // SundeskKit
         .deletingLastPathComponent()  // Packages
         .deletingLastPathComponent()  // sundesk
-        .appending(path: "SampleVault", directoryHint: .isDirectory)
+        .appending(path: "SampleLibrary", directoryHint: .isDirectory)
 
-    @Test("すべてのノートを索引し、リンクをたどれる")
-    func indexesSampleVault() async throws {
-        let vault = FileSystemVaultRepository(root: { Self.sampleVault })
+    @Test("すべてのノートを索引し、論文や実験へのリンクを題名でたどれる")
+    func indexesSampleLibrary() async throws {
+        let vault = FileSystemVaultRepository(root: { Self.sampleLibrary })
         let index = SwiftDataNoteIndex(modelContainer: try NoteIndexStore.makeContainer(url: nil))
 
         let summary = try await IndexVaultInteractor(vault: vault, index: index, markdown: SwiftMarkdownParser())()
 
-        #expect(summary.total >= 10)
+        #expect(summary.total >= 25)
         #expect(summary.updated == summary.total)
 
-        let backlinks = try await index.backlinks(to: "量子計算/量子ゲート.md").map(\.path)
-        #expect(backlinks.contains("量子計算/量子ビット.md"))
-        #expect(backlinks.contains("量子計算/Groverのアルゴリズム.md"))
-        #expect(try await index.backlinks(to: "量子計算/実験レポート_VQE.html").map(\.path).contains("研究ログ/2026-09-29.md"))
-        #expect(try await index.tags().contains { $0.name == "量子計算" })
+        let paper = try await index.backlinks(to: "Papers/hansen2016-cma-es-tutorial/note.md").map(\.path)
+        #expect(paper.contains("Notes/アイデア/VQE のパラメータを進化計算で最適化する.md"))
+        #expect(paper.contains("Experiments/2026-09-10-vqe-h2-shots-spsa-cmaes/note.md"))
+        let note = try await index.backlinks(to: "Notes/議事/2026-09-24 研究室ミーティング.md").map(\.path)
+        #expect(note.contains("Notes/研究ログ/2026-09-29.md"))
+        #expect(try await index.tags().contains { $0.name == "VQE" })
 
         // 2 回目は何も読み直さない
         #expect(

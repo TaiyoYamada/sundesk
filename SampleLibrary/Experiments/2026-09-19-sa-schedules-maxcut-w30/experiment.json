@@ -1,0 +1,57 @@
+{
+  "title": "SA の温度スケジュールの比較（Max-Cut 30 頂点）",
+  "algorithm": "SA",
+  "problem": "重みつき Max-Cut, maxcut-w30（30 頂点、175 辺）",
+  "status": "done",
+  "created": "2026-09-19T15:18:02+09:00",
+  "finished": "2026-09-19T15:18:12+09:00",
+  "tags": [
+    "SA",
+    "Max-Cut",
+    "アニーリング",
+    "スケジュール"
+  ],
+  "parameters": {
+    "schedules": "geometric, linear, linear_beta",
+    "t_start": 30.0,
+    "t_end": 0.3,
+    "sweeps": "10, 30, 100, 300, 1000, 3000",
+    "replicas": 200,
+    "success": "final state is optimal"
+  },
+  "seed": 11,
+  "objective": {
+    "name": "success_probability",
+    "direction": "maximize",
+    "reference": 1.0
+  },
+  "metrics": {
+    "success_at_3000_geometric": 0.71,
+    "best_tts99_sweeps_geometric": 655.6,
+    "success_at_3000_linear": 0.63,
+    "best_tts99_sweeps_linear": 415.1,
+    "success_at_3000_linear_beta": 0.64,
+    "best_tts99_sweeps_linear_beta": 2320.6,
+    "time_seconds": 8.164
+  },
+  "series": [
+    {
+      "file": "results/trace.csv",
+      "x": "sweeps",
+      "y": [
+        "geometric",
+        "linear",
+        "linear_beta"
+      ]
+    }
+  ],
+  "attachments": [
+    "figures/success.png"
+  ],
+  "links": [
+    "Papers/kirkpatrick1983-simulated-annealing",
+    "Data/instances/maxcut-w30.json",
+    "Data/code/anneal.py",
+    "Data/code/sa_schedules.py"
+  ]
+}

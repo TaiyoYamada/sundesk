@@ -1,0 +1,69 @@
+{
+  "title": "VQE で H2（ショット 1024、SPSA と CMA-ES）",
+  "algorithm": "VQE",
+  "problem": "H2 STO-3G, 0.735 Å（パリティ写像、2 量子ビット）",
+  "status": "done",
+  "created": "2026-09-10T16:05:12+09:00",
+  "finished": "2026-09-10T16:05:14+09:00",
+  "tags": [
+    "VQE",
+    "H2",
+    "SPSA",
+    "CMA-ES",
+    "ショット雑音"
+  ],
+  "parameters": {
+    "ansatz": "HEA (RY + CNOT)",
+    "depth": 1,
+    "optimizers": "SPSA, CMA-ES",
+    "shots": 1024,
+    "measurement_bases": 2,
+    "budget_evaluations": 1200,
+    "spsa_a": 0.6,
+    "spsa_c": 0.1,
+    "cmaes_sigma0": 0.5,
+    "cmaes_lambda": 8
+  },
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "objective": {
+    "name": "energy",
+    "direction": "minimize",
+    "reference": -1.1373060357534197
+  },
+  "metrics": {
+    "spsa_mean_error_mha": 3.603971840481445,
+    "spsa_worst_error_mha": 17.682144505605457,
+    "spsa_seeds_within_chemical_accuracy": 4,
+    "cmaes_mean_error_mha": 1.8398642269402021,
+    "cmaes_worst_error_mha": 4.5730416193789925,
+    "cmaes_seeds_within_chemical_accuracy": 3,
+    "measurements_per_seed": 2457600,
+    "time_seconds": 0.689
+  },
+  "series": [
+    {
+      "file": "results/trace.csv",
+      "x": "evaluations",
+      "y": [
+        "spsa",
+        "cmaes"
+      ]
+    }
+  ],
+  "attachments": [
+    "figures/convergence.png",
+    "figures/tail.png"
+  ],
+  "links": [
+    "Papers/peruzzo2014-vqe",
+    "Papers/hansen2016-cma-es-tutorial",
+    "Data/molecules/h2-sto3g-0.735.json",
+    "Data/code/vqe_h2_shots.py"
+  ]
+}

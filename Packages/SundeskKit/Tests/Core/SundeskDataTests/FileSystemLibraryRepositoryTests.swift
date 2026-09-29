@@ -177,3 +177,42 @@ struct OnlineBibliographyTests {
         #expect(metadata.venue == "Physical Review E")
     }
 }
+
+@Suite("研究ライブラリの見本を読む（結合テスト）")
+struct SampleLibraryTests {
+    private static let sampleLibrary = URL(filePath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        .appending(path: "SampleLibrary", directoryHint: .isDirectory)
+
+    @Test("論文、実験、曲線をすべて読め、取り込み箱の実行を実験に移せる")
+    func readsAndImportsSample() async throws {
+        // 見本を汚さないよう、写しで試す
+        let root = FileManager.default.temporaryDirectory.appending(path: "sundesk-sample-\(UUID().uuidString)")
+        try FileManager.default.copyItem(at: Self.sampleLibrary, to: root)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let repository = FileSystemLibraryRepository(
+            root: { root }, markdown: SwiftMarkdownParser(), inbox: { root.appending(path: "Inbox") })
+
+        let papers = try await repository.papers()
+        #expect(papers.count == 8)
+        #expect(papers.allSatisfy { !$0.metadata.title.isEmpty && $0.metadata.year != nil })
+
+        let experiments = try await repository.experiments()
+        #expect(experiments.count == 10)
+        for experiment in experiments where experiment.status == .done {
+            let series = try await repository.series(of: experiment)
+            #expect(!series.isEmpty, "\(experiment.key) の曲線がない")
+            #expect(series.allSatisfy { !$0.columns.isEmpty }, "\(experiment.key) の曲線が空")
+        }
+
+        let imported = try await repository.importInbox()
+        #expect(imported.count == 1)
+        let key = try #require(imported.first)
+        let experiment = try #require(try await repository.experiments().first { $0.key == key })
+        #expect(experiment.algorithm == "SA")
+        let note = try String(contentsOf: root.appending(path: experiment.notePath), encoding: .utf8)
+        #expect(note.contains("仮説"))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: root.appending(path: "Inbox").path).isEmpty)
+    }
+}

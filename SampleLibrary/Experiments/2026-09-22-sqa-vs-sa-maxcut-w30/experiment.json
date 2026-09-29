@@ -1,0 +1,59 @@
+{
+  "title": "SQA と SA の比較（Max-Cut 30 頂点、スピン更新の回数をそろえる）",
+  "algorithm": "QA",
+  "problem": "重みつき Max-Cut, maxcut-w30（30 頂点、175 辺）",
+  "status": "done",
+  "created": "2026-09-22T17:44:37+09:00",
+  "finished": "2026-09-22T17:44:56+09:00",
+  "tags": [
+    "QA",
+    "SQA",
+    "SA",
+    "Max-Cut",
+    "アニーリング"
+  ],
+  "parameters": {
+    "method": "simulated quantum annealing (path-integral Monte Carlo)",
+    "slices": 16,
+    "temperature": 0.25,
+    "gamma_start": 10.0,
+    "gamma_end": 0.01,
+    "gamma_schedule": "linear",
+    "sweeps": "10, 30, 100, 300, 1000",
+    "replicas": 100,
+    "sa_schedule": "geometric 30 → 0.3, sweeps × 16"
+  },
+  "seed": 5,
+  "objective": {
+    "name": "success_probability",
+    "direction": "maximize",
+    "reference": 1.0
+  },
+  "metrics": {
+    "sqa_slice_success_at_1000": 0.5525,
+    "sqa_best_slice_success_at_1000": 0.82,
+    "sa_success_at_16000": 0.9,
+    "time_seconds": 17.695
+  },
+  "series": [
+    {
+      "file": "results/trace.csv",
+      "x": "sweeps",
+      "y": [
+        "sqa_slice",
+        "sqa_best_slice",
+        "sa_equal_updates"
+      ]
+    }
+  ],
+  "attachments": [
+    "figures/success.png"
+  ],
+  "links": [
+    "Papers/kadowaki1998-quantum-annealing",
+    "Papers/kirkpatrick1983-simulated-annealing",
+    "Data/instances/maxcut-w30.json",
+    "Data/code/anneal.py",
+    "Data/code/sqa_maxcut.py"
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "title": "GA で重みつき Max-Cut（30 頂点）",
+  "algorithm": "GA",
+  "problem": "重みつき Max-Cut, maxcut-w30（30 頂点、175 辺）",
+  "status": "done",
+  "created": "2026-09-16T13:02:10+09:00",
+  "finished": "2026-09-16T13:02:12+09:00",
+  "tags": [
+    "GA",
+    "Max-Cut",
+    "進化計算"
+  ],
+  "parameters": {
+    "population": 50,
+    "selection": "tournament",
+    "tournament_size": 3,
+    "crossover": "uniform",
+    "crossover_rate": 0.9,
+    "mutation_rate": "1/n",
+    "elites": 2,
+    "budget_evaluations": 20000
+  },
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "objective": {
+    "name": "cut",
+    "direction": "maximize",
+    "reference": 671.0
+  },
+  "metrics": {
+    "best_cut": 669.0,
+    "mean_cut": 666.1,
+    "worst_cut": 663.0,
+    "mean_gap_percent": 0.7303,
+    "success_rate": 0.0,
+    "evaluations_per_seed": 20000,
+    "time_seconds": 0.436
+  },
+  "series": [
+    {
+      "file": "results/trace.csv",
+      "x": "evaluations",
+      "y": [
+        "mean",
+        "best",
+        "worst"
+      ]
+    }
+  ],
+  "attachments": [
+    "figures/convergence.png"
+  ],
+  "links": [
+    "Papers/lucas2014-ising-formulations",
+    "Data/instances/maxcut-w30.json",
+    "Data/code/ga_maxcut.py"
+  ]
+}

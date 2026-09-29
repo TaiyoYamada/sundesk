@@ -22,10 +22,10 @@ import Testing
 )
 struct EngineEndToEndTests {
     private static let model = "mlx-community/Qwen3-0.6B-4bit"
-    private static let sampleVault = URL(filePath: #filePath)
+    private static let sampleLibrary = URL(filePath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-        .appending(path: "SampleVault", directoryHint: .isDirectory)
+        .appending(path: "SampleLibrary", directoryHint: .isDirectory)
 
     /// テストの間で 1 つのエンジンを使い回す。
     private static let process: EngineProcess = {
@@ -35,9 +35,9 @@ struct EngineEndToEndTests {
         return EngineProcess(configuration: { configuration })
     }()
 
-    @Test("SampleVault から知識を作り、ノートを根拠に答える")
+    @Test("研究ライブラリの見本から知識を作り、ノートを根拠に答える")
     func knowledgeAndRAG() async throws {
-        let vault = FileSystemVaultRepository(root: { Self.sampleVault })
+        let vault = FileSystemVaultRepository(root: { Self.sampleLibrary })
         let repository = SwiftDataKnowledgeRepository(modelContainer: try KnowledgeStore.makeContainer(url: nil))
         let engine = EngineKnowledgeGateway(process: Self.process)
         let builder = KnowledgeBuilder(
@@ -51,13 +51,13 @@ struct EngineEndToEndTests {
         print("知識: 概念 \(graph.concepts.count)、関係 \(graph.relations.count)、チャンク \(chunks.count)")
         print("重要な概念:", graph.concepts.sorted { $0.pagerank > $1.pagerank }.prefix(15).map(\.label))
         #expect(graph.concepts.count > 20)
-        #expect(graph.concepts.contains { $0.label == "固有値" })
+        #expect(graph.concepts.contains { $0.label == "SPSA" })
         #expect(Set(graph.relations.map(\.kind)).isSuperset(of: [.cooccurrence, .link]))
 
         let retrieve = RetrieveContextInteractor(repository: repository, engine: engine)
-        let found = try await retrieve("固有値とは何ですか", limit: 5)
+        let found = try await retrieve("ショットありの VQE で SPSA と CMA-ES はどちらがよかったか", limit: 5)
         print("検索:", found.map { "\($0.chunk.noteTitle) \($0.sources.map(\.rawValue).sorted())" })
-        #expect(found.contains { $0.chunk.notePath.contains("固有値") })
+        #expect(found.contains { $0.chunk.notePath.contains("vqe-h2-shots-spsa-cmaes") })
         #expect(found.first?.sources.contains(.vector) == true || found.contains { $0.sources.contains(.vector) })
 
         let chat = SwiftDataChatRepository(modelContainer: try KnowledgeStore.makeContainer(url: nil))
@@ -66,7 +66,8 @@ struct EngineEndToEndTests {
         var answer = ""
         var citations: [Citation] = []
         for try await event in ask(
-            "固有値とは何ですか。一言で。", in: nil, model: Self.model, settings: GenerationSettings(maxTokens: 200))
+            "ショットありの VQE で、SPSA と CMA-ES はどちらがよかったですか。一言で。",
+            in: nil, model: Self.model, settings: GenerationSettings(maxTokens: 200))
         {
             switch event {
             case .token(let text): answer += text

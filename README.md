@@ -43,7 +43,8 @@ Attention を覗いたり、LoRA で学習させたり、画像を生成した�
 | `sundesk/` | アプリのターゲット（起動するだけ） |
 | `Packages/SundeskKit/` | アプリのすべて。App / Features / Core / Infrastructure / UI のモジュール |
 | `engine/` | Python の AI エンジン（uv で管理） |
-| `SampleVault/` | モックのノート（既定で開く Vault） |
+| `tools/sundesk-log/` | 実験のスクリプトから結果を取り込み箱へ書く記録用ライブラリ（Python） |
+| `SampleLibrary/` | 研究ライブラリの見本（論文、実験、データ、ノート。[docs/library-format.md](docs/library-format.md)） |
 | `Configurations/` | ビルド設定（xcconfig） |
 | `docs/` | 要件、アーキテクチャ、ADR |
 
