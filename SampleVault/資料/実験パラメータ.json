@@ -1,8 +1,0 @@
-{
-  "experiment": "vqe-h2",
-  "date": "2026-09-29",
-  "ansatz": { "name": "UCCSD", "parameters": 3 },
-  "optimizer": { "name": "COBYLA", "maxIterations": 200 },
-  "bondLengths": [0.5, 0.74, 1.0, 1.5, 2.0],
-  "simulator": { "type": "statevector", "noise": false }
-}

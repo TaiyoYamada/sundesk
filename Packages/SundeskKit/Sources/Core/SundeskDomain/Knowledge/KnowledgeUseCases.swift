@@ -129,7 +129,8 @@ public actor KnowledgeBuilder {
             throw .vault(error)
         }
         let files = tree.files
-        let resolver = LinkResolver(paths: files.map(\.path))
+        let titles = await FolderNote.titles(in: files.map(\.path), vault: vault, markdown: markdown)
+        let resolver = LinkResolver(paths: files.map(\.path), titles: titles)
         let notesToRead = files.filter { $0.kind == .markdown }
         var notes: [GraphSourceNote] = []
         for (index, file) in notesToRead.enumerated() {

@@ -64,4 +64,20 @@ struct LinkResolverTests {
         #expect(resolver.resolve("量子ゲート.md", exact: true) == nil)
         #expect(resolver.resolve("量子計算/量子ゲート.md", exact: true) == "量子計算/量子ゲート.md")
     }
+
+    @Test("論文や実験のメモは、フォルダ名と題名でも辿れる")
+    func resolvesFolderNotes() {
+        let resolver = LinkResolver(
+            paths: ["Papers/peruzzo2014-vqe/note.md", "Experiments/2026-09-17-sa/note.md", "Notes/SA.md"],
+            titles: [
+                "A variational eigenvalue solver": "Papers/peruzzo2014-vqe/note.md",
+                "SA": "Experiments/2026-09-17-sa/note.md",
+            ]
+        )
+        #expect(resolver.resolve("Papers/peruzzo2014-vqe") == "Papers/peruzzo2014-vqe/note.md")
+        #expect(resolver.resolve("2026-09-17-sa") == "Experiments/2026-09-17-sa/note.md")
+        #expect(resolver.resolve("a variational eigenvalue solver") == "Papers/peruzzo2014-vqe/note.md")
+        // ファイル名が一致するノートのほうを先に選ぶ
+        #expect(resolver.resolve("SA") == "Notes/SA.md")
+    }
 }

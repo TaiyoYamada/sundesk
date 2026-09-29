@@ -60,11 +60,13 @@ public struct IndexVaultInteractor: IndexVaultUseCase {
     private func rebuildIndex(tree: VaultNode) async throws -> IndexSummary {
         let allPaths = tree.files.map(\.path)
         let notes = tree.files.filter { $0.kind == .markdown }
-        let signature = Self.signature(of: allPaths)
+        let titles = await FolderNote.titles(in: allPaths, vault: vault, markdown: markdown)
+        // 題名が変わると、変わっていないノートのリンク先も変わるので、目印に含める
+        let signature = Self.signature(of: allPaths + titles.map { "\($0.value)\t\($0.key)" })
 
         let previousStamps = try await index.stamps()
         let pathsChanged = try await index.pathSignature() != signature
-        let resolver = LinkResolver(paths: allPaths)
+        let resolver = LinkResolver(paths: allPaths, titles: titles)
 
         var upserts: [IndexedNote] = []
         for note in notes {

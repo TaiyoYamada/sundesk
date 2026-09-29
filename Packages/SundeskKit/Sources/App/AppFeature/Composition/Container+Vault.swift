@@ -83,7 +83,7 @@ extension Container {
     }
 
     var resolveLink: Factory<any ResolveLinkUseCase> {
-        self { ResolveLinkInteractor(vault: self.vaultRepository()) }
+        self { ResolveLinkInteractor(vault: self.vaultRepository(), markdown: self.markdownParser()) }
     }
 
     var indexVault: Factory<any IndexVaultUseCase> {

@@ -93,14 +93,22 @@ public protocol ResolveLinkUseCase: Sendable {
 
 public struct ResolveLinkInteractor: ResolveLinkUseCase {
     private let vault: any VaultRepository
+    private let markdown: (any MarkdownParsing)?
 
-    public init(vault: any VaultRepository) {
+    /// - Parameter markdown: 論文や実験のメモを題名で辿るときに使う。nil なら題名では探さない。
+    public init(vault: any VaultRepository, markdown: (any MarkdownParsing)? = nil) {
         self.vault = vault
+        self.markdown = markdown
     }
 
     public func callAsFunction(_ target: String, exact: Bool) async throws(VaultError) -> String? {
-        let tree = try await vault.loadTree()
-        return LinkResolver(paths: tree.files.map(\.path)).resolve(target, exact: exact)
+        let paths = try await vault.loadTree().files.map(\.path)
+        let resolver = LinkResolver(paths: paths)
+        if let path = resolver.resolve(target, exact: exact) { return path }
+        guard !exact, let markdown else { return nil }
+        // 題名を集めるのは、ほかの方法で見つからないときだけ（メモを読むので重い）
+        let titles = await FolderNote.titles(in: paths, vault: vault, markdown: markdown)
+        return LinkResolver(paths: paths, titles: titles).resolve(target)
     }
 }
 
