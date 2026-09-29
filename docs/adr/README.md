@@ -16,5 +16,7 @@
 | [0009](0009-workspace-layout.md) | 画面は Xcode と Obsidian を合わせた構成にする | 採用 |
 | [0010](0010-native-rendering-and-editing.md) | ノートの描画と編集は Swift で行い、WebKit は HTML ファイルだけに使う | 採用 |
 | [0011](0011-feature-based-multi-module.md) | 機能ごとのマルチモジュールにし、アプリのターゲットは起動だけにする | 採用 |
+| [0012](0012-knowledge-and-rag.md) | 知識は毎回まとめて作り直し、RAG は 3 つの検索を順位で組み合わせる | 採用 |
+| [0013](0013-lab-and-image-generation.md) | 実験室は mlx-lm の計算を差し替えて覗き、画像生成は mflux を使う | 採用 |
 
 新しく書くときは [template.md](template.md) を写して使う。

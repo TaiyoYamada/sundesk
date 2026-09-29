@@ -1,6 +1,6 @@
 # sundesk アーキテクチャ
 
-- 状態: フェーズ 1 の実装（ネイティブ描画、編集、マルチモジュール）を反映済み
+- 状態: フェーズ 0〜6 の実装を反映済み
 - 最終更新: 2026-09-29
 - 要件は [requirements.md](requirements.md)、個々の判断の理由は [ADR](adr/README.md) を参照
 
@@ -68,6 +68,10 @@ sundesk/
 │   │   ├── Features/
 │   │   │   ├── WorkspaceFeature/           ウインドウ（ナビゲータ、タブ、インスペクタ）
 │   │   │   ├── NotesFeature/               ファイルの木、検索、タグ、ファイルの表示と編集、インスペクタ
+│   │   │   ├── GraphFeature/               知識グラフ
+│   │   │   ├── ChatFeature/                ノートを根拠に答えるチャット
+│   │   │   ├── LabFeature/                 LLM の実験室（覗く・いじる）と、モデルの管理
+│   │   │   ├── ImagesFeature/              画像生成
 │   │   │   ├── EngineFeature/              エンジンの状態と設定
 │   │   │   └── SettingsFeature/            Vault の設定
 │   │   ├── Core/
@@ -81,6 +85,7 @@ sundesk/
 │   │   │   └── TreeSitterScanners/         文法パッケージから漏れる scanner.c（C）
 │   │   └── UI/
 │   │       ├── SundeskEditorUI/            閲覧の View（SwiftUI）とエディタ（TextKit 2）
+│   │       ├── SundeskGraphRenderer/       知識グラフの描画（Metal）
 │   │       └── SundeskWebView/             HTML ファイルの表示（WebKit）
 │   └── Tests/                              モジュールごとのテスト（Sources と同じグループ分け）
 ├── engine/                       Python エンジン（uv で管理。LLM、画像生成、埋め込み、NLP、グラフ計算）
@@ -88,8 +93,6 @@ sundesk/
 ├── Configurations/               xcconfig（バンドル ID、対象 OS、Swift の設定）
 ├── scripts/                      補助スクリプト（カバレッジの集計など）
 └── docs/                         要件、アーキテクチャ、ADR
-
-フェーズ 2 で、知識グラフの機能（GraphFeature）と Metal の描画モジュール（UI/SundeskGraphRenderer）を加える。
 ```
 
 - モジュール名に `Data` を単独で使わない（Foundation の `Data` 型と衝突するため）
@@ -98,8 +101,10 @@ sundesk/
 | モジュール | 依存先 |
 |---|---|
 | AppFeature | すべての Features、SundeskDomain、SundeskData、SundeskDesignSystem、SundeskEngineClient、SundeskMarkdown、FactoryKit |
-| WorkspaceFeature | NotesFeature、EngineFeature、SundeskDomain、SundeskDesignSystem |
+| WorkspaceFeature | ほかの Features、SundeskDomain、SundeskDesignSystem |
 | NotesFeature | SundeskDomain、SundeskDesignSystem、SundeskEditorUI、SundeskWebView |
+| GraphFeature | SundeskDomain、SundeskDesignSystem、SundeskGraphRenderer |
+| ChatFeature、LabFeature、ImagesFeature | SundeskDomain、SundeskDesignSystem |
 | EngineFeature、SettingsFeature | SundeskDomain、SundeskDesignSystem |
 | SundeskDomain | なし |
 | SundeskData | SundeskDomain、SundeskEngineClient |
@@ -107,6 +112,7 @@ sundesk/
 | SundeskMarkdown | SundeskDomain、swift-markdown |
 | SundeskCodeHighlight | swift-tree-sitter、14 言語の文法、TreeSitterScanners |
 | SundeskEditorUI | SundeskMarkdown、SundeskCodeHighlight、SundeskDesignSystem、SwiftMath |
+| SundeskGraphRenderer | Metal、MetalKit |
 | SundeskWebView | WebKit |
 
 同じモジュールの中の決まり（View は Domain を import しない、など）は SwiftLint の独自ルールで守る（[ADR 0011](adr/0011-feature-based-multi-module.md)）。
@@ -193,17 +199,51 @@ public final class ChatViewModel {
 5. `SwiftDataNoteIndex` に保存する（ノート、リンク、メタデータの 3 つのモデル。Vault ごとに別のファイル）
 6. Vault の変更は FSEvents で見張り、変わるたびに 1〜5 をくり返す
 
-## 8. 知識グラフの描画（Metal）
+## 8. 知識グラフ（フェーズ 2）
 
-- `MTKView` を SwiftUI に埋め込んで描く
-- 点と線はインスタンス描画でまとめて描く（数万規模を想定）
-- レイアウト（力学モデル）の計算は、Metal のコンピュートシェーダーで行う。反発力の計算は、Barnes-Hut 法かグリッド分割で近似する
-- クリックした点の判定、ズーム、パン
-- 文字ラベルは、重要な点（PageRank の上位など）だけに付ける
-  - 描き方（グリフのアトラスを作って Metal で描くか、SwiftUI を重ねるか）は試作して決める
-- テストでは、シェーダーの計算結果を CPU の参照実装と比べる
+作り方と更新の仕方は [ADR 0012](adr/0012-knowledge-and-rag.md)、描画は [ADR 0005](adr/0005-metal-knowledge-graph.md) を参照。
 
-## 9. テスト
+1. `MarkdownChunker` がノートを見出しで区切る（見出しの階層、行番号、数式とコードを除いた本文を持つ）
+2. エンジンの `/graph/build` が、SudachiPy で用語を抜き出し（C-value）、関係を作る
+   - 共起（PMI）、見出しの階層、「A とは B」「A は B の一種」、ノートのリンク、複合語の包含、埋め込みの類似
+   - networkx で PageRank とコミュニティ（Louvain 法）を計算する
+3. アプリが `KnowledgeStore`（Vault ごとの SwiftData）に保存する
+4. 描画（`SundeskGraphRenderer`）
+   - 重要な概念から上位 N 個（100〜3000）を描く。点の大きさは PageRank、色はコミュニティ
+   - 配置は Fruchterman-Reingold 法を Metal のコンピュートシェーダーで計算する。温度を下げていき、落ち着いたら止める
+   - 点はインスタンス描画の円（フラグメントシェーダーで縁をなめらかにする）、線は線分でまとめて描く
+   - ラベルは、大きい点と、選んだ点とその隣だけを SwiftUI の Canvas で重ねる
+   - ドラッグで移動、スクロールやピンチで拡大・縮小、点のドラッグで動かす
+   - テストでは、GPU の計算結果を CPU の参照実装と突き合わせる
+5. インスペクタに、つながる概念（関係の種類つき）と、概念が出てくるノートの節を出す。押すとその節を開く
+
+## 9. RAG（フェーズ 3）
+
+1. 質問を、意味（ruri-v3 の埋め込みとベクトル検索）、語（bigram）、知識グラフの 3 つで探し、Reciprocal Rank Fusion でまとめる
+2. 上位 6 節に番号を付けてシステムの指示に入れ、前の会話と一緒にモデルへ渡す
+3. 答えは少しずつ画面に出す。答えの中の `[1]` を出典として残し、押すとその節を開く
+4. 会話は `KnowledgeStore` に残し、あとから見返せる
+5. モデルは、Apple のオンデバイスモデル（Foundation Models）か、エンジンの MLX のモデル（既定は Qwen3-4B-Instruct の 4bit）
+
+## 10. 実験室と画像生成（フェーズ 4〜6）
+
+詳しくは [ADR 0013](adr/0013-lab-and-image-generation.md) を参照。
+
+| 画面 | できること |
+|---|---|
+| モデル | 手元のモデルの一覧、Hugging Face からの取り込み、削除、メモリから外す |
+| 実験室: トークン | プロンプトの区切られ方と ID |
+| 実験室: 次のトークン | 上位 20 個の確率（温度を変えると分布の形が変わる）とエントロピー |
+| 実験室: 生成 | 1 トークンずつ、選ばれた確率で色を付ける。押すと他の候補が見える。LoRA を選んで生成できる |
+| 実験室: Attention | 層・ヘッドごとの注目の行列 |
+| 実験室: Logit lens | 途中の層の状態を出力層に通したときの予測 |
+| 実験室: 活性 | 各層・各トークンの残差ストリームの大きさ |
+| 実験室: LoRA | Vault のフォルダのノートで学習し、損失の変化を描く |
+| 実験室: Steering | 2 組の文の活性の差を足して、生成の向きを変える（足さない生成と並べて比べる） |
+| 実験室: 記録 | 実行するたびに残した、モデル、プロンプト、設定、結果の要約 |
+| 画像生成 | mflux（FLUX.2 klein 4B、Z-Image Turbo）で生成し、履歴を一覧する。同じ設定でもう一度作れる |
+
+## 11. テスト
 
 - **実装した後に書く**（TDD にはしない）。ただし、層ごとに漏れなく書く
 - Swift Testing を基本にする。UI テストだけ XCTest を使う
@@ -214,7 +254,7 @@ public final class ChatViewModel {
 | UseCase | Repository を偽物に差し替え、処理の流れを検証する |
 | ViewModel | UseCase を偽物に差し替え、状態の変化を検証する |
 | Data | SwiftData はメモリ上の DB で実際に動かす。Mapper の往復変換も検証する |
-| Metal | シェーダーと CPU の参照実装の結果が一致するかを検証する |
+| Metal | レイアウトのシェーダーと CPU の参照実装の結果が一致するかを検証する |
 | Markdown の解析 | 索引用、閲覧用、エディタ用の 3 つの解析を、日本語を含む入力で検証する（位置のずれ、数式とコードの保護） |
 | エディタ | 本物の `NSTextView` で、ライブプレビューの記号の隠し方、色づけ、リンクの属性を検証する |
 | WebKit | 本物の `WebPage` で Vault の HTML ファイルを開く |
@@ -225,7 +265,7 @@ public final class ChatViewModel {
 - 本物のエンジンを起動する結合テストは、`SUNDESK_INTEGRATION=1` のときだけ走る（`make test-integration`、CI では常に走らせる）
 - CI（GitHub Actions）はプルリクエストごとに、lint、テスト、カバレッジの集計を行う
 
-## 10. 未決事項
+## 12. 未決事項
 
 - [ ] ライブプレビューで数式を画像にして見せるか（今は色を変えたソースのまま）
 - [ ] 大きなテンソル（Attention の行列など）の転送形式（フェーズ 4）
