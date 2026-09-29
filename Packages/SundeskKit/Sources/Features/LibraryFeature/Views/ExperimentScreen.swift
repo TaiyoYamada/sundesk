@@ -174,6 +174,7 @@ struct ConvergenceChart: View {
             .chartXAxisLabel(chart.xLabel)
             // 0 から描くと、Max-Cut の 600〜700 のような値の差がつぶれて見えない
             .chartYScale(domain: .automatic(includesZero: false))
+            .rebuildsOnAppearanceChange()
             .frame(height: 220)
         }
     }

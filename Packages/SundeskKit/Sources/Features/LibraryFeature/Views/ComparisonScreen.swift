@@ -61,6 +61,7 @@ public struct ComparisonScreen: View {
         }
         .chartYScale(domain: .automatic(includesZero: false), type: viewModel.logScaleY ? .log : .linear)
         .chartLegend(position: .bottom, alignment: .leading)
+        .rebuildsOnAppearanceChange()
     }
 
     /// 対数のときは、最適値との差（0 にならないよう小さな値を足す）。

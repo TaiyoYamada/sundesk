@@ -6,6 +6,7 @@
 //
 
 import Charts
+import SundeskDesignSystem
 import SwiftUI
 
 // MARK: - LoRA
@@ -69,6 +70,7 @@ struct LoRAView: View {
                         }
                     }
                     .frame(minHeight: 200)
+                    .rebuildsOnAppearanceChange()
                 }
                 Text("できた LoRA").font(.headline)
                 if viewModel.adapters.isEmpty {

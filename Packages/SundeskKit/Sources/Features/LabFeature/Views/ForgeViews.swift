@@ -270,6 +270,7 @@ struct DistillView: View {
                     LineMark(x: .value("反復", $0.iteration), y: .value("損失", $0.loss))
                 }
                 .frame(minHeight: 200)
+                .rebuildsOnAppearanceChange()
             }
         }
     }
@@ -344,6 +345,7 @@ struct EvaluateView: View {
                                 .annotation(position: .trailing) { Text("") }
                         }
                         .frame(height: CGFloat(viewModel.evaluationResults.count) * 36 + 30)
+                        .rebuildsOnAppearanceChange()
                         Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 6) {
                             GridRow {
                                 Text("モデル").fontWeight(.semibold)

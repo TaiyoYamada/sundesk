@@ -73,6 +73,7 @@ struct NextTokenView: View {
                 }
                 .chartYAxis { AxisMarks { AxisValueLabel().font(.system(size: 12, design: .monospaced)) } }
                 .chartXScale(domain: 0...1)
+                .rebuildsOnAppearanceChange()
             }
         }
         .padding(20)
