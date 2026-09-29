@@ -30,6 +30,8 @@ public struct LabScreen: View {
                 group("", [.records])
             }
             .listStyle(.sidebar)
+            // タブの中ではサイドバーの素材を使わず、周りと同じ背景にする
+            .scrollContentBackground(.hidden)
             .frame(width: 180)
             Divider()
             VStack(spacing: 0) {

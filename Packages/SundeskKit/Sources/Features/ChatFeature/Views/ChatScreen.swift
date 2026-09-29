@@ -110,6 +110,8 @@ private struct SessionListView: View {
                 }
             }
             .listStyle(.sidebar)
+            // タブの中ではサイドバーの素材を使わず、周りと同じ背景にする
+            .scrollContentBackground(.hidden)
             .overlay {
                 if viewModel.sessions.isEmpty {
                     Text("まだ会話はありません").font(.callout).foregroundStyle(.secondary)
