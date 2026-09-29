@@ -30,6 +30,9 @@ public struct EngineConfiguration: Sendable, Equatable {
 
 /// uv やエンジンのフォルダを探す。
 public enum EngineLocator {
+    /// このソースファイルの場所。
+    public static let sourceFile = #filePath
+
     /// uv を探す。
     ///
     /// GUI アプリは PATH を引き継がないので、よく置かれる場所を先に調べ、
@@ -60,7 +63,10 @@ public enum EngineLocator {
     ///
     /// 自分専用のアプリで、リポジトリから直接ビルドして使う前提の既定値。
     /// 設定画面で別の場所に変えられる。
-    public static func defaultEngineDirectory(sourceFile: String = #filePath) -> URL {
+    ///
+    /// 引数の既定値に `#filePath` を直接書くと、呼び出した側のファイルの場所になってしまう。
+    /// このファイルの場所は ``sourceFile`` に取っておく。
+    public static func defaultEngineDirectory(sourceFile: String = EngineLocator.sourceFile) -> URL {
         // .../sundesk/Packages/SundeskKit/Sources/Infrastructure/SundeskEngineClient/EngineConfiguration.swift
         URL(filePath: sourceFile)
             .deletingLastPathComponent()  // SundeskEngineClient

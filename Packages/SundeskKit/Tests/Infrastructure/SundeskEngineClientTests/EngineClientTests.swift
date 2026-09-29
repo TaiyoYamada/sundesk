@@ -130,6 +130,12 @@ struct EngineLocatorTests {
         #expect(url.path == "/repo/sundesk/engine")
     }
 
+    @Test("どこから呼んでも、既定のエンジンのフォルダはこのリポジトリの engine/ になる")
+    func defaultEngineDirectoryDoesNotDependOnCaller() {
+        let url = EngineLocator.defaultEngineDirectory()
+        #expect(FileManager.default.fileExists(atPath: url.appending(path: "pyproject.toml").path))
+    }
+
     @Test("決まった場所になければ PATH から uv を探す")
     func findUVSearchesPath() throws {
         let directory = try makeDirectoryWithExecutable(named: "uv")
