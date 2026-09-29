@@ -15,6 +15,10 @@ public enum LibraryDestination: Hashable, Sendable {
     case paper(key: String, title: String)
     case experiment(key: String, title: String)
     case comparison(keys: [String])
+    /// ~/Research のプロジェクト（ライブラリの中でのパス）。
+    case researchProject(path: String, title: String)
+    /// ~/Research の 1 回の実行（ライブラリの中でのパス）。
+    case researchRun(path: String, title: String)
 }
 
 /// 研究ライブラリの一覧。上で種類を切り替え、下に一覧を出す。
@@ -137,6 +141,8 @@ public struct LibraryNavigatorView<Notes: View, DataTree: View>: View {
         case .experiments:
             ExperimentListView(viewModel: viewModel, selectedPath: selectedPath, open: openExperiment) { keys in
                 open(.comparison(keys: keys))
+            } openResearch: {
+                open($0)
             }
         case .data:
             data
@@ -236,39 +242,37 @@ private struct ExperimentListView: View {
     let selectedPath: String?
     let open: (String) -> Void
     let compare: ([String]) -> Void
+    let openResearch: (LibraryDestination) -> Void
 
     var body: some View {
         List(selection: $viewModel.selectedExperiments) {
-            ForEach(viewModel.shownExperiments) { experiment in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(experiment.title).lineLimit(2)
-                    HStack(spacing: 4) {
-                        Text(experiment.algorithm).fontWeight(.medium)
-                        Text(experiment.problem).lineLimit(1)
-                        Spacer(minLength: 0)
-                        StatusBadge(text: experiment.status, isStrong: !experiment.isDone)
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    if let headline = experiment.headline {
-                        Text(headline).font(.caption.monospacedDigit()).foregroundStyle(.tertiary)
-                    }
-                }
-                .padding(.vertical, 2)
-                .tag(experiment.key)
-                .contextMenu {
-                    Button("開く") { open(experiment.key) }
-                    Button("ゴミ箱に入れる", role: .destructive) { Task { await viewModel.delete(experiment.folderPath) } }
+            if !viewModel.experiments.isEmpty {
+                Section(viewModel.projects.isEmpty ? "" : "自分の実験") { ownExperiments }
+            }
+            ForEach(viewModel.shownProjects) { project in
+                Section {
+                    ResearchProjectSection(project: project) { openResearch($0) }
+                } header: {
+                    Label(project.title, systemImage: "folder.badge.gearshape").lineLimit(1)
                 }
             }
         }
         .listStyle(.sidebar)
         .accessibilityIdentifier("experiment-list")
         .onChange(of: viewModel.selectedExperiments) { _, keys in
-            if keys.count == 1, let key = keys.first { open(key) }
+            guard keys.count == 1, let key = keys.first else { return }
+            // ~/Research はパスで選ばれる。プロジェクトの節（ForEach の行には自動で ID が付く）なら概要を開く
+            if let project = viewModel.projects.first(where: { $0.path == key }) {
+                openResearch(.researchProject(path: project.path, title: project.title))
+            } else if LibraryViewModel.isResearchRun(key) {
+                let name = key.split(separator: "/").last.map(String.init) ?? key
+                openResearch(.researchRun(path: key, title: name))
+            } else {
+                open(key)
+            }
         }
         .overlay {
-            if viewModel.experiments.isEmpty {
+            if viewModel.experiments.isEmpty && viewModel.projects.isEmpty {
                 ContentUnavailableView(
                     "実験はまだありません", systemImage: "testtube.2",
                     description: Text("＋ から作るか、記録用ライブラリ（sundesk-log）で実験のコードから送ります。"))
@@ -276,15 +280,42 @@ private struct ExperimentListView: View {
         }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
-                if viewModel.selectedExperiments.count >= 2 {
-                    Button("選んだ \(viewModel.selectedExperiments.count) 件を比べる", systemImage: "chart.xyaxis.line") {
-                        compare(viewModel.shownExperiments.map(\.key).filter(viewModel.selectedExperiments.contains))
+                let own = viewModel.selectedExperiments.filter { !LibraryViewModel.isResearchRun($0) }
+                if own.count >= 2 {
+                    Button("選んだ \(own.count) 件を比べる", systemImage: "chart.xyaxis.line") {
+                        compare(viewModel.shownExperiments.map(\.key).filter(own.contains))
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
                     .padding(6)
                 }
                 FilterBar(text: $viewModel.filterText) { EmptyView() }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var ownExperiments: some View {
+        ForEach(viewModel.shownExperiments) { experiment in
+            VStack(alignment: .leading, spacing: 2) {
+                Text(experiment.title).lineLimit(2)
+                HStack(spacing: 4) {
+                    Text(experiment.algorithm).fontWeight(.medium)
+                    Text(experiment.problem).lineLimit(1)
+                    Spacer(minLength: 0)
+                    StatusBadge(text: experiment.status, isStrong: !experiment.isDone)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                if let headline = experiment.headline {
+                    Text(headline).font(.caption.monospacedDigit()).foregroundStyle(.tertiary)
+                }
+            }
+            .padding(.vertical, 2)
+            .tag(experiment.key)
+            .contextMenu {
+                Button("開く") { open(experiment.key) }
+                Button("ゴミ箱に入れる", role: .destructive) { Task { await viewModel.delete(experiment.folderPath) } }
             }
         }
     }

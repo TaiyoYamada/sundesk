@@ -109,6 +109,15 @@ public final class WorkspaceViewModel {
         open(.tool(tool))
     }
 
+    /// ~/Research のプロジェクトと実行をタブで開く。
+    public func open(researchProject path: String, title: String) {
+        open(.researchProject(path), title: title)
+    }
+
+    public func open(researchRun path: String, title: String) {
+        open(.researchRun(path), title: title)
+    }
+
     /// 論文、実験、比べる画面をタブで開く。
     public func open(paper key: String, title: String) {
         open(.paper(key), title: title)

@@ -63,6 +63,24 @@ struct EditorView: View {
                             workspace.open(experiment: key, title: title)
                         }
                         .id(tab.id)
+                    case .researchProject(let path):
+                        let project = screens.project(path)
+                        ResearchProjectScreen(viewModel: project) { run, title in
+                            workspace.open(researchRun: run, title: title)
+                        } document: { documentPath in
+                            readOnlyDocument(documentPath)
+                        }
+                        .id(tab.id)
+                        .onChange(of: project.title, initial: true) {
+                            workspace.retitle(tab.content, to: project.title)
+                        }
+                    case .researchRun(let path):
+                        ResearchRunScreen(viewModel: screens.run(path)) { path in
+                            workspace.open(path: path)
+                        } document: { documentPath in
+                            readOnlyDocument(documentPath)
+                        }
+                        .id(tab.id)
                     case .tool(.graph):
                         GraphScreen(viewModel: graph)
                     case .tool(.chat):
@@ -88,6 +106,14 @@ struct EditorView: View {
 }
 
 extension EditorView {
+    /// ~/Research の Markdown（README や所見）を、その場で読む。
+    fileprivate func readOnlyDocument(_ path: String) -> some View {
+        DocumentView(
+            document: workspace.document(for: path), cache: cache,
+            openLink: { target, isExactPath in Task { await workspace.openLink(target, isExactPath: isExactPath) } },
+            showTag: showTag)
+    }
+
     /// 論文や実験のタブの中の、メモのエディタ。
     @ViewBuilder
     fileprivate func note(for tab: WorkspaceTab) -> some View {
@@ -120,6 +146,8 @@ final class LibraryScreenCache {
     private var papers: [String: PaperViewModel] = [:]
     private var experiments: [String: ExperimentViewModel] = [:]
     private var comparisons: [[String]: ComparisonViewModel] = [:]
+    private var projects: [String: ResearchProjectViewModel] = [:]
+    private var runs: [String: ResearchRunViewModel] = [:]
 
     init(dependencies: WorkspaceDependencies) {
         self.dependencies = dependencies
@@ -143,6 +171,20 @@ final class LibraryScreenCache {
         if let model = comparisons[keys] { return model }
         let model = dependencies.makeComparison(keys)
         comparisons[keys] = model
+        return model
+    }
+
+    func project(_ path: String) -> ResearchProjectViewModel {
+        if let model = projects[path] { return model }
+        let model = dependencies.research.makeProject(path)
+        projects[path] = model
+        return model
+    }
+
+    func run(_ path: String) -> ResearchRunViewModel {
+        if let model = runs[path] { return model }
+        let model = dependencies.research.makeRun(path)
+        runs[path] = model
         return model
     }
 }

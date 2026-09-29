@@ -75,6 +75,8 @@ public final class LibraryViewModel {
 
     public private(set) var papers: [PaperRow] = []
     public private(set) var experiments: [ExperimentRow] = []
+    /// ~/Research の実験のプロジェクト（読むだけ）。
+    public private(set) var projects: [ResearchProjectRow] = []
     public private(set) var files: [FileRow] = []
     public private(set) var isWorking = false
     public var message: String?
@@ -84,11 +86,16 @@ public final class LibraryViewModel {
 
     @ObservationIgnored private let library: any ManageLibraryUseCase
     @ObservationIgnored private let observeChanges: any ObserveVaultChangesUseCase
+    @ObservationIgnored private let loadProjects: (any LoadResearchProjectsUseCase)?
     @ObservationIgnored private var paperModels: [Paper] = []
 
-    public init(library: any ManageLibraryUseCase, observeChanges: any ObserveVaultChangesUseCase) {
+    public init(
+        library: any ManageLibraryUseCase, observeChanges: any ObserveVaultChangesUseCase,
+        loadProjects: (any LoadResearchProjectsUseCase)? = nil
+    ) {
         self.library = library
         self.observeChanges = observeChanges
+        self.loadProjects = loadProjects
     }
 
     // MARK: - 読み込み
@@ -112,6 +119,7 @@ public final class LibraryViewModel {
         paperModels = (try? await library.papers()) ?? []
         papers = paperModels.map(PaperRow.init)
         experiments = ((try? await library.experiments()) ?? []).map(ExperimentRow.init)
+        if let loadProjects { projects = await loadProjects().map(ResearchProjectRow.init) }
         switch section {
         case .data, .materials: files = ((try? await library.files(in: section.domain)) ?? []).map(FileRow.init)
         default: break
@@ -135,6 +143,22 @@ public final class LibraryViewModel {
         case .title: rows.sort { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
         }
         return rows
+    }
+
+    /// 選んだものが ~/Research の実行か（実行はパスで、自分の実験はキーで選ばれる）。
+    public static func isResearchRun(_ key: String) -> Bool {
+        key.hasPrefix(ResearchSources.researchName + "/")
+    }
+
+    /// 絞り込んだ ~/Research のプロジェクト（プロジェクトの名前か、実行の名前に一致するもの）。
+    public var shownProjects: [ResearchProjectRow] {
+        let query = filterText.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return projects }
+        return projects.compactMap { project in
+            if project.title.localizedStandardContains(query) { return project }
+            let runs = project.runs.filter { $0.name.localizedStandardContains(query) }
+            return runs.isEmpty ? nil : ResearchProjectRow(path: project.path, title: project.title, runs: runs)
+        }
     }
 
     public var shownExperiments: [ExperimentRow] {
@@ -308,5 +332,25 @@ enum ExperimentFormat {
         if value == value.rounded() && abs(value) < 1e9 { return String(Int64(value)) }
         // 有効数字 7 桁（エネルギーの mHa の桁まで見える）。末尾の 0 は付けない
         return String(format: "%.7g", value)
+    }
+}
+
+/// ~/Research の実験のプロジェクト（一覧の 1 節）。
+public struct ResearchProjectRow: Identifiable, Hashable, Sendable {
+    public var id: String { path }
+    public let path: String
+    public let title: String
+    public let runs: [ResearchRunRow]
+
+    init(_ project: ResearchProject) {
+        path = project.path
+        title = project.title
+        runs = project.runs.map(ResearchRunRow.init)
+    }
+
+    init(path: String, title: String, runs: [ResearchRunRow]) {
+        self.path = path
+        self.title = title
+        self.runs = runs
     }
 }

@@ -37,6 +37,22 @@ extension Container {
         self { PDFKitInspector() }
     }
 
+    /// ~/Research の実験（読むだけ）。
+    var researchProjects: Factory<any ResearchProjectRepository> {
+        self { FileSystemResearchProjects(mounts: self.researchMounts()) }
+    }
+
+    var readTableHead: Factory<any ReadTableHeadUseCase> {
+        self {
+            let vault = self.vaultRepository()
+            return CSVHeadReader { vault.fileURL(for: $0) }
+        }
+    }
+
+    var loadResearchProjects: Factory<any LoadResearchProjectsUseCase> {
+        self { LoadResearchProjectsInteractor(repository: self.researchProjects()) }
+    }
+
     // MARK: - UseCase
 
     var manageLibrary: Factory<any ManageLibraryUseCase> {
@@ -50,6 +66,24 @@ extension Container {
 
     @MainActor
     var libraryViewModel: Factory<LibraryViewModel> {
-        self { LibraryViewModel(library: self.manageLibrary(), observeChanges: self.observeVaultChanges()) }
+        self {
+            LibraryViewModel(
+                library: self.manageLibrary(), observeChanges: self.observeVaultChanges(),
+                loadProjects: self.loadResearchProjects())
+        }
+    }
+
+    @MainActor
+    var researchScreens: Factory<ResearchScreenFactory> {
+        self {
+            ResearchScreenFactory(
+                makeProject: { ResearchProjectViewModel(path: $0, loadProjects: self.loadResearchProjects()) },
+                makeRun: { path in
+                    let vault = self.vaultRepository()
+                    return ResearchRunViewModel(
+                        path: path, loadProjects: self.loadResearchProjects(), readHead: self.readTableHead(),
+                        fileURL: { vault.fileURL(for: $0) })
+                })
+        }
     }
 }

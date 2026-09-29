@@ -203,6 +203,7 @@ extension Container {
                 makePaper: { PaperViewModel(key: $0, library: self.manageLibrary()) },
                 makeExperiment: { ExperimentViewModel(key: $0, library: self.manageLibrary()) },
                 makeComparison: { ComparisonViewModel(keys: $0, library: self.manageLibrary()) },
+                research: self.researchScreens(),
                 makeChat: { self.chatViewModel() },
                 makeLab: { self.labViewModel() },
                 makeForge: { self.forgeViewModel() },

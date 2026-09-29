@@ -20,6 +20,10 @@ public struct WorkspaceTab: Identifiable, Hashable, Sendable {
         case experiment(String)
         /// 実験を並べて比べる（キーの並び）。
         case comparison([String])
+        /// ~/Research のプロジェクト（ライブラリの中でのパス）。
+        case researchProject(String)
+        /// ~/Research の 1 回の実行（ライブラリの中でのパス）。
+        case researchRun(String)
     }
 
     public let id: UUID
@@ -49,6 +53,8 @@ public struct WorkspaceTab: Identifiable, Hashable, Sendable {
             return key
         case .comparison(let keys):
             return "\(keys.count) 件の比較"
+        case .researchProject(let path), .researchRun(let path):
+            return path.split(separator: "/").last.map(String.init) ?? path
         }
     }
 
@@ -59,6 +65,8 @@ public struct WorkspaceTab: Identifiable, Hashable, Sendable {
         case .paper: "doc.text.magnifyingglass"
         case .experiment: "testtube.2"
         case .comparison: "chart.xyaxis.line"
+        case .researchProject: "folder.badge.gearshape"
+        case .researchRun: "chart.bar.doc.horizontal"
         }
     }
 
@@ -68,7 +76,7 @@ public struct WorkspaceTab: Identifiable, Hashable, Sendable {
         case .document(let path): path
         case .paper(let key): "Papers/\(key)/note.md"
         case .experiment(let key): "Experiments/\(key)/note.md"
-        case .tool, .comparison: nil
+        case .tool, .comparison, .researchProject, .researchRun: nil
         }
     }
 }

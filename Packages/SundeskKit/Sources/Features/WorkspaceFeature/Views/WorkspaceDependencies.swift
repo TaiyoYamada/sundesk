@@ -30,6 +30,8 @@ public struct WorkspaceDependencies {
     public let makePaper: (String) -> PaperViewModel
     public let makeExperiment: (String) -> ExperimentViewModel
     public let makeComparison: ([String]) -> ComparisonViewModel
+    /// ~/Research のプロジェクトと実行の画面。
+    public let research: ResearchScreenFactory
     public let makeChat: () -> ChatViewModel
     public let makeLab: () -> LabViewModel
     public let makeForge: () -> ForgeViewModel
@@ -48,6 +50,7 @@ public struct WorkspaceDependencies {
         makePaper: @escaping (String) -> PaperViewModel,
         makeExperiment: @escaping (String) -> ExperimentViewModel,
         makeComparison: @escaping ([String]) -> ComparisonViewModel,
+        research: ResearchScreenFactory,
         makeChat: @escaping () -> ChatViewModel,
         makeLab: @escaping () -> LabViewModel,
         makeForge: @escaping () -> ForgeViewModel,
@@ -65,6 +68,7 @@ public struct WorkspaceDependencies {
         self.makePaper = makePaper
         self.makeExperiment = makeExperiment
         self.makeComparison = makeComparison
+        self.research = research
         self.makeChat = makeChat
         self.makeLab = makeLab
         self.makeForge = makeForge

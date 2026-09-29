@@ -44,6 +44,8 @@ struct NavigatorView: View {
                     case .paper(let key, let title): workspace.open(paper: key, title: title)
                     case .experiment(let key, let title): workspace.open(experiment: key, title: title)
                     case .comparison(let keys): workspace.open(comparison: keys)
+                    case .researchProject(let path, let title): workspace.open(researchProject: path, title: title)
+                    case .researchRun(let path, let title): workspace.open(researchRun: path, title: title)
                     }
                 }
             case .search:
