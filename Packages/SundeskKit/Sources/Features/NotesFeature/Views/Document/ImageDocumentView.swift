@@ -25,7 +25,7 @@ struct ImageDocumentView: View {
                     Image(nsImage: image)
                         .resizable()
                         .interpolation(.high)
-                        .aspectRatio(contentMode: .fit)
+                        .scaledToFit()
                         .frame(
                             width: displayWidth(of: image, in: geometry.size),
                             height: displayWidth(of: image, in: geometry.size) * image.size.height
