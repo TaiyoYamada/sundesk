@@ -45,22 +45,10 @@ jobs:
         working-directory: engine
         run: uv sync --locked
 
-      - name: パッケージのテスト（結合テストを含む）
-        # ジョブの上限で打ち切られるとログが残らないので、25 分で自分から止め、どこで止まったかを記録に残す
-        timeout-minutes: 30
-        env:
-          SUNDESK_INTEGRATION: "1"
-        run: |
-          set -o pipefail
-          perl -e 'alarm shift; exec @ARGV' 1500 make test-package 2>&1 | tee swift-test.log
-
-      - name: テストの記録を残す
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: swift-test-log
-          path: swift-test.log
-          if-no-files-found: ignore
+      # GPU（Metal）を使うテストと、エンジンを起動するテストは、仮想マシンで止まることがあるので手順を分ける
+      - name: パッケージのテスト
+        timeout-minutes: 20
+        run: swift test --package-path Packages/SundeskKit --enable-code-coverage --skip "GraphLayoutTests|EngineProcessTests"
 
       - name: カバレッジ
         run: |
@@ -69,6 +57,16 @@ jobs:
             echo
             scripts/swift-coverage.sh
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: エンジンを起動する結合テスト
+        timeout-minutes: 10
+        env:
+          SUNDESK_INTEGRATION: "1"
+        run: swift test --package-path Packages/SundeskKit --filter EngineProcessTests
+
+      - name: 知識グラフの配置（GPU）のテスト
+        timeout-minutes: 10
+        run: swift test --package-path Packages/SundeskKit --filter GraphLayoutTests
 
       - name: アプリのユニットテスト
         run: make test-app XCODEBUILD_FLAGS="CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="
