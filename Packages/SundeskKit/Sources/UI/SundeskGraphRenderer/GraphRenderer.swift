@@ -37,6 +37,8 @@ final class GraphRenderer: NSObject, MTKViewDelegate {
     var uniformsProvider: (() -> GraphUniforms)?
     /// 描いた後に呼ばれる（ラベルの位置を更新する）。
     var didDraw: (() -> Void)?
+    /// 描き直しが要るか（カメラや色が変わった）。配置が落ち着いていて変化もなければ、描かずに休む。
+    var needsDisplay = true
 
     init?(device: (any MTLDevice)? = MTLCreateSystemDefaultDevice()) {
         guard let device, let queue = device.makeCommandQueue(),
@@ -70,6 +72,7 @@ final class GraphRenderer: NSObject, MTKViewDelegate {
 
     /// 形（点と線）を入れ替える。
     func load(_ scene: GraphScene, positions: [SIMD2<Float>]) {
+        needsDisplay = true
         layout.load(scene, positions: positions)
         edgeCount = scene.edges.count
         edgeBuffer = makeBuffer(scene.edges.map { SIMD2<UInt32>(UInt32($0.source), UInt32($0.target)) })
@@ -80,6 +83,7 @@ final class GraphRenderer: NSObject, MTKViewDelegate {
     func updateColors(nodes: [SIMD4<Float>], edges: [SIMD4<Float>]) {
         colorBuffer = makeBuffer(nodes)
         edgeColorBuffer = makeBuffer(edges)
+        needsDisplay = true
     }
 
     // MARK: - MTKViewDelegate
@@ -87,7 +91,8 @@ final class GraphRenderer: NSObject, MTKViewDelegate {
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
     func draw(in view: MTKView) {
-        guard let commandBuffer = queue.makeCommandBuffer() else { return }
+        guard !layout.isSettled || needsDisplay, let commandBuffer = queue.makeCommandBuffer() else { return }
+        needsDisplay = false
         layout.encode(steps: 2, into: commandBuffer)
 
         if let descriptor = view.currentRenderPassDescriptor, let drawable = view.currentDrawable,

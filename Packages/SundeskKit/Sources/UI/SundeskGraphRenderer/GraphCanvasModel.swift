@@ -29,9 +29,15 @@ public final class GraphCanvasModel {
     public private(set) var isAvailable = true
 
     @ObservationIgnored let renderer: GraphRenderer?
-    @ObservationIgnored private var center = SIMD2<Float>.zero
-    @ObservationIgnored private var zoom: Float = 1
-    @ObservationIgnored var viewSize = CGSize(width: 800, height: 600)
+    @ObservationIgnored private var center = SIMD2<Float>.zero {
+        didSet { renderer?.needsDisplay = true }
+    }
+    @ObservationIgnored private var zoom: Float = 1 {
+        didSet { renderer?.needsDisplay = true }
+    }
+    @ObservationIgnored var viewSize = CGSize(width: 800, height: 600) {
+        didSet { renderer?.needsDisplay = true }
+    }
     @ObservationIgnored private var indexByID: [Int: Int] = [:]
     @ObservationIgnored private var neighborIndices: [[Int]] = []
     @ObservationIgnored private var appearanceIsDark = false
@@ -154,6 +160,7 @@ public final class GraphCanvasModel {
 
     func drag(node index: Int, to point: CGPoint) {
         renderer?.layout.pin(index, at: world(at: point))
+        renderer?.needsDisplay = true
     }
 
     func release(node index: Int) {
