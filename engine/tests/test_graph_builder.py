@@ -121,6 +121,16 @@ def test_extractor_skips_function_words() -> None:
     assert "ため" not in keys
 
 
+def test_extractor_skips_research_note_headings() -> None:
+    keys = {
+        occurrence.key
+        for occurrence in TermExtractor().occurrences("仮説と考察。SPSA の結果をメモする。")
+    }
+
+    assert {"仮説", "考察", "結果", "メモ"}.isdisjoint(keys)
+    assert "spsa" in keys
+
+
 def test_titles_are_always_concepts() -> None:
     response = build(min_frequency=100)
 
