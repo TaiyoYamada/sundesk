@@ -286,7 +286,7 @@ public final class ChatViewModel {
 - 本物のエンジンを起動する結合テストは、`SUNDESK_INTEGRATION=1` のときだけ走る（`make test-integration`、CI では常に走らせる）
 - 本物のモデルで知識、チャット、実験室、工房を通して確かめるテストは、`SUNDESK_MODELS=1` のときだけ走る（`make test-models`）。
   モデルのダウンロード（約 1GB）と量子化・蒸留で重いので、CI では走らせない
-- CI（GitHub Actions）はプルリクエストごとに、lint、テスト、カバレッジの集計を行う
+- CI（GitHub Actions）はプルリクエストごとに、lint とテストを行う。カバレッジは Python だけ CI で集計し、Swift は手元で `make coverage` で見る（tree-sitter の文法まで集計して時間切れになるため）
 
 ## 12. 未決事項
 

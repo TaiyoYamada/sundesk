@@ -45,18 +45,12 @@ jobs:
         working-directory: engine
         run: uv sync --locked
 
-      # GPU（Metal）を使うテストと、エンジンを起動するテストは、仮想マシンで止まることがあるので手順を分ける
+      # GPU（Metal）を使うテストと、エンジンを起動するテストは、手順を分けてどこで時間がかかるかを見えるようにする。
+      # カバレッジは取らない（tree-sitter の文法の巨大な C ファイルまで集計するので、仮想マシンでは時間切れになる）。
+      # 手元では `make coverage` で見る
       - name: パッケージのテスト
         timeout-minutes: 20
-        run: swift test --package-path Packages/SundeskKit --enable-code-coverage --skip "GraphLayoutTests|EngineProcessTests"
-
-      - name: カバレッジ
-        run: |
-          {
-            echo "## Swift パッケージのカバレッジ"
-            echo
-            scripts/swift-coverage.sh
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: swift test --package-path Packages/SundeskKit --skip "GraphLayoutTests|EngineProcessTests"
 
       - name: エンジンを起動する結合テスト
         timeout-minutes: 10
