@@ -216,3 +216,52 @@ struct SampleLibraryTests {
         #expect(try FileManager.default.contentsOfDirectory(atPath: root.appending(path: "Inbox").path).isEmpty)
     }
 }
+
+@Suite("~/Research の論文をつなぐ")
+struct LinkedPaperTests {
+    private struct Inspector: PDFInspecting {
+        func identifier(in pdf: URL) -> PaperIdentifier? {
+            pdf.lastPathComponent.hasPrefix("HGA") ? .doi("10.1000/hga") : nil
+        }
+        func title(in pdf: URL) -> String? { "Hybrid genetic algorithm" }
+    }
+
+    private struct NoBibliography: BibliographyService {
+        func metadata(for identifier: PaperIdentifier) async throws(LibraryError) -> PaperMetadata {
+            throw .network("通信しない")
+        }
+        func downloadPDF(arxiv: String) async throws(LibraryError) -> URL { throw .network("通信しない") }
+    }
+
+    @Test("PDF を写さずに論文にし、2 回目はつなぎ直さない。PDF の場所はつないだフォルダを指す")
+    func linksResearchPDFs() async throws {
+        let base = FileManager.default.temporaryDirectory.appending(path: "sundesk-link-\(UUID().uuidString)")
+        let library = base.appending(path: "library")
+        let research = base.appending(path: "Research")
+        defer { try? FileManager.default.removeItem(at: base) }
+        for name in ["Ant_colony_search_for_routing_problems.pdf", "HGA.pdf"] {
+            let url = research.appending(path: "paper/\(name)")
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data("%PDF".utf8).write(to: url)
+        }
+        let repository = FileSystemLibraryRepository(
+            root: { library }, markdown: SwiftMarkdownParser(),
+            mounts: { [VaultMount(name: "Research", url: research)] })
+        let interactor = LibraryInteractor(repository: repository, bibliography: NoBibliography(), pdfs: Inspector())
+        try await interactor.prepare()
+
+        #expect(try await interactor.linkResearchPapers() == 2)
+        #expect(try await interactor.linkResearchPapers() == 0)
+
+        let papers = try await interactor.papers()
+        let ants = try #require(papers.first { $0.metadata.title.hasPrefix("Ant colony") })
+        #expect(ants.metadata.title == "Ant colony search for routing problems")
+        #expect(ants.pdfPath == "Research/paper/Ant_colony_search_for_routing_problems.pdf")
+        #expect(interactor.fileURL(for: try #require(ants.pdfPath)).path.hasPrefix(research.path))
+        let hga = try #require(papers.first { $0.metadata.doi == "10.1000/hga" })
+        #expect(hga.metadata.title == "Hybrid genetic algorithm（HGA）")
+        // PDF は写していない
+        #expect(!FileManager.default.fileExists(atPath: library.appending(path: "Papers/\(hga.key)/paper.pdf").path))
+    }
+}

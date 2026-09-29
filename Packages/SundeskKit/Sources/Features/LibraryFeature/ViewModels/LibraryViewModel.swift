@@ -106,6 +106,9 @@ public final class LibraryViewModel {
         if let imported = try? await library.importInbox(), !imported.isEmpty {
             message = "取り込み箱から \(imported.count) 件の実験を取り込みました"
         }
+        if let linked = try? await library.linkResearchPapers(), linked > 0 {
+            message = "~/Research の PDF を \(linked) 本、論文につなぎました"
+        }
         paperModels = (try? await library.papers()) ?? []
         papers = paperModels.map(PaperRow.init)
         experiments = ((try? await library.experiments()) ?? []).map(ExperimentRow.init)

@@ -115,6 +115,8 @@ private final class LibraryStub: ManageLibraryUseCase, @unchecked Sendable {
     func savePaper(_ paper: Paper) async throws(LibraryError) {}
     func refreshMetadata(of paper: Paper) async throws(LibraryError) -> Paper { paper }
     func attachPDF(_ pdf: URL, to paper: Paper) async throws(LibraryError) {}
+    func linkResearchPapers() async throws(LibraryError) -> Int { 0 }
+    func fileURL(for path: String) -> URL { URL(filePath: "/library").appending(path: path) }
     func experiments() async throws(LibraryError) -> [ResearchExperiment] { storedExperiments }
     func createExperiment(title: String, algorithm: String, problem: String) async throws(LibraryError)
         -> ResearchExperiment

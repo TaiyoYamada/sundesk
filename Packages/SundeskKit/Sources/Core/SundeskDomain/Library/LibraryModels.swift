@@ -74,11 +74,14 @@ public struct Paper: Hashable, Sendable, Identifiable {
     public var added: Date?
     /// 論文メモ（`Papers/<キー>/note.md`）の、ライブラリのルートからのパス。
     public var notePath: String { "\(LibrarySection.papers.folder)/\(key)/note.md" }
-    /// 本文の PDF（なければ nil）。
+    /// 本文の PDF の、ライブラリの中でのパス（なければ nil）。
     public let pdfPath: String?
+    /// 写さずに場所を指している PDF（~/Research の中など）。論文メモの `pdf` に書く。
+    public let linkedPDF: String?
 
     public init(
-        key: String, metadata: PaperMetadata, status: ReadingStatus, tags: [String], added: Date?, pdfPath: String?
+        key: String, metadata: PaperMetadata, status: ReadingStatus, tags: [String], added: Date?, pdfPath: String?,
+        linkedPDF: String? = nil
     ) {
         self.key = key
         self.metadata = metadata
@@ -86,6 +89,7 @@ public struct Paper: Hashable, Sendable, Identifiable {
         self.tags = tags
         self.added = added
         self.pdfPath = pdfPath
+        self.linkedPDF = linkedPDF
     }
 }
 

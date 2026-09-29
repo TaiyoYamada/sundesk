@@ -203,7 +203,7 @@ public final class DocumentViewModel {
     /// フロントマターのプロパティ（タイトルとタグはほかの場所に出すので除く）。
     public var properties: [PropertyItem] {
         analysis?.properties
-            .filter { $0.key != "title" && $0.key != "tags" && $0.key != "tag" }
+            .filter { $0.key != "title" && $0.key != "tags" && $0.key != "tag" && !$0.value.displayString.isEmpty }
             .map { PropertyItem(key: $0.key, value: $0.value.displayString) } ?? []
     }
 

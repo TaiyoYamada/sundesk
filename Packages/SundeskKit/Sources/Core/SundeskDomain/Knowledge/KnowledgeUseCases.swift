@@ -129,23 +129,10 @@ public actor KnowledgeBuilder {
             throw .vault(error)
         }
         let files = tree.files
-        let titles = await FolderNote.titles(in: files.map(\.path), vault: vault, markdown: markdown)
-        let resolver = LinkResolver(paths: files.map(\.path), titles: titles)
-        let notesToRead = files.filter { $0.kind == .markdown }
-        var notes: [GraphSourceNote] = []
-        for (index, file) in notesToRead.enumerated() {
-            step = .readingNotes(done: index, total: notesToRead.count)
-            guard let source = try? await vault.readText(at: file.path) else { continue }
-            let analysis = markdown.analyze(source, path: file.path)
-            let title = analysis.title ?? String(file.name.split(separator: ".").first ?? Substring(file.name))
-            let links = analysis.links.compactMap { resolver.resolve($0.target, exact: $0.isExactPath) }
-            let chunks = chunker.chunks(for: source, path: file.path, title: title)
-            notes.append(
-                GraphSourceNote(path: file.path, title: title, links: Array(Set(links)).sorted(), chunks: chunks))
-        }
+        let (notes, linkedPDFs) = await readNotes(files)
 
         // 論文の PDF の本文も、検索と出典に使う（知識グラフには入れない。英文が多く、概念がそちらに偏るため）
-        let pdfChunks = paperChunks(files: files, notes: notes)
+        let pdfChunks = paperChunks(files: files, notes: notes, linkedPDFs: linkedPDFs)
 
         // 2. 埋め込み（変わっていないチャンクは前回のものを使う）
         let chunks = notes.flatMap(\.chunks) + pdfChunks
@@ -181,20 +168,50 @@ public actor KnowledgeBuilder {
     }
 
     /// 論文のフォルダ（`Papers/<キー>/`）の PDF を、ページごとに区切る。題名は論文メモから取る。
-    private func paperChunks(files: [VaultNode], notes: [GraphSourceNote]) -> [NoteChunk] {
+    /// ノートを読んで、見出しで区切る。あわせて、論文メモが写さずに指している PDF（~/Research の中）→ 論文のフォルダを集める。
+    private func readNotes(_ files: [VaultNode]) async -> (notes: [GraphSourceNote], linkedPDFs: [String: String]) {
+        let titles = await FolderNote.titles(in: files.map(\.path), vault: vault, markdown: markdown)
+        let resolver = LinkResolver(paths: files.map(\.path), titles: titles)
+        let notesToRead = files.filter { $0.kind == .markdown }
+        var notes: [GraphSourceNote] = []
+        var linkedPDFs: [String: String] = [:]
+        for (index, file) in notesToRead.enumerated() {
+            step = .readingNotes(done: index, total: notesToRead.count)
+            guard let source = try? await vault.readText(at: file.path) else { continue }
+            let analysis = markdown.analyze(source, path: file.path)
+            if file.path.hasPrefix("Papers/"),
+                case .text(let pdf)? = analysis.properties.first(where: { $0.key == "pdf" })?.value
+            {
+                linkedPDFs[pdf] = (file.path as NSString).deletingLastPathComponent
+            }
+            let title = analysis.title ?? String(file.name.split(separator: ".").first ?? Substring(file.name))
+            let links = analysis.links.compactMap { resolver.resolve($0.target, exact: $0.isExactPath) }
+            let chunks = chunker.chunks(for: source, path: file.path, title: title)
+            notes.append(
+                GraphSourceNote(path: file.path, title: title, links: Array(Set(links)).sorted(), chunks: chunks))
+        }
+        return (notes, linkedPDFs)
+    }
+
+    /// - Parameter linkedPDFs: 論文メモが写さずに指している PDF → 論文のフォルダ。
+    ///   出典は論文のフォルダの `paper.pdf` として記録する（開くと論文の画面で、そのページへ移る）。
+    private func paperChunks(
+        files: [VaultNode], notes: [GraphSourceNote], linkedPDFs: [String: String]
+    ) -> [NoteChunk] {
         guard let documents else { return [] }
         let titles = Dictionary(notes.map { ($0.path, $0.title) }, uniquingKeysWith: { first, _ in first })
         var chunks: [NoteChunk] = []
-        for file in files where file.kind == .pdf && file.path.hasPrefix("Papers/") {
-            let folder = (file.path as NSString).deletingLastPathComponent
+        for file in files where file.kind == .pdf && (file.path.hasPrefix("Papers/") || linkedPDFs[file.path] != nil) {
+            let folder = linkedPDFs[file.path] ?? (file.path as NSString).deletingLastPathComponent
             let title = titles["\(folder)/note.md"] ?? file.name
+            let citedPath = linkedPDFs[file.path] == nil ? file.path : "\(folder)/paper.pdf"
             for (index, page) in documents.pages(of: vault.fileURL(for: file.path)).enumerated() {
                 let text = page.replacing(/[ \t]+/, with: " ").trimmingCharacters(in: .whitespacesAndNewlines)
                 guard text.count > 40 else { continue }
                 for piece in Self.pieces(of: text, maxLength: 1200) {
                     chunks.append(
                         NoteChunk(
-                            id: "\(file.path)#\(chunks.count)", notePath: file.path, noteTitle: title,
+                            id: "\(file.path)#\(chunks.count)", notePath: citedPath, noteTitle: title,
                             headingPath: [title, "p.\(index + 1)"], text: piece, plainText: piece, line: index + 1))
                 }
             }

@@ -26,6 +26,20 @@ extension Container {
 
     // MARK: - Data
 
+    /// 読むだけでつなぐフォルダ（~/Research と study-artifact）。呼ぶたびに設定から作る。
+    var researchMounts: Factory<@Sendable () -> [VaultMount]> {
+        self {
+            let settings = self.settingsRepository()
+            return {
+                let resolved = settings.load().resolved(with: settings.defaults)
+                return ResearchSources.mounts(
+                    research: resolved.researchDirectory, study: resolved.studyDirectory,
+                    studySections: resolved.studySections
+                ) { FileManager.default.fileExists(atPath: $0) }
+            }
+        }
+    }
+
     var vaultRepository: Factory<any VaultRepository> {
         self {
             let settings = self.settingsRepository()
@@ -35,13 +49,7 @@ extension Container {
                         filePath: settings.load().resolved(with: settings.defaults).vaultDirectory,
                         directoryHint: .isDirectory)
                 },
-                mounts: {
-                    let resolved = settings.load().resolved(with: settings.defaults)
-                    return ResearchSources.mounts(
-                        research: resolved.researchDirectory, study: resolved.studyDirectory,
-                        studySections: resolved.studySections
-                    ) { FileManager.default.fileExists(atPath: $0) }
-                })
+                mounts: self.researchMounts())
         }
         .singleton
     }

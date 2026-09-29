@@ -58,7 +58,7 @@ public final class PaperViewModel {
         url = paper.metadata.url ?? ""
         status = paper.status.rawValue
         tags = paper.tags.joined(separator: ", ")
-        pdfURL = paper.pdfPath.map { library.root().appending(path: $0) }
+        pdfURL = paper.pdfPath.map { library.fileURL(for: $0) }
         notePath = paper.notePath
         isLoaded = true
     }

@@ -24,7 +24,7 @@ extension Container {
                         filePath: settings.load().resolved(with: settings.defaults).vaultDirectory,
                         directoryHint: .isDirectory)
                 },
-                markdown: self.markdownParser())
+                markdown: self.markdownParser(), mounts: self.researchMounts())
         }
         .singleton
     }

@@ -256,7 +256,7 @@ public struct AppDataLabFiles: LabFileLocations {
 
     public func newAdapterDirectory(name: String) -> String {
         let safe = name.replacing(/[\/:\\]/, with: "-")
-        let stamp = Date.now.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false))
+        let stamp = Date.now.formatted(.localISO8601.year().month().day().time(includingFractionalSeconds: false))
             .replacing(":", with: "")
         let directory = (try? AppDataDirectory.url("Adapters")) ?? FileManager.default.temporaryDirectory
         return directory.appending(path: "\(safe)-\(stamp)", directoryHint: .isDirectory).path
@@ -275,7 +275,7 @@ public struct AppDataLabFiles: LabFileLocations {
     }
 
     public func newImagePath() -> String {
-        let stamp = Date.now.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: true))
+        let stamp = Date.now.formatted(.localISO8601.year().month().day().time(includingFractionalSeconds: true))
             .replacing(":", with: "")
         let directory = (try? AppDataDirectory.url("Images")) ?? FileManager.default.temporaryDirectory
         return directory.appending(path: "\(stamp).png").path

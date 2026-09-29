@@ -53,7 +53,7 @@ struct NewNoteSheet: View {
     let viewModel: LibraryViewModel
     let done: (String?) -> Void
     @Environment(\.dismiss) private var dismiss
-    @State private var name = Date.now.formatted(.iso8601.year().month().day())
+    @State private var name = Date.now.formatted(Date.ISO8601FormatStyle(timeZone: .current).year().month().day())
 
     var body: some View {
         Form {

@@ -132,7 +132,7 @@ struct ExperimentFile: Codable {
 
     static func string(_ date: Date) -> String {
         date.formatted(
-            .iso8601.year().month().day().time(includingFractionalSeconds: false).timeZone(separator: .omitted))
+            .localISO8601.year().month().day().time(includingFractionalSeconds: false).timeZone(separator: .omitted))
     }
 }
 
@@ -203,10 +203,12 @@ enum LibraryText {
         let metadata = PaperMetadata(
             title: text("title") ?? key, authors: list("authors"), year: text("year").flatMap(Int.init),
             venue: text("venue"), arxiv: text("arxiv"), doi: text("doi"), url: text("url"))
+        // 写した PDF（paper.pdf）があればそれを、なければ論文メモの pdf が指す PDF（~/Research など）を使う
+        let linked = text("pdf")
         return Paper(
             key: key, metadata: metadata, status: text("status").flatMap(ReadingStatus.init) ?? .unread,
             tags: list("tags"), added: text("added").flatMap(ExperimentFile.date),
-            pdfPath: hasPDF ? "\(LibrarySection.papers.folder)/\(key)/paper.pdf" : nil)
+            pdfPath: hasPDF ? "\(LibrarySection.papers.folder)/\(key)/paper.pdf" : linked, linkedPDF: linked)
     }
 
     /// 論文のフロントマター。
@@ -218,10 +220,11 @@ enum LibraryText {
         if let arxiv = paper.metadata.arxiv { lines.append("arxiv: \(quote(arxiv))") }
         if let doi = paper.metadata.doi { lines.append("doi: \(quote(doi))") }
         if let url = paper.metadata.url { lines.append("url: \(quote(url))") }
+        if let linked = paper.linkedPDF { lines.append("pdf: \(quote(linked))") }
         lines.append("status: \(paper.status.rawValue)")
         lines.append("tags: [\(paper.tags.map(quote).joined(separator: ", "))]")
         let added = paper.added ?? .now
-        lines.append("added: \(added.formatted(.iso8601.year().month().day()))")
+        lines.append("added: \(added.formatted(.localISO8601.year().month().day()))")
         lines.append("---")
         return lines.joined(separator: "\n") + "\n"
     }
@@ -252,14 +255,19 @@ enum LibraryText {
         if slug(lastName).isEmpty {
             if let arxiv = metadata.arxiv { return "arxiv-" + slug(arxiv) }
             if let doi = metadata.doi { return "doi-" + slug(doi) }
-            return "paper-" + Date.now.formatted(.iso8601.year().month().day().dateSeparator(.omitted))
+            // 著者も ID もなければ、題名の初めの語から作る（日本語はローマ字にする）
+            let words = slug(romanized(metadata.title)).split(separator: "-").prefix(4).joined(separator: "-")
+            if !words.isEmpty { return String(words.prefix(48)) }
+            let day = Date.now.formatted(
+                .localISO8601.year().month().day().dateSeparator(.omitted))
+            return "paper-" + day
         }
         return base
     }
 
     /// 実験のキー（`YYYY-MM-DD-<題名から作った名前>`）。
     static func experimentKey(title: String, date: Date) -> String {
-        let day = date.formatted(.iso8601.year().month().day())
+        let day = date.formatted(.localISO8601.year().month().day())
         let name = slug(title)
         return name.isEmpty ? "\(day)-experiment" : "\(day)-\(name.prefix(40))"
     }
@@ -269,6 +277,12 @@ enum LibraryText {
         let folded = text.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .init(identifier: "en"))
         let replaced = folded.lowercased().replacing(/[^a-z0-9.]+/, with: "-")
         return replaced.trimmingCharacters(in: CharacterSet(charactersIn: "-."))
+    }
+
+    /// 日本語などを、キーに使えるローマ字にする。
+    static func romanized(_ text: String) -> String {
+        text.applyingTransform(.toLatin, reverse: false)?
+            .applyingTransform(.stripDiacritics, reverse: false) ?? text
     }
 
     static func quote(_ text: String) -> String {

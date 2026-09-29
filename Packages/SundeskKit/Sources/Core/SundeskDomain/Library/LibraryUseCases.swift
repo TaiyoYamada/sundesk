@@ -21,6 +21,12 @@ public protocol LibraryRepository: Sendable {
     /// 書誌情報、読んだ状態、タグを書き直す（論文メモの本文は残す）。
     func savePaper(_ paper: Paper) async throws(LibraryError)
     func attachPDF(_ pdf: URL, to key: String) async throws(LibraryError)
+    /// 読むだけでつないだ研究のデータ（~/Research の paper/）にある PDF のうち、まだ論文になっていないもの。
+    func unlinkedResearchPDFs() async -> [String]
+    /// PDF を写さずに、その場所を指す論文を作る（`pdf` はライブラリの中でのパス）。
+    func linkPaper(_ metadata: PaperMetadata, pdf: String) async throws(LibraryError) -> Paper
+    /// ライブラリの中のパス（つないだフォルダも含む）を、ファイルの場所にする。
+    func fileURL(for path: String) -> URL
 
     func experiments() async throws(LibraryError) -> [ResearchExperiment]
     func createExperiment(title: String, algorithm: String, problem: String) async throws(LibraryError)
@@ -73,6 +79,10 @@ public protocol ManageLibraryUseCase: Sendable {
     /// 書誌情報を取り直す（arXiv の ID か DOI があるとき）。
     func refreshMetadata(of paper: Paper) async throws(LibraryError) -> Paper
     func attachPDF(_ pdf: URL, to paper: Paper) async throws(LibraryError)
+    /// ~/Research の PDF のうち、まだ論文になっていないものを論文にする（写さずに場所を指す）。作った数を返す。
+    func linkResearchPapers() async throws(LibraryError) -> Int
+    /// ライブラリの中のパス（つないだフォルダも含む）を、ファイルの場所にする。
+    func fileURL(for path: String) -> URL
 
     func experiments() async throws(LibraryError) -> [ResearchExperiment]
     func createExperiment(title: String, algorithm: String, problem: String) async throws(LibraryError)
@@ -145,6 +155,34 @@ public struct LibraryInteractor: ManageLibraryUseCase {
 
     public func savePaper(_ paper: Paper) async throws(LibraryError) {
         try await repository.savePaper(paper)
+    }
+
+    public func linkResearchPapers() async throws(LibraryError) -> Int {
+        let paths = await repository.unlinkedResearchPDFs()
+        for path in paths {
+            let url = repository.fileURL(for: path)
+            // 書誌情報は通信せずに分かるところだけ。ID があれば、あとで「取り直す」で埋められる
+            var metadata = PaperMetadata(title: Self.title(forPDF: url, inspected: pdfs.title(in: url)))
+            switch pdfs.identifier(in: url) {
+            case .arxiv(let id): metadata.arxiv = id
+            case .doi(let doi): metadata.doi = doi
+            case nil: break
+            }
+            _ = try await repository.linkPaper(metadata, pdf: path)
+        }
+        return paths.count
+    }
+
+    /// 題名はファイル名から取る（~/Research のファイル名はたいてい題名）。短すぎるときだけ PDF から推測したものを使う。
+    static func title(forPDF url: URL, inspected: String?) -> String {
+        let name = url.deletingPathExtension().lastPathComponent.replacing("_", with: " ")
+        let words = name.split(separator: " ").count
+        if words >= 3 || name.count >= 12 { return name }
+        return inspected.map { "\($0)（\(name)）" } ?? name
+    }
+
+    public func fileURL(for path: String) -> URL {
+        repository.fileURL(for: path)
     }
 
     public func refreshMetadata(of paper: Paper) async throws(LibraryError) -> Paper {

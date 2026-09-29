@@ -10,19 +10,22 @@ import SundeskDomain
 
 /// 研究ライブラリを、ふつうのファイルとして読み書きする（docs/library-format.md）。
 public struct FileSystemLibraryRepository: LibraryRepository {
-    private let rootURL: @Sendable () -> URL
+    let rootURL: @Sendable () -> URL
     private let markdown: any MarkdownParsing
     private let inboxURL: @Sendable () -> URL
+    let mounts: @Sendable () -> [VaultMount]
 
     /// - Parameters:
     ///   - root: ライブラリのフォルダ。
     ///   - inbox: 取り込み箱。既定はライブラリの `Inbox/`（環境変数 `SUNDESK_INBOX` があればそちら）。
+    ///   - mounts: 読むだけでつないだフォルダ（~/Research など）。
     public init(
         root: @escaping @Sendable () -> URL, markdown: any MarkdownParsing,
-        inbox: (@Sendable () -> URL)? = nil
+        inbox: (@Sendable () -> URL)? = nil, mounts: @escaping @Sendable () -> [VaultMount] = { [] }
     ) {
         self.rootURL = root
         self.markdown = markdown
+        self.mounts = mounts
         self.inboxURL =
             inbox ?? {
                 if let path = ProcessInfo.processInfo.environment["SUNDESK_INBOX"], !path.isEmpty {
@@ -36,13 +39,22 @@ public struct FileSystemLibraryRepository: LibraryRepository {
         rootURL()
     }
 
-    private var fileManager: FileManager { .default }
+    var fileManager: FileManager { .default }
 
     private func url(_ relative: String) -> URL {
-        rootURL().appending(path: relative)
+        fileURL(for: relative)
     }
 
-    private func folder(_ section: LibrarySection) -> URL {
+    public func fileURL(for path: String) -> URL {
+        for mount in mounts() {
+            if let inside = mount.relativePath(of: path) {
+                return inside.isEmpty ? mount.url : mount.url.appending(path: inside)
+            }
+        }
+        return rootURL().appending(path: path)
+    }
+
+    func folder(_ section: LibrarySection) -> URL {
         rootURL().appending(path: section.folder, directoryHint: .isDirectory)
     }
 
@@ -64,7 +76,15 @@ public struct FileSystemLibraryRepository: LibraryRepository {
             guard let source = try? String(contentsOf: note, encoding: .utf8) else { return nil }
             let properties = markdown.analyze(source, path: "\(LibrarySection.papers.folder)/\(key)/note.md").properties
             return LibraryText.paper(
-                key: key, properties: properties, hasPDF: exists(directory.appending(path: "paper.pdf")))
+                key: key, properties: properties, hasPDF: exists(directory.appending(path: "paper.pdf"))
+            )
+            .map { paper in
+                // つないだ PDF（~/Research）が消えていたら、PDF なしとして扱う
+                guard let pdf = paper.pdfPath, !exists(url(pdf)) else { return paper }
+                return Paper(
+                    key: paper.key, metadata: paper.metadata, status: paper.status, tags: paper.tags,
+                    added: paper.added, pdfPath: nil, linkedPDF: paper.linkedPDF)
+            }
         }
         .sorted { ($0.added ?? .distantPast, $0.metadata.title) > ($1.added ?? .distantPast, $1.metadata.title) }
     }
@@ -263,86 +283,5 @@ public struct FileSystemLibraryRepository: LibraryRepository {
         let target = url(path).standardizedFileURL
         guard target.path.hasPrefix(rootURL().standardizedFileURL.path + "/") else { throw .invalid("ライブラリの外は消せません") }
         try storage { try fileManager.trashItem(at: target, resultingItemURL: nil) }
-    }
-
-    // MARK: - 書き出しと戻し
-
-    public func export(to destination: URL) async throws(LibraryError) {
-        try storage {
-            try fileManager.createDirectory(
-                at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try fileManager.copyItem(at: rootURL(), to: destination)
-        }
-    }
-
-    public func restore(from source: URL) async throws(LibraryError) {
-        let hasLibrary = LibrarySection.allCases.contains { exists(source.appending(path: $0.folder)) }
-        guard hasLibrary else { throw .invalid("選んだフォルダは sundesk のライブラリではありません") }
-        let root = rootURL()
-        try storage {
-            if exists(root) {
-                // 念のため、今のライブラリは横に残してから置き換える
-                let stamp = Date.now.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false))
-                    .replacing(":", with: "")
-                let backup = root.deletingLastPathComponent().appending(path: "Library-\(stamp)")
-                try fileManager.moveItem(at: root, to: backup)
-            }
-            try fileManager.copyItem(at: source, to: root)
-        }
-    }
-}
-
-// MARK: - 補助
-
-extension FileSystemLibraryRepository {
-    private func subfolders(of directory: URL) -> [URL] {
-        ((try? fileManager.contentsOfDirectory(
-            at: directory, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles])) ?? [])
-            .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
-    }
-
-    private func exists(_ url: URL) -> Bool {
-        fileManager.fileExists(atPath: url.path)
-    }
-
-    private func uniqueKey(_ base: String, in directory: URL) -> String {
-        var key = base
-        var number = 2
-        while exists(directory.appending(path: key)) {
-            key = "\(base)-\(number)"
-            number += 1
-        }
-        return key
-    }
-
-    private func uniqueName(_ name: String, in directory: URL) -> String {
-        let stem = (name as NSString).deletingPathExtension
-        let ext = (name as NSString).pathExtension
-        var candidate = name
-        var number = 2
-        while exists(directory.appending(path: candidate)) {
-            candidate = ext.isEmpty ? "\(stem)-\(number)" : "\(stem)-\(number).\(ext)"
-            number += 1
-        }
-        return candidate
-    }
-
-    private func write(_ text: String, to url: URL) throws {
-        try Data(text.utf8).write(to: url, options: .atomic)
-    }
-
-    private func copy(_ source: URL, to destination: URL) throws {
-        if exists(destination) { try fileManager.removeItem(at: destination) }
-        try fileManager.copyItem(at: source, to: destination)
-    }
-
-    private func storage<T>(_ body: () throws -> T) throws(LibraryError) -> T {
-        do {
-            return try body()
-        } catch let error as LibraryError {
-            throw error
-        } catch {
-            throw .storage(error.localizedDescription)
-        }
     }
 }

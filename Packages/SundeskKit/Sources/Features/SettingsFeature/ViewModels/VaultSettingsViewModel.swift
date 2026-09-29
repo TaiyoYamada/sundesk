@@ -80,7 +80,7 @@ public final class VaultSettingsViewModel {
 
     /// 選んだフォルダの中に、ライブラリを丸ごと書き出す。
     public func export(into folder: URL) async {
-        let stamp = Date.now.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false))
+        let stamp = Date.now.formatted(.localISO8601.year().month().day().time(includingFractionalSeconds: false))
             .replacing(":", with: "")
         let destination = folder.appending(path: "sundesk-library-\(stamp)", directoryHint: .isDirectory)
         await work {
