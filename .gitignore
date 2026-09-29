@@ -1,0 +1,24 @@
+# macOS
+.DS_Store
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+DerivedData/
+*.xcresult
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Python（engine/）
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# make でのビルド
+build/
