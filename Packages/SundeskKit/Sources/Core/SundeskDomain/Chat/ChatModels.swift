@@ -148,6 +148,8 @@ public enum AnswerEvent: Hashable, Sendable {
     /// 根拠の候補を探し終えた。
     case retrieved([Citation])
     case loadingModel
+    /// モデルが考えている（答えの前の、考える過程を出している）。
+    case thinking
     case token(String)
     /// 答え終えて保存した。
     case finished(ChatMessage)

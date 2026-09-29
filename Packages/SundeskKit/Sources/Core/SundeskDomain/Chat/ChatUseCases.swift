@@ -81,17 +81,24 @@ public struct AskQuestionInteractor: AskQuestionUseCase {
         let messages = Self.prompt(
             question: question, sources: retrieved.map(\.chunk), history: history.suffix(historyLimit))
         var answer = ""
+        var thinking = ThinkingFilter()
         for try await event in languageModel.generate(messages, model: model, settings: settings) {
             switch event {
             case .loading:
                 continuation.yield(.loadingModel)
             case .token(let text):
-                answer += text
-                continuation.yield(.token(text))
+                let visible = thinking.feed(text)
+                if thinking.isThinking && visible.isEmpty { continuation.yield(.thinking) }
+                if !visible.isEmpty {
+                    answer += visible
+                    continuation.yield(.token(visible))
+                }
             case .done:
                 break
             }
         }
+        answer += thinking.finish()
+        answer = answer.trimmingCharacters(in: .whitespacesAndNewlines)
 
         let cited = Self.citedNumbers(in: answer)
         let message = ChatMessage(

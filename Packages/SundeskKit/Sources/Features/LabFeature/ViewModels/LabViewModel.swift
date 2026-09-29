@@ -96,7 +96,7 @@ public final class LabViewModel {
     public var steeringLayer = 8
     public var steeringPositive = "嬉しい\n楽しい\n最高の気分だ"
     public var steeringNegative = "悲しい\nつらい\n最悪の気分だ"
-    public var steeringStrength = 4.0
+    public var steeringStrength = 1.0
     public private(set) var steering: SteeringItem?
     public private(set) var experiments: [ExperimentItem] = []
 

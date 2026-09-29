@@ -165,9 +165,11 @@ public final class ChatViewModel {
                     status = "考えています"
                 case .loadingModel:
                     status = "モデルを読み込んでいます（初回はダウンロードに時間がかかります）"
+                case .thinking:
+                    status = "考えています"
                 case .token(let text):
                     status = nil
-                    streamingAnswer += text
+                    streamingAnswer += streamingAnswer.isEmpty ? String(text.drop { $0.isWhitespace }) : text
                 case .finished(let message):
                     messages.append(ChatMessageItem(message))
                     streamingAnswer = ""
