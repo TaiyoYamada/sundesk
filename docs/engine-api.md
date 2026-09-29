@@ -8,14 +8,18 @@
 - `127.0.0.1` の HTTP。すべての要求に `Authorization: Bearer <起動ごとのトークン>` を付ける（[ADR 0006](adr/0006-engine-http-over-loopback.md)）
 - 本文は JSON。キーは snake_case
 - 失敗したときは 4xx / 5xx と `{"detail": "日本語のメッセージ"}` を返す
-  - 400: 要求の中身がおかしい
-  - 404: モデルやファイルが見つからない
+  - 400: 要求の中身がおかしい（型や範囲の検査に通らないものも 400 にする）
+  - 404: モデルやファイルが見つからない。**モデルは勝手にダウンロードしない**。手元になければ 404 を返すので、
+    アプリが先に `/models/download` で取り込む
   - 422: 対応していないモデルの構造など
   - 500: それ以外
 - 時間のかかる処理は **NDJSON**（`application/x-ndjson`。1 行に 1 つの JSON）で逐次返す。各行は `type` を持つ
   - 途中で失敗したら `{"type": "error", "message": "..."}` を流して終える
 - 文字の位置は Python の `str` の添字（Unicode のコードポイント）で数える
-- モデルは Hugging Face の ID（`mlx-community/Qwen3-0.6B-4bit` など）で指す。ダウンロードは Hugging Face の標準のキャッシュ（`~/.cache/huggingface/hub`）に置く
+- モデルは Hugging Face の ID（`mlx-community/Qwen3-0.6B-4bit` など）か、手元のフォルダの絶対パスで指す。
+  ダウンロードは Hugging Face の標準のキャッシュ（`~/.cache/huggingface/hub`）に置く
+- LoRA のアダプタ（`adapter`）は絶対パスで指す。`adapter_config.json` と `adapters.safetensors` がなければ 404
+- MLX の重い計算は 1 本のスレッドで順に行う（同時に 2 つのモデルを動かさない）
 
 ### メモリの使い方
 
@@ -51,7 +55,10 @@
 
 - `text` は、コードと数式を除いた本文（アプリが用意する）
 - `links` は、解決済みのリンク先のパス
-- `similarity` が true なら、概念の名前を埋め込み、意味の近い概念を `similar` の線で結ぶ（フェーズ 3 以降）
+- `similarity` が true なら、概念の名前を埋め込み、意味の近い概念を `similar` の線で結ぶ（類似度 0.9 以上）
+- `options` には、ほかに `min_cooccurrence`（既定 2）、`similarity_threshold`（既定 0.9）、`embedding_model` も渡せる
+- 概念は `score` の大きい順に 0 から番号を振る。`score` は C-value × log2(1 + 出てくるチャンクの数)
+- `evidence` は、関係を見つけたチャンクの ID（`link`、`contains`、`similar` では始点の概念が最初に出るチャンク）
 
 ```json
 {
@@ -70,7 +77,7 @@
 |---|---|
 | 概念の抽出 | SudachiPy で形態素解析し、名詞の連続（と英字の語）を候補にする。C-value と出現数で重要度（`score`）を付け、上位を採る。ノートのタイトルは必ず概念にする |
 | 正規化 | NFKC と、英字の小文字化。機械的に同じと言えるものだけをまとめる |
-| `cooccurrence` | 同じチャンクに出る語の組。PMI が正のものだけ。重みは PMI × 共起数の対数 |
+| `cooccurrence` | 同じチャンクに出る語の組。PMI が正で、2 回以上共起したものだけ。重みは PMI × ln(1 + 共起数)。1 つの概念につき上位 20 本まで |
 | `hierarchy` | 見出しの概念 → その節の本文に出る重要な概念 |
 | `definition` | 「A とは B である」「A は B のことである」 |
 | `is_a` | 「A は B の一種」「A は B の一つ」 |
@@ -124,15 +131,15 @@
 
 ### 覗く
 
-どれも `model` と `prompt` を取る。`chat_template` が true なら、`prompt` をユーザーの発言としてチャットの形に包んでから使う。
+どれも `model` と `prompt` を取り、`adapter` も渡せる。`layer` は 0 始まり（負なら後ろから数える）。`chat_template` が true なら、`prompt` をユーザーの発言としてチャットの形に包んでから使う。
 対応するのは、mlx-lm のモデルのうち `model.model.embed_tokens`、`layers`、`norm` を持つもの（Llama、Qwen、Mistral など）。
 それ以外は 422 を返す。重い計算を避けるため、プロンプトは 512 トークンまでにする（超えたら 400）。
 
 | 要求 | 応答 |
 |---|---|
-| `POST /lab/tokenize` `{"model", "text"}` | `{"tokens": [{"id", "text", "start", "end"}]}` 区切り。位置が決まらない断片は `start`、`end` が null |
-| `POST /lab/next-token` `{"model", "prompt", "chat_template", "top_k": 20, "temperature": 1.0}` | `{"tokens": [{"id", "text", "probability", "logit"}], "entropy"}` 次のトークンの確率（上位 `top_k`） |
-| `POST /lab/generate`（NDJSON） `{"model", "prompt", "chat_template", "max_tokens", "temperature", "top_p", "top_k", "seed", "alternatives": 5, "adapter"}` | `{"type": "token", "id", "text", "probability", "alternatives": [{"id", "text", "probability"}]}` … `{"type": "done", "generated_tokens", "tokens_per_second"}` 1 トークンずつ、選ばれたものと他の候補 |
+| `POST /lab/tokenize` `{"model", "text"}` | `{"tokens": [{"id", "text", "start", "end"}]}` 区切り（特別なトークンは付けない）。位置が決まらない断片は `start`、`end` が null |
+| `POST /lab/next-token` `{"model", "prompt", "chat_template", "top_k": 20, "temperature": 1.0}` | `{"tokens": [{"id", "text", "probability", "logit"}], "entropy"}` 次のトークンの確率（上位 `top_k`）。エントロピーは自然対数（nat） |
+| `POST /lab/generate`（NDJSON） `{"model", "prompt", "chat_template", "max_tokens", "temperature", "top_p", "top_k", "seed", "alternatives": 5, "adapter"}` | `{"type": "token", "id", "text", "probability", "alternatives": [{"id", "text", "probability"}]}` … `{"type": "done", "generated_tokens", "tokens_per_second"}` 1 トークンずつ、選ばれたものと他の候補。`text` は新しく確定した文字（UTF-8 の途中なら空）で、つなげると出力そのものになる。512 トークンを超えると `error` の行で終える |
 | `POST /lab/attention` `{"model", "prompt", "chat_template", "layer"}` | `{"tokens": [{"id", "text"}], "num_layers", "num_heads", "layer", "heads": [[[f]]], "mean": [[f]]}` 指定した層の Attention（ヘッドごと、`heads[h][i][j]` は i 番目のトークンが j 番目を見る重み）と、ヘッドの平均 |
 | `POST /lab/logit-lens` `{"model", "prompt", "chat_template", "top_k": 3}` | `{"tokens", "num_layers", "layers": [{"layer", "positions": [{"top": [{"id", "text", "probability"}]}]}]}` 各層の途中の状態を最後の正規化と出力層に通したときの予測 |
 | `POST /lab/activations` `{"model", "prompt", "chat_template"}` | `{"tokens", "num_layers", "norms": [[f]]}` 各層・各位置の残差ストリームの大きさ（L2 ノルム。`norms[layer][position]`） |
@@ -141,7 +148,7 @@
 
 | 要求 | 応答 |
 |---|---|
-| `GET /images/models` | `{"models": [{"id": "z-image-turbo", "name", "repo", "downloaded", "default_steps", "default_size"}]}` 使える画像モデル |
+| `GET /images/models` | `{"models": [{"id": "z-image-turbo", "name", "repo", "downloaded", "default_steps", "default_size": {"width", "height"}}]}` 使える画像モデル（`z-image-turbo`、`flux2-klein-4b`）。取り込むときは `repo` を `/models/download` に渡す |
 | `POST /images/generate`（NDJSON） | 下を参照 |
 
 ```json
@@ -156,7 +163,8 @@
 ```
 
 - 生成は mflux で行う。候補は FLUX.2 klein 4B と Z-Image Turbo
-- `seed` が null なら、エンジンが決めて `done` で返す。保存先はアプリが決める
+- `seed` が null なら、エンジンが決めて `done` で返す。保存先はアプリが決める（絶対パス）
+- `width`、`height` は 256〜2048 の 16 の倍数。`quantize` は 3、4、5、6、8 か null
 
 ## フェーズ 6: いじる
 
@@ -175,6 +183,7 @@
 ```
 
 - `texts` をそのまま続きを書く学習（completion）に使う。1 割を検証に回す
+- `num_layers` が -1 ならすべての層。進み具合は 10 回ごとに流す。学習が終わると、モデルはメモリから外す
 - できたアダプタは、`/chat` と `/lab/generate` の `adapter` に渡して使う
 
 ### steering
@@ -182,4 +191,4 @@
 | 要求 | 応答 |
 |---|---|
 | `POST /steering/vector` `{"model", "layer", "positive": [str], "negative": [str]}` | `{"layer", "vector": [f], "norm"}` 指定した層の残差ストリームの平均の差（positive − negative。最後のトークンの位置） |
-| `POST /steering/generate` `{"model", "prompt", "chat_template", "layer", "vector", "strength", "max_tokens", "temperature", "seed"}` | `{"baseline": str, "steered": str}` 同じ種で、ベクトルを足さない生成と足した生成 |
+| `POST /steering/generate` `{"model", "prompt", "chat_template", "layer", "vector", "strength", "max_tokens", "temperature", "seed"}` | `{"baseline": str, "steered": str}` 同じ種で、ベクトルを足さない生成と足した生成（`seed` が null なら毎回変える） |

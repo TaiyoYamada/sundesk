@@ -8,6 +8,16 @@ authors = [{ name = "山田大陽" }]
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "fastapi>=0.141.1",
+    "huggingface-hub>=1.33.0",
+    "mflux>=0.20.0",
+    "mlx>=0.32.2",
+    "mlx-lm>=0.31.3",
+    "networkx>=3.7",
+    "numpy>=2.5.3",
+    "sentence-transformers>=6.1.0",
+    "sudachidict-core>=20260723.1",
+    "sudachipy>=0.7.0",
+    "torch>=2.14.0",
     "uvicorn>=0.54.0",
 ]
 
