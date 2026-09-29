@@ -12,5 +12,7 @@
 | [0005](0005-metal-knowledge-graph.md) | 知識グラフは Metal で描く | 採用 |
 | [0006](0006-engine-http-over-loopback.md) | エンジンとは 127.0.0.1 の HTTP で、起動ごとのトークンを付けて通信する | 採用 |
 | [0007](0007-engine-process-lifecycle.md) | エンジンは uv で起動し、アプリと寿命をそろえる | 採用 |
+| [0008](0008-webkit-renderer.md) | ノートの描画は WebKit の中で markdown-it、KaTeX、Shiki を使う | 採用 |
+| [0009](0009-workspace-layout.md) | 画面は Xcode と Obsidian を合わせた構成にする | 採用 |
 
 新しく書くときは [template.md](template.md) を写して使う。

@@ -1,6 +1,6 @@
 # sundesk アーキテクチャ
 
-- 状態: フェーズ 0 の実装を反映済み
+- 状態: フェーズ 1 の実装を反映済み
 - 最終更新: 2026-09-29
 - 要件は [requirements.md](requirements.md)、個々の判断の理由は [ADR](adr/README.md) を参照
 
@@ -44,7 +44,9 @@
 ### 約束事
 
 - **SwiftData の `@Model` は Data 層の外に出さない。** 境界で Mapper を通して Domain の Entity（`Sendable` な struct）に変換する
-- **View は `@Query` を使わない。** データの変化は Data 層で `ResultsObserver` を使って監視し、Repository が `AsyncSequence` として流す
+- **View は `@Query` を使わない。** データの変化は Repository が `AsyncSequence` として流す
+  - 今の索引（`SwiftDataNoteIndex`）は、書き込んだあとに自分で変更を知らせている
+  - 画面に大量の一覧を出すときには、`ResultsObserver`（macOS 27 の SwiftData）で監視する形に広げる
 - **UseCase は 1 つの操作につき 1 つ。** `callAsFunction` で呼べるようにする
 - **DI は [Factory](https://github.com/hmlongco/Factory) を使う**（[ADR 0004](adr/0004-factory-composition-root.md)）
   - Domain、Data、Presentation は Factory を import しない。依存はコンストラクタで受け取る
@@ -66,10 +68,13 @@ sundesk/
 │   │   ├── SundeskDomain/        Entity、UseCase、Repository の protocol
 │   │   ├── SundeskEngine/        Infrastructure: エンジンのプロセス管理と HTTP クライアント
 │   │   ├── SundeskData/          Repository の実装、SwiftData のスキーマ、Mapper
+│   │   ├── SundeskRenderer/      Infrastructure（画面用）: WebKit の描画ページ、URL スキーム、同梱した renderer
 │   │   ├── SundeskPresentation/  ViewModel（UI に依存しないのでテストしやすい）
 │   │   └── SundeskComposition/   Composition Root（Factory への登録、設定の読み込み）
 │   └── Tests/                    モジュールごとのテスト
 ├── engine/                       Python エンジン（uv で管理。LLM、画像生成、埋め込み、NLP、グラフ計算）
+├── renderer/                     Markdown、数式、コードの描画（TypeScript。ビルド結果は SundeskRenderer のリソースへ）
+├── SampleVault/                  モックの Vault（既定で開くノート）
 ├── Configurations/               xcconfig（バンドル ID、対象 OS、Swift の設定）
 ├── scripts/                      補助スクリプト（カバレッジの集計など）
 └── docs/                         要件、アーキテクチャ、ADR
@@ -85,9 +90,10 @@ sundesk/
 | SundeskDomain | なし |
 | SundeskEngine | swift-subprocess |
 | SundeskData | SundeskDomain、SundeskEngine |
+| SundeskRenderer | WebKit（同梱の renderer をリソースに持つ） |
 | SundeskPresentation | SundeskDomain |
-| SundeskComposition | すべて、FactoryKit |
-| アプリ本体 | SundeskComposition、SundeskPresentation、SundeskDomain |
+| SundeskComposition | SundeskDomain、SundeskEngine、SundeskData、SundeskPresentation、FactoryKit |
+| アプリ本体 | SundeskComposition、SundeskPresentation、SundeskDomain、SundeskRenderer |
 
 ## 4. 画面（MVVM）の書き方
 
@@ -138,7 +144,30 @@ public final class ChatViewModel {
 - 設定: エンジンのフォルダと uv の場所は設定画面で変えられる。既定はリポジトリの `engine/` と、Homebrew などの決まった場所
 - ログ: OSLog のサブシステム `com.taiyou.sundesk`。エンジン自身の出力はカテゴリ `engine.output` に流す。起動にかかった時間は signpost で Instruments に出る
 
-## 7. 知識グラフの描画（Metal）
+## 7. ノートの表示と索引（フェーズ 1）
+
+画面の構成は [ADR 0009](adr/0009-workspace-layout.md)、描画の技術は [ADR 0008](adr/0008-webkit-renderer.md) を参照。
+
+| 種類 | 表示 | ソース |
+|---|---|---|
+| Markdown | markdown-it + KaTeX + Shiki（WebKit） | Shiki |
+| HTML | そのまま描画（WebKit） | Shiki |
+| テキスト、コード | Shiki | 同じ |
+| 画像 | SwiftUI（拡大・縮小） | — |
+| PDF | PDFKit | — |
+| その他 | Quick Look | — |
+
+索引の流れ:
+
+1. `FileSystemVaultRepository` が Vault の木を読む（隠しファイルと node_modules などは除く）
+2. `IndexVaultInteractor` が、更新日時と大きさの変わった Markdown だけを読み直す
+   - ファイルが増えたり消えたりしたときは、リンク先が変わりうるので、すべて読み直す
+3. `MarkdownAnalyzer` が、フロントマター、タイトル、タグ、リンクを取り出す（コードと数式の中は除く）
+4. `LinkResolver` が、Obsidian と同じ順（完全なパス → 末尾の一致 → ファイル名）でリンク先を決める
+5. `SwiftDataNoteIndex` に保存する（ノート、リンク、メタデータの 3 つのモデル。Vault ごとに別のファイル）
+6. Vault の変更は FSEvents で見張り、変わるたびに 1〜5 をくり返す
+
+## 8. 知識グラフの描画（Metal）
 
 - `MTKView` を SwiftUI に埋め込んで描く
 - 点と線はインスタンス描画でまとめて描く（数万規模を想定）
@@ -148,7 +177,7 @@ public final class ChatViewModel {
   - 描き方（グリフのアトラスを作って Metal で描くか、SwiftUI を重ねるか）は試作して決める
 - テストでは、シェーダーの計算結果を CPU の参照実装と比べる
 
-## 8. テスト
+## 9. テスト
 
 - **実装した後に書く**（TDD にはしない）。ただし、層ごとに漏れなく書く
 - Swift Testing を基本にする。UI テストだけ XCTest を使う
@@ -160,6 +189,8 @@ public final class ChatViewModel {
 | ViewModel | UseCase を偽物に差し替え、状態の変化を検証する |
 | Data | SwiftData はメモリ上の DB で実際に動かす。Mapper の往復変換も検証する |
 | Metal | シェーダーと CPU の参照実装の結果が一致するかを検証する |
+| renderer（TypeScript） | markdown-it のプラグイン（リンク、注記、見出し、相対パス）と Shiki を Vitest で検証する |
+| WebKit | 本物の `WebPage` で Markdown を描き、目次が返ることを確かめる |
 | エンジン | API の約束事を Swift と Python の両側から検証する |
 | 画面 | スナップショットテストと、主要な操作の UI テスト |
 
@@ -167,7 +198,7 @@ public final class ChatViewModel {
 - 本物のエンジンを起動する結合テストは、`SUNDESK_INTEGRATION=1` のときだけ走る（`make test-integration`、CI では常に走らせる）
 - CI（GitHub Actions）はプルリクエストごとに、lint、テスト、カバレッジの集計を行う
 
-## 9. 未決事項
+## 10. 未決事項
 
 - [ ] ノートを sundesk で編集するか、読むだけか（当面は読むだけ）
 - [ ] 大きなテンソル（Attention の行列など）の転送形式（フェーズ 4）
