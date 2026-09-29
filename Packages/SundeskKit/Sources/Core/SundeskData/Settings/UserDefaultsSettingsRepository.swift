@@ -18,6 +18,9 @@ public struct UserDefaultsSettingsRepository: SettingsRepository, @unchecked Sen
         public static let engineDirectory = "engine.directory"
         public static let uvExecutable = "engine.uvExecutable"
         public static let startsEngineAutomatically = "engine.startsAutomatically"
+        public static let researchDirectory = "research.directory"
+        public static let studyDirectory = "study.directory"
+        public static let studySections = "study.sections"
     }
 
     // UserDefaults はスレッドをまたいで使ってよい（Apple のドキュメントで保証されている）
@@ -35,7 +38,10 @@ public struct UserDefaultsSettingsRepository: SettingsRepository, @unchecked Sen
             engineDirectory: userDefaults.string(forKey: Key.engineDirectory) ?? "",
             uvExecutable: userDefaults.string(forKey: Key.uvExecutable) ?? "",
             startsEngineAutomatically: userDefaults.object(forKey: Key.startsEngineAutomatically) == nil
-                ? true : userDefaults.bool(forKey: Key.startsEngineAutomatically)
+                ? true : userDefaults.bool(forKey: Key.startsEngineAutomatically),
+            researchDirectory: userDefaults.string(forKey: Key.researchDirectory) ?? "",
+            studyDirectory: userDefaults.string(forKey: Key.studyDirectory) ?? "",
+            studySections: userDefaults.stringArray(forKey: Key.studySections) ?? []
         )
     }
 
@@ -44,5 +50,8 @@ public struct UserDefaultsSettingsRepository: SettingsRepository, @unchecked Sen
         userDefaults.set(settings.engineDirectory, forKey: Key.engineDirectory)
         userDefaults.set(settings.uvExecutable, forKey: Key.uvExecutable)
         userDefaults.set(settings.startsEngineAutomatically, forKey: Key.startsEngineAutomatically)
+        userDefaults.set(settings.researchDirectory, forKey: Key.researchDirectory)
+        userDefaults.set(settings.studyDirectory, forKey: Key.studyDirectory)
+        userDefaults.set(settings.studySections, forKey: Key.studySections)
     }
 }

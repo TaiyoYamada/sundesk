@@ -15,7 +15,12 @@ final class DirectoryWatcher: Sendable {
     nonisolated(unsafe) private let context: UnsafeMutablePointer<FSEventStreamContext>
     private let queue = DispatchQueue(label: "com.taiyou.sundesk.directory-watcher")
 
-    init(url: URL, latency: TimeInterval = 0.3, handler: @escaping @Sendable () -> Void) {
+    convenience init(url: URL, latency: TimeInterval = 0.3, handler: @escaping @Sendable () -> Void) {
+        self.init(urls: [url], latency: latency, handler: handler)
+    }
+
+    /// - Parameter urls: 見張るフォルダ（いくつでも）。
+    init(urls: [URL], latency: TimeInterval = 0.3, handler: @escaping @Sendable () -> Void) {
         let box = Unmanaged.passRetained(HandlerBox(handler))
         context = .allocate(capacity: 1)
         context.initialize(
@@ -32,7 +37,7 @@ final class DirectoryWatcher: Sendable {
             Unmanaged<HandlerBox>.fromOpaque(info).takeUnretainedValue().handler()
         }
         stream = FSEventStreamCreate(
-            nil, callback, context, [url.path] as CFArray,
+            nil, callback, context, urls.map(\.path) as CFArray,
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow), latency,
             FSEventStreamCreateFlags(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagNoDefer)
         )

@@ -12,26 +12,30 @@ import SwiftUI
 public struct FileTreeView: View {
     @Bindable private var navigator: FileNavigatorViewModel
     private let selectedPath: String?
-    private let rootPath: String?
+    private let rootPaths: [String]
     private let open: (String) -> Void
 
     /// - Parameters:
     ///   - selectedPath: 今開いているファイル。木の選択と連動させる。
     ///   - rootPath: このフォルダの下だけを出す（nil ならすべて）。
+    ///   - extraRoots: 続けて、フォルダのまま出すもの（つないだ study-artifact など）。
     ///   - open: ファイルを選んだときに呼ぶ。
     public init(
         navigator: FileNavigatorViewModel, selectedPath: String?, rootPath: String? = nil,
-        open: @escaping (String) -> Void
+        extraRoots: [String] = [], open: @escaping (String) -> Void
     ) {
         self.navigator = navigator
         self.selectedPath = selectedPath
-        self.rootPath = rootPath
+        self.rootPaths = (rootPath.map { [$0] } ?? []) + extraRoots
         self.open = open
     }
 
     private var shownItems: [NavigatorItem] {
-        guard let rootPath else { return navigator.items }
-        return navigator.items.first { $0.id == rootPath }?.children ?? []
+        guard let first = rootPaths.first else { return navigator.items }
+        // 最初のフォルダは中身を並べ、残りはフォルダのまま足す
+        let main = navigator.items.first { $0.id == first }?.children ?? []
+        let extras = rootPaths.dropFirst().compactMap { path in navigator.items.first { $0.id == path } }
+        return main + extras
     }
 
     public var body: some View {

@@ -8,13 +8,17 @@
 import Foundation
 import SundeskDomain
 
-/// Mac のフォルダを Vault として読む。
+/// Mac のフォルダを Vault として読む。外のフォルダ（~/Research など）を、読むだけでつなげる。
 public struct FileSystemVaultRepository: VaultRepository {
     private let root: @Sendable () -> URL
+    private let mounts: @Sendable () -> [VaultMount]
 
-    /// - Parameter root: Vault のフォルダ。呼ぶたびに設定から読む。
-    public init(root: @escaping @Sendable () -> URL) {
+    /// - Parameters:
+    ///   - root: Vault のフォルダ。呼ぶたびに設定から読む。
+    ///   - mounts: 読むだけでつなぐ外のフォルダ。呼ぶたびに設定から読む。
+    public init(root: @escaping @Sendable () -> URL, mounts: @escaping @Sendable () -> [VaultMount] = { [] }) {
         self.root = root
+        self.mounts = mounts
     }
 
     @concurrent
@@ -24,8 +28,16 @@ public struct FileSystemVaultRepository: VaultRepository {
         guard FileManager.default.fileExists(atPath: root.path, isDirectory: &isDirectory), isDirectory.boolValue else {
             throw .vaultNotFound(path: root.path)
         }
-        return VaultNode(
-            id: "", name: root.lastPathComponent, kind: .folder, children: Self.children(of: root, path: ""))
+        let mounts = mounts()
+        let names = Set(mounts.map(\.name))
+        var children = Self.children(of: root, path: "").filter { !names.contains($0.name) }
+        for mount in mounts {
+            children.append(
+                VaultNode(
+                    id: mount.name, name: mount.name, kind: .folder,
+                    children: Self.children(of: mount.url.standardizedFileURL, path: mount.name, filter: mount.filter)))
+        }
+        return VaultNode(id: "", name: root.lastPathComponent, kind: .folder, children: children)
     }
 
     @concurrent
@@ -46,6 +58,7 @@ public struct FileSystemVaultRepository: VaultRepository {
 
     @concurrent
     public func writeText(_ text: String, to path: String) async throws(VaultError) {
+        guard !isReadOnly(path) else { throw .readOnly(path: path) }
         let root = root().standardizedFileURL
         let url = root.appending(path: path).standardizedFileURL
         guard url.path.hasPrefix(root.path + "/") else { throw .fileNotFound(path: path) }
@@ -61,6 +74,10 @@ public struct FileSystemVaultRepository: VaultRepository {
 
     public func rootURL() -> URL {
         root()
+    }
+
+    public func isReadOnly(_ path: String) -> Bool {
+        mounts().contains { $0.contains(path) }
     }
 
     public func fileInfo(at path: String) async throws(VaultError) -> FileInfo {
@@ -80,32 +97,53 @@ public struct FileSystemVaultRepository: VaultRepository {
     }
 
     public func fileURL(for path: String) -> URL {
-        root().appending(path: path)
+        if let (mount, relative) = mount(for: path) {
+            return relative.isEmpty ? mount.url : mount.url.appending(path: relative)
+        }
+        return root().appending(path: path)
     }
 
     public func changes() -> AsyncStream<Void> {
-        let url = root()
+        let urls = [root()] + mounts().map(\.url)
         return AsyncStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
-            let watcher = DirectoryWatcher(url: url) { continuation.yield() }
+            let watcher = DirectoryWatcher(urls: urls) { continuation.yield() }
             continuation.onTermination = { _ in withExtendedLifetime(watcher) {} }
         }
     }
 
     // MARK: - 内部
 
-    /// Vault の中のパスをファイルの場所に直す。Vault の外や、存在しないファイルは拒否する。
+    private func mount(for path: String) -> (VaultMount, String)? {
+        for mount in mounts() {
+            if let relative = mount.relativePath(of: path) { return (mount, relative) }
+        }
+        return nil
+    }
+
+    /// Vault の中のパスをファイルの場所に直す。Vault（とつないだフォルダ）の外や、存在しないファイルは拒否する。
     private func resolve(_ path: String) throws(VaultError) -> URL {
-        let root = root().standardizedFileURL
-        let url = root.appending(path: path).standardizedFileURL
-        guard url.path.hasPrefix(root.path + "/"), FileManager.default.fileExists(atPath: url.path) else {
+        let base: URL
+        let relative: String
+        if let (mount, inside) = mount(for: path) {
+            base = mount.url.standardizedFileURL
+            relative = inside
+        } else {
+            base = root().standardizedFileURL
+            relative = path
+        }
+        let url = base.appending(path: relative).standardizedFileURL
+        guard url.path.hasPrefix(base.path + "/"), FileManager.default.fileExists(atPath: url.path) else {
             throw .fileNotFound(path: path)
         }
         return url
     }
 
-    private static let ignoredNames: Set<String> = ["node_modules", ".build", "DerivedData", "__pycache__"]
+    /// 木に入れないフォルダ（依存ライブラリ、ビルドの結果、キャッシュ）。隠しフォルダ（.git、.venv など）も入れない。
+    private static let ignoredNames: Set<String> = [
+        "node_modules", ".build", "DerivedData", "__pycache__", "build", "dist", "site-packages",
+    ]
 
-    private static func children(of directory: URL, path: String) -> [VaultNode] {
+    private static func children(of directory: URL, path: String, filter: VaultMount.Filter = .all) -> [VaultNode] {
         let urls =
             (try? FileManager.default.contentsOfDirectory(
                 at: directory,
@@ -118,10 +156,38 @@ public struct FileSystemVaultRepository: VaultRepository {
             guard !ignoredNames.contains(name) else { return nil }
             let childPath = path.isEmpty ? name : "\(path)/\(name)"
             let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isPackageKey])
-            if values?.isDirectory == true, values?.isPackage != true {
+            let isFolder = values?.isDirectory == true && values?.isPackage != true
+            switch filter {
+            case .all:
+                break
+            case .sections(let sections, let taggedFolders, let tags):
+                // 一番上では、選んだフォルダだけを見せる。タグで選ぶフォルダは、タグの合うノートだけにする
+                guard isFolder, sections.contains(name) else { return nil }
+                if taggedFolders.contains(name) {
+                    let notes = children(of: url, path: childPath).filter { node in
+                        node.kind == .markdown && Self.hasTag(in: url.appending(path: node.name), tags: tags)
+                    }
+                    return notes.isEmpty ? nil : VaultNode(id: childPath, name: name, kind: .folder, children: notes)
+                }
+            }
+            if isFolder {
                 return VaultNode(id: childPath, name: name, kind: .folder, children: children(of: url, path: childPath))
             }
             return VaultNode(id: childPath, name: name, kind: FileKind(fileName: name))
         }
+    }
+
+    /// ノートのフロントマターの tags に、`tags` のどれかがあるか。
+    private static func hasTag(in url: URL, tags: Set<String>) -> Bool {
+        guard let handle = try? FileHandle(forReadingFrom: url),
+            let head = try? handle.read(upToCount: 4096).flatMap({ String(data: $0, encoding: .utf8) })
+        else { return false }
+        try? handle.close()
+        guard let line = head.split(separator: "\n").first(where: { $0.hasPrefix("tags:") }) else { return false }
+        let values = line.dropFirst("tags:".count)
+            .trimmingCharacters(in: CharacterSet(charactersIn: " []"))
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " \"'")) }
+        return values.contains { tags.contains($0) }
     }
 }

@@ -16,15 +16,25 @@ public struct AppSettings: Equatable, Sendable {
     /// uv の実行ファイル。
     public var uvExecutable: String
     public var startsEngineAutomatically: Bool
+    /// 研究のデータのフォルダ（~/Research）。読むだけでつなぐ。
+    public var researchDirectory: String
+    /// study-artifact のフォルダ。研究に関係するところだけを読むだけでつなぐ。
+    public var studyDirectory: String
+    /// study-artifact の中で読むフォルダ。空なら既定（``ResearchSources/defaultStudySections``）。
+    public var studySections: [String]
 
     public init(
         vaultDirectory: String = "", engineDirectory: String = "", uvExecutable: String = "",
-        startsEngineAutomatically: Bool = true
+        startsEngineAutomatically: Bool = true, researchDirectory: String = "", studyDirectory: String = "",
+        studySections: [String] = []
     ) {
         self.vaultDirectory = vaultDirectory
         self.engineDirectory = engineDirectory
         self.uvExecutable = uvExecutable
         self.startsEngineAutomatically = startsEngineAutomatically
+        self.researchDirectory = researchDirectory
+        self.studyDirectory = studyDirectory
+        self.studySections = studySections
     }
 }
 
@@ -33,11 +43,18 @@ public struct SettingsDefaults: Equatable, Sendable {
     public let vaultDirectory: String
     public let engineDirectory: String
     public let uvExecutable: String
+    public let researchDirectory: String
+    public let studyDirectory: String
 
-    public init(vaultDirectory: String, engineDirectory: String, uvExecutable: String) {
+    public init(
+        vaultDirectory: String, engineDirectory: String, uvExecutable: String, researchDirectory: String = "",
+        studyDirectory: String = ""
+    ) {
         self.vaultDirectory = vaultDirectory
         self.engineDirectory = engineDirectory
         self.uvExecutable = uvExecutable
+        self.researchDirectory = researchDirectory
+        self.studyDirectory = studyDirectory
     }
 }
 
@@ -48,7 +65,10 @@ extension AppSettings {
             vaultDirectory: vaultDirectory.isEmpty ? defaults.vaultDirectory : vaultDirectory,
             engineDirectory: engineDirectory.isEmpty ? defaults.engineDirectory : engineDirectory,
             uvExecutable: uvExecutable.isEmpty ? defaults.uvExecutable : uvExecutable,
-            startsEngineAutomatically: startsEngineAutomatically
+            startsEngineAutomatically: startsEngineAutomatically,
+            researchDirectory: researchDirectory.isEmpty ? defaults.researchDirectory : researchDirectory,
+            studyDirectory: studyDirectory.isEmpty ? defaults.studyDirectory : studyDirectory,
+            studySections: studySections
         )
     }
 }
@@ -99,4 +119,10 @@ public struct UpdateSettingsInteractor: UpdateSettingsUseCase {
         change(&settings)
         repository.save(settings)
     }
+}
+
+/// study-artifact の中のフォルダを調べる（どこを読むかを選ぶため）。
+public protocol ListStudySectionsUseCase: Sendable {
+    /// ノートのフォルダの中のフォルダ名（名前順）。
+    func callAsFunction(in studyDirectory: String) -> [String]
 }

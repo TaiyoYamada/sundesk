@@ -18,10 +18,11 @@ public enum LibraryDestination: Hashable, Sendable {
 }
 
 /// 研究ライブラリの一覧。上で種類を切り替え、下に一覧を出す。
-public struct LibraryNavigatorView<Notes: View>: View {
+public struct LibraryNavigatorView<Notes: View, DataTree: View>: View {
     @Bindable private var viewModel: LibraryViewModel
     private let selectedPath: String?
     private let notes: Notes
+    private let data: DataTree
     private let open: (LibraryDestination) -> Void
 
     @State private var sheet: Sheet?
@@ -35,14 +36,16 @@ public struct LibraryNavigatorView<Notes: View>: View {
     /// - Parameters:
     ///   - selectedPath: 今開いているもののフォルダかパス（一覧の選択と連動させる）。
     ///   - notes: ノートの一覧（ファイルの木）。
+    ///   - data: データとコードの一覧（ファイルの木。~/Research も含む）。
     ///   - open: 選んだものを開く。
     public init(
         viewModel: LibraryViewModel, selectedPath: String?, @ViewBuilder notes: () -> Notes,
-        open: @escaping (LibraryDestination) -> Void
+        @ViewBuilder data: () -> DataTree, open: @escaping (LibraryDestination) -> Void
     ) {
         self.viewModel = viewModel
         self.selectedPath = selectedPath
         self.notes = notes()
+        self.data = data()
         self.open = open
     }
 
@@ -135,7 +138,9 @@ public struct LibraryNavigatorView<Notes: View>: View {
             ExperimentListView(viewModel: viewModel, selectedPath: selectedPath, open: openExperiment) { keys in
                 open(.comparison(keys: keys))
             }
-        case .data, .materials:
+        case .data:
+            data
+        case .materials:
             FileListView(viewModel: viewModel, selectedPath: selectedPath) { open(.file($0)) }
         }
     }

@@ -20,6 +20,12 @@ public protocol VaultRepository: Sendable {
     func fileURL(for path: String) -> URL
     /// Vault の中で何かが変わるたびに流れる。
     func changes() -> AsyncStream<Void>
+    /// 読むだけのファイルか（つないだ外のフォルダの中など）。
+    func isReadOnly(_ path: String) -> Bool
+}
+
+extension VaultRepository {
+    public func isReadOnly(_ path: String) -> Bool { false }
 }
 
 /// Markdown のノートの索引（SwiftData）。

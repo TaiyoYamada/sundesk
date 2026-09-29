@@ -21,9 +21,14 @@ nonisolated enum AppPaths {
         return url
     }
 
-    /// 研究向けの見本のライブラリ（開発とテストで使う）。
-    static var sampleLibrary: URL {
-        repositoryRoot().appending(path: "SampleLibrary", directoryHint: .isDirectory)
+    /// 研究のデータの既定の場所（~/Research）。
+    static var defaultResearch: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appending(path: "Research", directoryHint: .isDirectory)
+    }
+
+    /// study-artifact の既定の場所（このリポジトリの隣）。
+    static var defaultStudy: URL {
+        repositoryRoot().deletingLastPathComponent().appending(path: "study-artifact", directoryHint: .isDirectory)
     }
 
     /// 本物の研究ライブラリ（アプリのデータフォルダの中）。

@@ -23,8 +23,18 @@ struct NavigatorView: View {
             switch workspace.navigatorMode {
             case .library:
                 LibraryNavigatorView(viewModel: library, selectedPath: workspace.selectedTab?.documentPath) {
+                    // 自分のノートに続けて、読むだけでつないだ study-artifact を出す
                     FileTreeView(
-                        navigator: navigator, selectedPath: workspace.selectedTab?.documentPath, rootPath: "Notes"
+                        navigator: navigator, selectedPath: workspace.selectedTab?.documentPath, rootPath: "Notes",
+                        extraRoots: ["study-artifact"]
+                    ) {
+                        workspace.open(path: $0)
+                    }
+                } data: {
+                    // 取り込んだデータに続けて、読むだけでつないだ ~/Research を出す
+                    FileTreeView(
+                        navigator: navigator, selectedPath: workspace.selectedTab?.documentPath, rootPath: "Data",
+                        extraRoots: ["Research"]
                     ) {
                         workspace.open(path: $0)
                     }

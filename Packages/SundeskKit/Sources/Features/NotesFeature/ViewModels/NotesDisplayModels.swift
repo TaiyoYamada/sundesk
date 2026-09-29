@@ -158,6 +158,7 @@ extension VaultError {
         case .vaultNotFound(let path): "Vault のフォルダが見つかりません（\(path)）。"
         case .unreadable(_, let reason): "ファイルを読めませんでした: \(reason)"
         case .unwritable(_, let reason): "ファイルを保存できませんでした: \(reason)"
+        case .readOnly: "このファイルは読むだけです（~/Research や study-artifact のファイルは、元の場所で編集します）。"
         }
     }
 }

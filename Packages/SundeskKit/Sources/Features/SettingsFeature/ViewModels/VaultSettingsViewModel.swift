@@ -9,47 +9,73 @@ import Foundation
 import Observation
 import SundeskDomain
 
-/// 設定画面の「ライブラリ」。場所、書き出し、戻し、見本のライブラリへの切り替え。
+/// 設定画面の「ライブラリ」。場所、読むだけでつなぐ研究のデータ、書き出し、戻し。
 @MainActor
 @Observable
 public final class VaultSettingsViewModel {
-    /// 見本のライブラリを使うか（開発とテスト用）。
-    public var usesSampleLibrary: Bool {
+    /// 研究のデータのフォルダ（~/Research）。
+    public var researchDirectory: String {
         didSet {
-            guard usesSampleLibrary != oldValue else { return }
-            let path = usesSampleLibrary ? samplePath : ""
-            updateSettings { $0.vaultDirectory = path }
-            needsRestart = true
+            let value = researchDirectory == defaultResearch ? "" : researchDirectory
+            save { $0.researchDirectory = value }
         }
     }
+    /// study-artifact のフォルダ。
+    public var studyDirectory: String {
+        didSet {
+            let value = studyDirectory == defaultStudy ? "" : studyDirectory
+            save { $0.studyDirectory = value }
+            availableSections = listSections(in: studyDirectory)
+        }
+    }
+    /// study-artifact の中で読むフォルダ。
+    public private(set) var selectedSections: Set<String>
+    /// study-artifact の中にあるフォルダ。
+    public private(set) var availableSections: [String] = []
     public private(set) var needsRestart = false
     public private(set) var isWorking = false
     public var message: String?
 
     /// 本物のライブラリの場所。
     public let libraryPath: String
-    @ObservationIgnored private let samplePath: String
+    @ObservationIgnored private let defaultResearch: String
+    @ObservationIgnored private let defaultStudy: String
     @ObservationIgnored private let updateSettings: any UpdateSettingsUseCase
     @ObservationIgnored private let library: any ManageLibraryUseCase
-    @ObservationIgnored private let currentPath: String
+    @ObservationIgnored private let listSections: any ListStudySectionsUseCase
 
     public init(
         loadSettings: any LoadSettingsUseCase, updateSettings: any UpdateSettingsUseCase,
-        library: any ManageLibraryUseCase, samplePath: String
+        library: any ManageLibraryUseCase, listSections: any ListStudySectionsUseCase
     ) {
         let settings = loadSettings()
-        self.libraryPath = loadSettings.defaults.vaultDirectory
-        self.samplePath = samplePath
-        self.currentPath =
-            settings.vaultDirectory.isEmpty ? loadSettings.defaults.vaultDirectory : settings.vaultDirectory
-        self.usesSampleLibrary = !settings.vaultDirectory.isEmpty && settings.vaultDirectory == samplePath
+        let resolved = settings.resolved(with: loadSettings.defaults)
+        self.libraryPath = resolved.vaultDirectory
+        self.defaultResearch = loadSettings.defaults.researchDirectory
+        self.defaultStudy = loadSettings.defaults.studyDirectory
+        self.researchDirectory = resolved.researchDirectory
+        self.studyDirectory = resolved.studyDirectory
+        self.selectedSections = Set(
+            settings.studySections.isEmpty ? ResearchSources.defaultStudySections : settings.studySections)
         self.updateSettings = updateSettings
         self.library = library
+        self.listSections = listSections
+        self.availableSections = listSections(in: resolved.studyDirectory)
     }
 
     /// 今使っているライブラリ（「Finder で開く」に使う）。
     public var effectiveVaultURL: URL {
-        URL(filePath: currentPath, directoryHint: .isDirectory)
+        URL(filePath: libraryPath, directoryHint: .isDirectory)
+    }
+
+    public func isSelected(_ section: String) -> Bool {
+        selectedSections.contains(section)
+    }
+
+    public func setSection(_ section: String, selected: Bool) {
+        if selected { selectedSections.insert(section) } else { selectedSections.remove(section) }
+        let sections = availableSections.filter(selectedSections.contains)
+        save { $0.studySections = Set(sections) == Set(ResearchSources.defaultStudySections) ? [] : sections }
     }
 
     /// 選んだフォルダの中に、ライブラリを丸ごと書き出す。
@@ -74,6 +100,11 @@ public final class VaultSettingsViewModel {
             self.needsRestart = true
             return "戻しました。今までのライブラリは、同じ場所に日付を付けて残しています"
         }
+    }
+
+    private func save(_ change: (inout AppSettings) -> Void) {
+        updateSettings(change)
+        needsRestart = true
     }
 
     private func work(_ body: @escaping () async throws -> String) async {

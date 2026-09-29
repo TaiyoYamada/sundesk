@@ -29,11 +29,19 @@ extension Container {
     var vaultRepository: Factory<any VaultRepository> {
         self {
             let settings = self.settingsRepository()
-            return FileSystemVaultRepository(root: {
-                URL(
-                    filePath: settings.load().resolved(with: settings.defaults).vaultDirectory,
-                    directoryHint: .isDirectory)
-            })
+            return FileSystemVaultRepository(
+                root: {
+                    URL(
+                        filePath: settings.load().resolved(with: settings.defaults).vaultDirectory,
+                        directoryHint: .isDirectory)
+                },
+                mounts: {
+                    let resolved = settings.load().resolved(with: settings.defaults)
+                    return ResearchSources.mounts(
+                        research: resolved.researchDirectory, study: resolved.studyDirectory,
+                        studySections: resolved.studySections
+                    ) { FileManager.default.fileExists(atPath: $0) }
+                })
         }
         .singleton
     }
@@ -150,7 +158,8 @@ extension Container {
                     saveDocument: self.saveDocument(),
                     analyzeNote: self.analyzeNote(),
                     findBacklinks: self.findBacklinks(),
-                    locateFile: self.locateFile()
+                    locateFile: self.locateFile(),
+                    isReadOnly: self.vaultRepository().isReadOnly(path)
                 )
                 self.openDocumentRegistry().register(document)
                 return document

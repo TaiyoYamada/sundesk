@@ -42,11 +42,12 @@ struct ContainerTests {
         #expect(viewModel.lastError == "差し替えた")
     }
 
-    @Test("既定のライブラリはアプリのデータフォルダの中、見本はリポジトリの SampleLibrary")
+    @Test("既定のライブラリはアプリのデータフォルダの中。研究のデータは ~/Research、study-artifact はリポジトリの隣")
     func libraryLocations() {
         #expect(AppPaths.library.lastPathComponent == "Library")
         #expect(AppPaths.library.path.contains("com.taiyou.sundesk"))
-        #expect(AppPaths.sampleLibrary.lastPathComponent == "SampleLibrary")
+        #expect(AppPaths.defaultResearch.path == FileManager.default.homeDirectoryForCurrentUser.path + "/Research")
+        #expect(AppPaths.defaultStudy.lastPathComponent == "study-artifact")
     }
 }
 

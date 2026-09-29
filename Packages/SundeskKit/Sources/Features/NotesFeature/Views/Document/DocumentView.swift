@@ -62,6 +62,7 @@ public struct DocumentView: View {
                 text: $document.text,
                 syntax: .markdown(livePreview: livePreview, notePath: document.path),
                 scrollToLine: scrollToLine,
+                isEditable: document.isEditable,
                 onOpen: open
             )
         case .markdownReading(let vaultRoot):
@@ -86,6 +87,7 @@ public struct DocumentView: View {
                 text: $document.text,
                 syntax: language.map { .code(language: $0) } ?? .plain,
                 scrollToLine: .constant(nil),
+                isEditable: document.isEditable,
                 onOpen: open
             )
         case .image(let url):

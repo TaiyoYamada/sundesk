@@ -16,7 +16,7 @@ public struct VaultSettingsView: View {
     @State private var restoreSource: URL?
 
     private enum Choice {
-        case export, restore
+        case export, restore, research, study
     }
 
     public init(settings: VaultSettingsViewModel) {
@@ -37,6 +37,29 @@ public struct VaultSettingsView: View {
                 Text("論文、実験、データ、資料、ノートは、アプリの中のこのフォルダに置きます。Time Machine の対象に含まれます。")
                     .foregroundStyle(.secondary)
             }
+            Section {
+                folderRow("研究のデータ", path: settings.researchDirectory) { choosing = .research }
+                folderRow("study-artifact", path: settings.studyDirectory) { choosing = .study }
+            } header: {
+                Text("読むだけでつなぐフォルダ")
+            } footer: {
+                Text("コピーせず、その場で読みます。元の場所で書き換えると、すぐに反映されます。sundesk からは書き込みません。")
+                    .foregroundStyle(.secondary)
+            }
+            Section {
+                ForEach(settings.availableSections, id: \.self) { section in
+                    Toggle(
+                        section,
+                        isOn: Binding(
+                            get: { settings.isSelected(section) },
+                            set: { settings.setSection(section, selected: $0) }))
+                }
+            } header: {
+                Text("study-artifact から読むフォルダ")
+            } footer: {
+                Text("_inbox は、最適化や量子アニーリングなど研究のタグが付いたノートだけを読みます。")
+                    .foregroundStyle(.secondary)
+            }
             Section("書き出しと戻し") {
                 Button("ライブラリを書き出す…") { choosing = .export }
                 Button("書き出したものから戻す…") { choosing = .restore }
@@ -44,12 +67,6 @@ public struct VaultSettingsView: View {
                 if let message = settings.message {
                     Text(message).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
                 }
-            }
-            Section {
-                Toggle("見本のライブラリで試す", isOn: $settings.usesSampleLibrary)
-            } footer: {
-                Text("リポジトリにある研究向けの見本（SampleLibrary）を開きます。開発や動作の確認に使います。")
-                    .foregroundStyle(.secondary)
             }
             if settings.needsRestart {
                 Label("アプリを再起動すると反映されます", systemImage: "arrow.clockwise.circle")
@@ -65,6 +82,8 @@ public struct VaultSettingsView: View {
             switch choosing {
             case .export: Task { await settings.export(into: url) }
             case .restore: restoreSource = url
+            case .research: settings.researchDirectory = url.path
+            case .study: settings.studyDirectory = url.path
             case nil: break
             }
             choosing = nil
@@ -79,6 +98,15 @@ public struct VaultSettingsView: View {
             }
         } message: {
             Text("今のライブラリは消さずに、日付を付けて横に残します。")
+        }
+    }
+
+    private func folderRow(_ title: String, path: String, choose: @escaping () -> Void) -> some View {
+        LabeledContent(title) {
+            HStack {
+                Text(path).textSelection(.enabled).truncationMode(.middle).lineLimit(1)
+                Button("選ぶ…", action: choose)
+            }
         }
     }
 }

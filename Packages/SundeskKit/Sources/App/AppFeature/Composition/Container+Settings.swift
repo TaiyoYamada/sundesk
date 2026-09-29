@@ -22,7 +22,9 @@ extension Container {
                 defaults: SettingsDefaults(
                     vaultDirectory: AppPaths.library.path,
                     engineDirectory: EngineLocator.defaultEngineDirectory().path,
-                    uvExecutable: EngineLocator.findUV()?.path ?? "/opt/homebrew/bin/uv"
+                    uvExecutable: EngineLocator.findUV()?.path ?? "/opt/homebrew/bin/uv",
+                    researchDirectory: AppPaths.defaultResearch.path,
+                    studyDirectory: AppPaths.defaultStudy.path
                 )
             )
         }
@@ -54,7 +56,7 @@ extension Container {
         self {
             VaultSettingsViewModel(
                 loadSettings: self.loadSettings(), updateSettings: self.updateSettings(),
-                library: self.manageLibrary(), samplePath: AppPaths.sampleLibrary.path)
+                library: self.manageLibrary(), listSections: FileSystemStudySections())
         }
     }
 

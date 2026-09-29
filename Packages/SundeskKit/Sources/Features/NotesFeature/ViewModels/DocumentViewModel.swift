@@ -100,14 +100,17 @@ public final class DocumentViewModel {
         analyzeNote: any AnalyzeNoteUseCase,
         findBacklinks: any FindBacklinksUseCase,
         locateFile: any LocateFileUseCase,
+        isReadOnly: Bool = false,
         autosaveDelay: Duration = .seconds(1)
     ) {
         self.path = path
         let kind = FileKind(fileName: path.split(separator: "/").last.map(String.init) ?? path)
         self.kind = kind
+        self.isReadOnly = isReadOnly
         self.availableModes =
             switch kind {
-            case .markdown: [.livePreview, .source, .reading]
+            // 読むだけのノートは閲覧から開く（ソースも見られる）
+            case .markdown: isReadOnly ? [.reading, .source] : [.livePreview, .source, .reading]
             case .html: [.reading, .source]
             case .code, .text: [.source]
             case .image, .pdf, .other, .folder: [.reading]
@@ -144,10 +147,13 @@ public final class DocumentViewModel {
         displayMode = displayMode == .reading ? lastEditingMode : .reading
     }
 
-    /// 本文を編集できるファイルか。
+    /// 本文を編集できるファイルか。読むだけでつないだフォルダ（~/Research など）の中は書き換えない。
     public var isEditable: Bool {
-        kind.hasSourceView
+        kind.hasSourceView && !isReadOnly
     }
+
+    /// 読むだけのファイルか。
+    public let isReadOnly: Bool
 
     /// 今の中身と表示モードから、どう描くかを決める。本文は `text` から読む。
     public var display: DocumentDisplay {

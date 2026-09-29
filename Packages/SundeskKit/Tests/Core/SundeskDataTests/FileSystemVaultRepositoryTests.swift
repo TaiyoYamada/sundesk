@@ -102,6 +102,64 @@ struct FileSystemVaultRepositoryTests {
     }
 }
 
+@Suite("読むだけでつなぐフォルダ")
+struct VaultMountTests {
+    @Test("つないだフォルダは一番上に現れ、読めるが書き込めない")
+    func mountsAreReadOnly() async throws {
+        let library = try TemporaryVault(files: ["Notes/自分.md": "# 自分"])
+        let research = try TemporaryVault(files: [
+            "paper/a.pdf": "", "experiment/demo/README.md": "# デモ", "experiment/demo/.venv/x.py": "",
+        ])
+        defer {
+            library.remove()
+            research.remove()
+        }
+        let mount = VaultMount(name: "Research", url: research.url)
+        let repository = FileSystemVaultRepository(root: { library.url }, mounts: { [mount] })
+
+        let tree = try await repository.loadTree()
+
+        #expect(
+            Set(tree.files.map(\.path))
+                == ["Notes/自分.md", "Research/paper/a.pdf", "Research/experiment/demo/README.md"])
+        #expect(try await repository.readText(at: "Research/experiment/demo/README.md") == "# デモ")
+        #expect(repository.isReadOnly("Research/experiment/demo/README.md"))
+        #expect(!repository.isReadOnly("Notes/自分.md"))
+        let pdf = repository.fileURL(for: "Research/paper/a.pdf")
+        #expect(pdf.path == research.url.appending(path: "paper/a.pdf").path)
+        await #expect(throws: VaultError.readOnly(path: "Research/x.md")) {
+            try await repository.writeText("x", to: "Research/x.md")
+        }
+        await #expect(throws: VaultError.fileNotFound(path: "Research/../../外.md")) {
+            try await repository.readText(at: "Research/../../外.md")
+        }
+    }
+
+    @Test("study-artifact は選んだフォルダと、研究のタグの付いた _inbox のノートだけを見せる")
+    func filtersStudySections() async throws {
+        let library = try TemporaryVault(files: [:])
+        let study = try TemporaryVault(files: [
+            "notes/02-最適化/ABC.md": "# デモ",
+            "notes/12-ソフトウェア開発/Swift.md": "# Swift",
+            "notes/_inbox/焼きなまし.md": "---\ntitle: 焼きなまし\ntags: [最適化, SA]\n---\n# 焼きなまし",
+            "notes/_inbox/SvelteKit.md": "---\ntags: [sveltekit]\n---\n# SvelteKit",
+        ])
+        defer {
+            library.remove()
+            study.remove()
+        }
+        let mounts = ResearchSources.mounts(
+            research: "", study: study.url.path, studySections: ["02-最適化"]
+        ) { FileManager.default.fileExists(atPath: $0) }
+        let repository = FileSystemVaultRepository(root: { library.url }, mounts: { mounts })
+
+        let tree = try await repository.loadTree()
+
+        #expect(
+            Set(tree.files.map(\.path)) == ["study-artifact/02-最適化/ABC.md", "study-artifact/_inbox/焼きなまし.md"])
+    }
+}
+
 /// テストのたびに作って消す Vault。
 struct TemporaryVault {
     let url: URL

@@ -19,23 +19,27 @@ public struct TextEditorView: NSViewRepresentable {
     @Binding private var text: String
     private let syntax: EditorSyntax
     @Binding private var scrollToLine: Int?
+    private let isEditable: Bool
     private let onOpen: (DocumentLink) -> Void
 
     /// - Parameters:
     ///   - session: このファイルのエディタ（ファイルごとに 1 つ作って使い回す）。
     ///   - scrollToLine: 移る行（1 始まり）。移ったら nil に戻す。
+    ///   - isEditable: 書き換えられるか（読むだけのファイルは false）。
     ///   - onOpen: リンクが押されたとき（⌘ クリック、ライブプレビューでは隠れたリンクのクリック）。
     public init(
         session: TextEditorSession,
         text: Binding<String>,
         syntax: EditorSyntax,
         scrollToLine: Binding<Int?>,
+        isEditable: Bool = true,
         onOpen: @escaping (DocumentLink) -> Void
     ) {
         self.session = session
         self._text = text
         self.syntax = syntax
         self._scrollToLine = scrollToLine
+        self.isEditable = isEditable
         self.onOpen = onOpen
     }
 
@@ -58,6 +62,7 @@ public struct TextEditorView: NSViewRepresentable {
         let binding = $text
         session.onTextChange = { binding.wrappedValue = $0 }
         session.onOpen = onOpen
+        session.textView.isEditable = isEditable
         session.update(text: text, syntax: syntax)
     }
 }

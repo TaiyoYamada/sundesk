@@ -82,4 +82,6 @@ public enum VaultError: Error, Sendable, Equatable {
     case fileNotFound(path: String)
     case unreadable(path: String, reason: String)
     case unwritable(path: String, reason: String)
+    /// 読むだけでつないだフォルダ（~/Research など）には書き込まない。
+    case readOnly(path: String)
 }
