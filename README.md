@@ -61,6 +61,7 @@ Attention を覗いたり、LoRA で学習させたり、画像を生成した�
 ```sh
 make bootstrap   # 道具と依存関係をそろえる
 make run         # ビルドして起動する
+make install     # Release でビルドし、/Applications に入れ直して起動する
 ```
 
 起動すると、アプリが Python エンジンを自動で立ち上げる（初回は依存関係の取得で少し時間がかかる）。
