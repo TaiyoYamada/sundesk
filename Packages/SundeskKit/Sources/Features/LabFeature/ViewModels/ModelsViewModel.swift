@@ -83,9 +83,11 @@ public final class ModelsViewModel {
         downloadTask?.cancel()
     }
 
-    public func delete(_ id: String) async {
+    /// モデルをまとめて消す。
+    public func delete(_ ids: Set<String>) async {
+        guard !ids.isEmpty else { return }
         do {
-            try await management.delete(id)
+            try await management.delete(models.map(\.id).filter(ids.contains))
         } catch {
             errorMessage = error.message
         }

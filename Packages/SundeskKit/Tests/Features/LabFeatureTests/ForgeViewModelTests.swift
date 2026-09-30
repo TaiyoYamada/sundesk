@@ -63,6 +63,7 @@ struct ForgeViewModelTests {
     @Test("スクラッチの出力をまとめ、エラーは traceback つきで出す")
     func scratchOutputs() async {
         let viewModel = ScratchViewModel(scratch: ScratchStub(), modelManagement: ModelsStub())
+        viewModel.code = "print(1)\nprint(2)"
 
         viewModel.run()
         await waitUntil { !viewModel.isRunning }
@@ -75,7 +76,8 @@ struct ForgeViewModelTests {
     }
 }
 
-nonisolated private final class Recorder<Value>: @unchecked Sendable {
+/// スタブに届いた値を覚えておく。
+nonisolated final class Recorder<Value>: @unchecked Sendable {
     var value: [Value] = []
 }
 
@@ -120,5 +122,6 @@ private struct ScratchStub: ScratchUseCase {
     func reset(session: String) async throws(LabError) {}
     func scripts() async throws(LabError) -> [Script] { [] }
     func save(_ script: Script) async throws(LabError) {}
-    func delete(scriptNamed name: String) async throws(LabError) {}
+    func delete(scriptsNamed names: [String]) async throws(LabError) {}
+    func rename(scriptNamed name: String, to newName: String) async throws(LabError) {}
 }

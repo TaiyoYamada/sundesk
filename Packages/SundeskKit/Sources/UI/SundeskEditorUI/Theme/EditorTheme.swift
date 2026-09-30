@@ -43,6 +43,8 @@ enum EditorTheme {
     static let mathColor = NSColor.systemPurple
     static let secondaryColor = NSColor.secondaryLabelColor
     static let codeBackground = NSColor.quaternaryLabelColor.withAlphaComponent(0.08)
+    /// コードのエディタで、カーソルのある行の背景。
+    static let currentLineColor = NSColor.controlAccentColor.withAlphaComponent(0.07)
 
     /// コードの色づけ（Xcode の既定に近い配色）。
     static func color(for kind: CodeTokenKind) -> NSColor {

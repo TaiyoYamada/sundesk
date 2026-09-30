@@ -9,15 +9,18 @@ import Foundation
 import Observation
 import SundeskDomain
 
-/// LLM の実験室。プロンプトを入れて、トークン、確率、Attention、層ごとの予測や活性を覗き、LoRA や steering でいじる。
+/// LLM の実験室の道具。プロンプトを入れて、トークン、確率、Attention、層ごとの予測や活性を覗き、LoRA や steering でいじる。
+///
+/// 実験室の主役はスクリプト（`ScratchViewModel`）で、ここの道具はその横のパネルで使う。
 @MainActor
 @Observable
 public final class LabViewModel {
+    /// 道具の種類。
     public enum Section: String, CaseIterable, Identifiable, Sendable {
         case tokens, nextToken, generate, attention, logitLens, activations
         case lora, steering, distill
         case quantize, convertMerge, prune
-        case evaluate, script, records
+        case evaluate, records
 
         public var id: Self { self }
 
@@ -36,7 +39,6 @@ public final class LabViewModel {
             case .convertMerge: "変換と合成"
             case .prune: "枝刈り"
             case .evaluate: "評価"
-            case .script: "スクリプト"
             case .records: "記録"
             }
         }
@@ -56,7 +58,6 @@ public final class LabViewModel {
             case .convertMerge: "arrow.triangle.merge"
             case .prune: "scissors"
             case .evaluate: "chart.xyaxis.line"
-            case .script: "curlybraces.square"
             case .records: "clock.arrow.circlepath"
             }
         }
@@ -65,7 +66,26 @@ public final class LabViewModel {
         public var usesPrompt: Bool {
             [.tokens, .nextToken, .generate, .attention, .logitLens, .activations, .steering].contains(self)
         }
+
+        /// 工房（ForgeViewModel）の道具か。
+        public var usesForge: Bool {
+            [.distill, .quantize, .convertMerge, .prune, .evaluate].contains(self)
+        }
     }
+
+    /// 道具のまとまり（メニューの区切り）。
+    public struct SectionGroup: Identifiable, Sendable {
+        public var id: String { title }
+        public let title: String
+        public let sections: [Section]
+    }
+
+    public static let sectionGroups = [
+        SectionGroup(title: "覗く", sections: [.tokens, .nextToken, .generate, .attention, .logitLens, .activations]),
+        SectionGroup(title: "いじる", sections: [.lora, .steering, .distill]),
+        SectionGroup(title: "作る", sections: [.quantize, .convertMerge, .prune]),
+        SectionGroup(title: "比べる・振り返る", sections: [.evaluate, .records]),
+    ]
 
     public var section: Section = .tokens
     public private(set) var models: [String] = LabViewModel.suggestedModels
@@ -192,7 +212,7 @@ public final class LabViewModel {
         case .activations: perform { self.activations = ActivationsItem(try await self.lab(activationsOf: prompt)) }
         case .lora: startTraining()
         case .steering: perform { try await self.steer(prompt) }
-        case .distill, .quantize, .convertMerge, .prune, .evaluate, .script, .records: break
+        case .distill, .quantize, .convertMerge, .prune, .evaluate, .records: break
         }
     }
 
@@ -308,8 +328,14 @@ extension LabViewModel {
 
     // MARK: - 記録
 
-    public func deleteExperiment(_ id: UUID) async {
-        try? await lab.deleteExperiment(id)
+    /// 実験の記録をまとめて消す。
+    public func deleteExperiments(_ ids: Set<UUID>) async {
+        do {
+            try await lab.deleteExperiments(Array(ids))
+        } catch {
+            errorMessage = error.message
+        }
+        await reloadRecords()
     }
 
     public func deleteAdapter(_ id: UUID) async {

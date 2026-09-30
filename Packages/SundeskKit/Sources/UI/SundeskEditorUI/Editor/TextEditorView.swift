@@ -12,7 +12,8 @@ import SwiftUI
 /// ノートやコードを編集するエディタ（TextKit 2 の NSTextView）。
 ///
 /// Markdown はライブプレビュー（カーソルのない行の記号を隠す）とソース、コードは tree-sitter で色づけして行番号を出す。
-/// 取り消し（⌘Z）と検索（⌘F）は NSTextView のものを使う。
+/// コードでは、自動インデント、括弧の補完、コメントの切り替え（⌘/）、行の複製（⌘D）と移動（⌥↑↓）、
+/// 今の行の強調、Esc での補完もする。取り消し（⌘Z）と検索・置換（⌘F、⌥⌘F）は NSTextView のものを使う。
 /// エディタの本体は `TextEditorSession` が持つので、タブを切り替えても取り消しの履歴とスクロール位置が残る。
 public struct TextEditorView: NSViewRepresentable {
     private let session: TextEditorSession
@@ -20,12 +21,14 @@ public struct TextEditorView: NSViewRepresentable {
     private let syntax: EditorSyntax
     @Binding private var scrollToLine: Int?
     private let isEditable: Bool
+    private let completions: [String]
     private let onOpen: (DocumentLink) -> Void
 
     /// - Parameters:
     ///   - session: このファイルのエディタ（ファイルごとに 1 つ作って使い回す）。
     ///   - scrollToLine: 移る行（1 始まり）。移ったら nil に戻す。
     ///   - isEditable: 書き換えられるか（読むだけのファイルは false）。
+    ///   - completions: コードの補完に足す名前（言語のキーワードと本文の識別子に加えて出す）。
     ///   - onOpen: リンクが押されたとき（⌘ クリック、ライブプレビューでは隠れたリンクのクリック）。
     public init(
         session: TextEditorSession,
@@ -33,6 +36,7 @@ public struct TextEditorView: NSViewRepresentable {
         syntax: EditorSyntax,
         scrollToLine: Binding<Int?>,
         isEditable: Bool = true,
+        completions: [String] = [],
         onOpen: @escaping (DocumentLink) -> Void
     ) {
         self.session = session
@@ -40,6 +44,7 @@ public struct TextEditorView: NSViewRepresentable {
         self.syntax = syntax
         self._scrollToLine = scrollToLine
         self.isEditable = isEditable
+        self.completions = completions
         self.onOpen = onOpen
     }
 
@@ -62,6 +67,7 @@ public struct TextEditorView: NSViewRepresentable {
         let binding = $text
         session.onTextChange = { binding.wrappedValue = $0 }
         session.onOpen = onOpen
+        session.completions = completions
         session.textView.isEditable = isEditable
         session.update(text: text, syntax: syntax)
     }
@@ -73,6 +79,8 @@ public final class TextEditorSession: NSObject, NSTextViewDelegate {
     let scrollView: NSScrollView
     var onTextChange: ((String) -> Void)?
     var onOpen: ((DocumentLink) -> Void)?
+    /// コードの補完に足す名前。
+    var completions: [String] = []
 
     private var syntax: EditorSyntax?
     /// 解析した記法の範囲。本文が変わるまで使い回す。
@@ -105,6 +113,8 @@ public final class TextEditorSession: NSObject, NSTextViewDelegate {
             self.syntax = syntax
             spans = nil
             textView.showsLineNumbers = if case .code = syntax { true } else { false }
+            textView.codeEditing = if case .code(let language) = syntax { CodeEditing(language: language) } else { nil }
+            textView.highlightsCurrentLine = textView.codeEditing != nil
             textView.limitsLineLength = syntax.isMarkdown
             revealed = currentParagraph()
             restyle()
@@ -126,6 +136,31 @@ public final class TextEditorSession: NSObject, NSTextViewDelegate {
         restyle()
     }
 
+    // MARK: - 外からの操作
+
+    /// 選んでいる文字。何も選んでいなければカーソルの行。共通のインデントは除く。
+    public var selectedTextOrCurrentLine: String {
+        CodeEditing.selectedCode(in: textView.string, selection: textView.selectedRange())
+    }
+
+    /// コードの編集の操作をする（キーボードのショートカットと同じ）。
+    public func perform(_ command: CodeCommand) {
+        textView.perform(command)
+    }
+
+    /// 検索の帯を出す。`replacing` なら置換の欄も出す。
+    public func showFind(replacing: Bool) {
+        focus()
+        let item = NSMenuItem()
+        item.tag = (replacing ? NSTextFinder.Action.showReplaceInterface : .showFindInterface).rawValue
+        textView.performTextFinderAction(item)
+    }
+
+    /// 本文に入力できるようにする。
+    public func focus() {
+        textView.window?.makeFirstResponder(textView)
+    }
+
     // MARK: - NSTextViewDelegate
 
     public func textDidChange(_ notification: Notification) {
@@ -135,6 +170,16 @@ public final class TextEditorSession: NSObject, NSTextViewDelegate {
         revealed = currentParagraph()
         restyle()
         onTextChange?(textView.string)
+    }
+
+    public func textView(
+        _ textView: NSTextView, completions words: [String], forPartialWordRange charRange: NSRange,
+        indexOfSelectedItem index: UnsafeMutablePointer<Int>?
+    ) -> [String] {
+        guard case .code(let language) = syntax else { return words }
+        let prefix = (textView.string as NSString).substring(with: charRange)
+        return CodeCompletion.candidates(
+            prefix: prefix, text: textView.string, language: language, extra: completions)
     }
 
     public func textViewDidChangeSelection(_ notification: Notification) {

@@ -81,6 +81,27 @@ struct LabViewModelTests {
         #expect(!viewModel.isRunning)
     }
 
+    @Test("選んだ実験の記録をまとめて消す")
+    func deletesExperiments() async {
+        let lab = LabStub(failure: nil)
+        let viewModel = LabViewModel(lab: lab, modelManagement: ModelsStub(), loadVaultTree: TreeStub())
+        let ids: Set<UUID> = [UUID(), UUID(), UUID()]
+
+        await viewModel.deleteExperiments(ids)
+
+        #expect(Set(lab.deletedExperiments.value) == ids)
+        #expect(viewModel.errorMessage == nil)
+    }
+
+    @Test("道具はスクリプトを含まず、すべてどこかのまとまりに入っている")
+    func sectionGroups() {
+        let grouped = LabViewModel.sectionGroups.flatMap(\.sections)
+        #expect(
+            grouped.sorted { $0.rawValue < $1.rawValue }
+                == LabViewModel.Section.allCases.sorted { $0.rawValue < $1.rawValue })
+        #expect(Set(grouped).count == grouped.count)
+    }
+
     @Test("steering は正と負の文がないと始めない")
     func steeringNeedsSentences() async {
         let viewModel = makeViewModel()
@@ -96,6 +117,7 @@ struct LabViewModelTests {
 
 struct LabStub: LabUseCases {
     let failure: LabError?
+    let deletedExperiments = Recorder<UUID>()
 
     func callAsFunction(_ prompt: LabPrompt) async throws(LabError) -> [TokenPiece] {
         [TokenPiece(id: 1, text: "富士", start: 0, end: 2), TokenPiece(id: 2, text: "山 は", start: 2, end: 5)]
@@ -151,13 +173,15 @@ struct LabStub: LabUseCases {
     }
 
     func experiments() async throws(LabError) -> [Experiment] { [] }
-    func deleteExperiment(_ id: UUID) async throws(LabError) {}
+    func deleteExperiments(_ ids: [UUID]) async throws(LabError) { deletedExperiments.value += ids }
     func adapters() async throws(LabError) -> [Adapter] { [] }
     func deleteAdapter(_ adapter: Adapter) async throws(LabError) {}
     func changes() -> AsyncStream<Void> { AsyncStream { $0.finish() } }
 }
 
 struct ModelsStub: ModelManagementUseCase {
+    let deleted = Recorder<String>()
+
     func localModels() async throws(LabError) -> [LocalModel] {
         [
             LocalModel(id: "mlx-community/gemma-3-1b-it-4bit", kind: .llm, sizeBytes: 1, path: "/a"),
@@ -173,7 +197,7 @@ struct ModelsStub: ModelManagementUseCase {
         }
     }
 
-    func delete(_ id: String) async throws(LabError) {}
+    func delete(_ ids: [String]) async throws(LabError) { deleted.value += ids }
     func loadedModels() async throws(LabError) -> LoadedModels { .none }
     func unload(_ kind: ModelKind?) async throws(LabError) {}
 }
@@ -205,5 +229,16 @@ struct ModelsViewModelTests {
         }
         #expect(viewModel.download == nil)
         #expect(viewModel.errorMessage == nil)
+    }
+
+    @Test("選んだモデルを、一覧の順にまとめて消す")
+    func deletesInBulk() async {
+        let management = ModelsStub()
+        let viewModel = ModelsViewModel(management: management)
+        await viewModel.load()
+
+        await viewModel.delete(["cl-nagoya/ruri-v3-130m", "mlx-community/gemma-3-1b-it-4bit", "消えたモデル"])
+
+        #expect(management.deleted.value == ["mlx-community/gemma-3-1b-it-4bit", "cl-nagoya/ruri-v3-130m"])
     }
 }

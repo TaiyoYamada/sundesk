@@ -15,7 +15,7 @@ struct LoRAView: View {
     @Bindable var viewModel: LabViewModel
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
+        AdaptiveSplit(settingsWidth: 340) {
             Form {
                 Section("学習に使うノート") {
                     Picker("フォルダ", selection: $viewModel.loraFolder) {
@@ -49,8 +49,7 @@ struct LoRAView: View {
                 }
             }
             .formStyle(.grouped)
-            .frame(width: 340)
-            Divider()
+        } result: {
             VStack(alignment: .leading, spacing: 16) {
                 Text("損失").font(.headline)
                 if viewModel.trainingLoss.isEmpty {
@@ -101,7 +100,7 @@ struct SteeringView: View {
     @Bindable var viewModel: LabViewModel
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
+        AdaptiveSplit(settingsWidth: 340) {
             Form {
                 Section {
                     Stepper("層 \(viewModel.steeringLayer)", value: $viewModel.steeringLayer, in: 0...80)
@@ -125,12 +124,18 @@ struct SteeringView: View {
                 }
             }
             .formStyle(.grouped)
-            .frame(width: 340)
-            Divider()
+        } result: {
             if let steering = viewModel.steering {
-                HStack(alignment: .top, spacing: 16) {
-                    comparison("そのまま", steering.baseline)
-                    comparison("steering あり（ベクトルの大きさ \(steering.norm)）", steering.steered)
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 16) {
+                        comparison("そのまま", steering.baseline)
+                        comparison("steering あり（ベクトルの大きさ \(steering.norm)）", steering.steered)
+                    }
+                    .frame(minWidth: 480)
+                    VStack(alignment: .leading, spacing: 16) {
+                        comparison("そのまま", steering.baseline)
+                        comparison("steering あり（ベクトルの大きさ \(steering.norm)）", steering.steered)
+                    }
                 }
                 .padding(20)
             } else {
@@ -158,32 +163,6 @@ private struct SamplingControlsCompact: View {
         VStack(alignment: .leading) {
             Text("温度 \(String(format: "%.2f", viewModel.temperature))")
             Slider(value: $viewModel.temperature, in: 0...1.5)
-        }
-    }
-}
-
-// MARK: - 記録
-
-struct RecordsView: View {
-    let viewModel: LabViewModel
-
-    var body: some View {
-        if viewModel.experiments.isEmpty {
-            LabPlaceholder(section: .records, description: "実験室で実行するたびに、モデル、プロンプト、設定、結果の要約を記録します。")
-        } else {
-            Table(viewModel.experiments) {
-                TableColumn("日時", value: \.date).width(min: 110, ideal: 130)
-                TableColumn("種類", value: \.kind).width(min: 70, ideal: 90)
-                TableColumn("モデル", value: \.model).width(min: 100, ideal: 150)
-                TableColumn("プロンプト", value: \.prompt)
-                TableColumn("設定", value: \.parameters)
-                TableColumn("結果", value: \.summary)
-            }
-            .contextMenu(forSelectionType: ExperimentItem.ID.self) { ids in
-                Button("削除", role: .destructive) {
-                    Task { for id in ids { await viewModel.deleteExperiment(id) } }
-                }
-            }
         }
     }
 }

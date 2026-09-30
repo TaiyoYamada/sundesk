@@ -29,6 +29,8 @@ public protocol ScriptRepository: Sendable {
     func scripts() async throws(LabError) -> [Script]
     func save(_ script: Script) async throws(LabError)
     func delete(named name: String) async throws(LabError)
+    /// 名前を変える。同じ名前のスクリプトがあれば失敗する。
+    func rename(named name: String, to newName: String) async throws(LabError)
 }
 
 // MARK: - 作る
@@ -57,7 +59,9 @@ public protocol ScratchUseCase: Sendable {
     func reset(session: String) async throws(LabError)
     func scripts() async throws(LabError) -> [Script]
     func save(_ script: Script) async throws(LabError)
-    func delete(scriptNamed name: String) async throws(LabError)
+    /// スクリプトをまとめて消す。
+    func delete(scriptsNamed names: [String]) async throws(LabError)
+    func rename(scriptNamed name: String, to newName: String) async throws(LabError)
 }
 
 public typealias ForgeUseCases = ForgeModelUseCase & EvaluateModelsUseCase & DeleteForgedModelUseCase
@@ -275,8 +279,17 @@ public struct ScratchInteractor: ScratchUseCase {
         try await scriptsRepository.save(script)
     }
 
-    public func delete(scriptNamed name: String) async throws(LabError) {
-        try await scriptsRepository.delete(named: name)
+    public func delete(scriptsNamed names: [String]) async throws(LabError) {
+        for name in names {
+            try await scriptsRepository.delete(named: name)
+        }
+    }
+
+    public func rename(scriptNamed name: String, to newName: String) async throws(LabError) {
+        let newName = newName.trimmingCharacters(in: .whitespaces)
+        guard !newName.isEmpty else { throw .storage("スクリプトの名前が空です") }
+        guard newName != name else { return }
+        try await scriptsRepository.rename(named: name, to: newName)
     }
 }
 

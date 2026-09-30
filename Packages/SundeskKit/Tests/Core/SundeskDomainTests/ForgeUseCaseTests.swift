@@ -83,9 +83,21 @@ struct ForgeUseCaseTests {
         let files = FilesStub()
         let management = ModelManagementInteractor(repository: ModelRepositorySpy(), files: files)
 
-        try await management.delete("/Models/m-3bit")
+        try await management.delete(["/Models/m-3bit"])
 
         #expect(files.removed.value == ["/Models/m-3bit"])
+    }
+
+    @Test("まとめて消すとき、1 つ失敗しても残りは消し、失敗を知らせる")
+    func deletesModelsInBulk() async {
+        let files = FilesStub()
+        let management = ModelManagementInteractor(repository: ModelRepositorySpy(), files: files)
+
+        await #expect(throws: LabError.engine("キャッシュのモデルを消そうとした")) {
+            try await management.delete(["/Models/a", "mlx-community/x", "/Models/b"])
+        }
+
+        #expect(files.removed.value == ["/Models/a", "/Models/b"])
     }
 }
 
@@ -143,4 +155,41 @@ struct ModelRepositorySpy: ModelRepository {
     func delete(_ id: String) async throws(LabError) { throw .engine("キャッシュのモデルを消そうとした") }
     func loadedModels() async throws(LabError) -> LoadedModels { .none }
     func unload(_ kind: ModelKind?) async throws(LabError) {}
+}
+
+@Suite("スクリプト")
+struct ScratchInteractorTests {
+    @Test("まとめて消し、名前は前後の空白を除いて変える")
+    func deletesAndRenames() async throws {
+        let scripts = ScriptRepositorySpy()
+        let scratch = ScratchInteractor(engine: ScratchEngineStub(), scripts: scripts, records: LabRecordsSpy())
+
+        try await scratch.delete(scriptsNamed: ["a", "b"])
+        try await scratch.rename(scriptNamed: "c", to: " d ")
+        try await scratch.rename(scriptNamed: "e", to: "e")
+        await #expect(throws: LabError.self) { try await scratch.rename(scriptNamed: "c", to: "  ") }
+
+        #expect(await scripts.deleted == ["a", "b"])
+        #expect(await scripts.renamed == ["c→d"])
+    }
+}
+
+actor ScriptRepositorySpy: ScriptRepository {
+    private(set) var deleted: [String] = []
+    private(set) var renamed: [String] = []
+
+    func scripts() async throws(LabError) -> [Script] { [] }
+    func save(_ script: Script) async throws(LabError) {}
+    func delete(named name: String) async throws(LabError) { deleted.append(name) }
+    func rename(named name: String, to newName: String) async throws(LabError) { renamed.append("\(name)→\(newName)") }
+}
+
+struct ScratchEngineStub: ScratchEngine {
+    func run(
+        session: String, code: String, model: String?, adapter: String?
+    ) -> AsyncThrowingStream<ScratchOutput, any Error> {
+        AsyncThrowingStream { $0.finish() }
+    }
+
+    func reset(session: String) async throws(LabError) {}
 }

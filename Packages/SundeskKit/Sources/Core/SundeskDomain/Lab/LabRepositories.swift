@@ -47,7 +47,8 @@ public protocol ImageEngine: Sendable {
 public protocol LabRecordRepository: Sendable {
     func experiments() async throws(LabError) -> [Experiment]
     func save(_ experiment: Experiment) async throws(LabError)
-    func deleteExperiment(_ id: UUID) async throws(LabError)
+    /// 実験の記録をまとめて消す（変わったことは 1 回だけ知らせる）。
+    func deleteExperiments(_ ids: [UUID]) async throws(LabError)
 
     func adapters() async throws(LabError) -> [Adapter]
     func save(_ adapter: Adapter) async throws(LabError)

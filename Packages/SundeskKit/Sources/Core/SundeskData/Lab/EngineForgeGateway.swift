@@ -238,6 +238,22 @@ public struct FileSystemScriptRepository: ScriptRepository {
         try? FileManager.default.removeItem(at: url)
     }
 
+    public func rename(named name: String, to newName: String) async throws(LabError) {
+        guard let source = file(named: name), let destination = file(named: newName) else {
+            throw .storage("スクリプトの置き場所を作れません")
+        }
+        // 大文字と小文字だけの違いなら、同じファイルの名前を変える
+        let sameFile = source.path.lowercased() == destination.path.lowercased()
+        guard sameFile || !FileManager.default.fileExists(atPath: destination.path) else {
+            throw .storage("「\(newName)」という名前のスクリプトがもうあります")
+        }
+        do {
+            try FileManager.default.moveItem(at: source, to: destination)
+        } catch {
+            throw .storage(error.localizedDescription)
+        }
+    }
+
     private func file(named name: String) -> URL? {
         let safe = name.replacing(/[\/:\\]/, with: "-")
         return directory()?.appending(path: "\(safe).py")

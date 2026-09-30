@@ -17,19 +17,23 @@ struct SwiftDataLabRecordRepositoryTests {
         SwiftDataLabRecordRepository(modelContainer: try LabStore.makeContainer(url: nil))
     }
 
-    @Test("実験の記録を新しい順に読み戻し、消せる")
+    @Test("実験の記録を新しい順に読み戻し、まとめて消せる")
     func experiments() async throws {
         let repository = try makeRepository()
         let old = Experiment(
             kind: .tokenize, model: "m", prompt: "a", parameters: [:], summary: "1", createdAt: .distantPast)
+        let middle = Experiment(
+            kind: .generate, model: "m", prompt: "c", parameters: [:], summary: "3",
+            createdAt: .now.addingTimeInterval(-60))
         let new = Experiment(kind: .attention, model: "m", prompt: "b", parameters: ["層": "3"], summary: "2")
 
         try await repository.save(old)
+        try await repository.save(middle)
         try await repository.save(new)
 
-        #expect(try await repository.experiments() == [new, old])
-        try await repository.deleteExperiment(new.id)
-        #expect(try await repository.experiments() == [old])
+        #expect(try await repository.experiments() == [new, middle, old])
+        try await repository.deleteExperiments([new.id, old.id])
+        #expect(try await repository.experiments() == [middle])
     }
 
     @Test("アダプタと画像を保存し、読み戻せる")

@@ -51,7 +51,7 @@ struct NextTokenView: View {
             HStack {
                 Text("温度")
                 Slider(value: $viewModel.nextTokenTemperature, in: 0.1...2.0)
-                    .frame(width: 220)
+                    .frame(maxWidth: 220)
                 Text(String(format: "%.2f", viewModel.nextTokenTemperature)).monospacedDigit()
                 Spacer()
                 if let entropy = viewModel.entropy {
@@ -86,43 +86,48 @@ struct GenerateView: View {
     @Bindable var viewModel: LabViewModel
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            VStack(alignment: .leading, spacing: 12) {
-                SamplingControls(viewModel: viewModel)
-                if viewModel.generated.isEmpty {
-                    LabPlaceholder(
-                        section: .generate, description: "1 トークンずつ生成し、選ばれたトークンの確率で色を付けます。薄い色ほど、迷わず選ばれたトークンです。")
-                } else {
-                    ScrollView {
-                        FlowLayout(spacing: 0) {
-                            ForEach(viewModel.generated) { token in
-                                Text(token.text)
-                                    .font(.system(size: 14))
-                                    .padding(.vertical, 2)
-                                    .background(Heat.uncertainty(token.probability))
-                                    .overlay(alignment: .bottom) {
-                                        if viewModel.selectedGeneratedIndex == token.id {
-                                            Rectangle().fill(.tint).frame(height: 2)
-                                        }
+        VStack(alignment: .leading, spacing: 12) {
+            SamplingControls(viewModel: viewModel)
+            if viewModel.generated.isEmpty {
+                LabPlaceholder(
+                    section: .generate,
+                    description: "1 トークンずつ生成し、選ばれたトークンの確率で色を付けます。薄い色ほど、迷わず選ばれたトークンです。クリックすると、代わりの候補を出します。")
+            } else {
+                ScrollView {
+                    FlowLayout(spacing: 0) {
+                        ForEach(viewModel.generated) { token in
+                            Text(token.text)
+                                .font(.system(size: 14))
+                                .padding(.vertical, 2)
+                                .background(Heat.uncertainty(token.probability))
+                                .overlay(alignment: .bottom) {
+                                    if viewModel.selectedGeneratedIndex == token.id {
+                                        Rectangle().fill(.tint).frame(height: 2)
                                     }
-                                    .onTapGesture { viewModel.selectedGeneratedIndex = token.id }
-                                    .help(String(format: "確率 %.1f%%", token.probability * 100))
-                            }
+                                }
+                                .onTapGesture { viewModel.selectedGeneratedIndex = token.id }
+                                .help(String(format: "確率 %.1f%%", token.probability * 100))
+                                .popover(isPresented: alternativesShown(token.id), arrowEdge: .bottom) {
+                                    AlternativesView(token: token).frame(width: 240)
+                                }
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    if let speed = viewModel.tokensPerSecond {
-                        Text(String(format: "%.1f トークン/秒", speed)).font(.caption).foregroundStyle(.secondary)
-                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                if let speed = viewModel.tokensPerSecond {
+                    Text(String(format: "%.1f トークン/秒", speed)).font(.caption).foregroundStyle(.secondary)
                 }
             }
-            .padding(20)
-            if let index = viewModel.selectedGeneratedIndex, viewModel.generated.indices.contains(index) {
-                Divider()
-                AlternativesView(token: viewModel.generated[index])
-                    .frame(width: 240)
-            }
         }
+        .padding(20)
+    }
+
+    /// トークンを押すと、代わりの候補をポップオーバーで出す。
+    private func alternativesShown(_ index: Int) -> Binding<Bool> {
+        Binding(
+            get: { viewModel.selectedGeneratedIndex == index },
+            set: { if !$0, viewModel.selectedGeneratedIndex == index { viewModel.selectedGeneratedIndex = nil } }
+        )
     }
 }
 
@@ -130,23 +135,28 @@ struct SamplingControls: View {
     @Bindable var viewModel: LabViewModel
 
     var body: some View {
-        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
-            GridRow {
-                Text("温度")
-                Slider(value: $viewModel.temperature, in: 0...2).frame(width: 180)
-                Text(String(format: "%.2f", viewModel.temperature)).monospacedDigit()
-                Text("top-p")
-                Slider(value: $viewModel.topP, in: 0.05...1).frame(width: 140)
-                Text(String(format: "%.2f", viewModel.topP)).monospacedDigit()
+        VStack(alignment: .leading, spacing: 8) {
+            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 6) {
+                GridRow {
+                    Text("温度")
+                    Slider(value: $viewModel.temperature, in: 0...2).frame(minWidth: 100, maxWidth: 220)
+                    Text(String(format: "%.2f", viewModel.temperature)).monospacedDigit()
+                }
+                GridRow {
+                    Text("top-p")
+                    Slider(value: $viewModel.topP, in: 0.05...1).frame(minWidth: 100, maxWidth: 220)
+                    Text(String(format: "%.2f", viewModel.topP)).monospacedDigit()
+                }
             }
-            GridRow {
-                Text("最大")
-                Stepper("\(viewModel.maxTokens) トークン", value: $viewModel.maxTokens, in: 16...2048, step: 16)
-                    .gridCellColumns(2)
-                Text("種")
-                TextField("毎回変える", value: $viewModel.seed, format: .number)
-                    .frame(width: 100)
-                    .textFieldStyle(.roundedBorder)
+            FlowLayout(spacing: 12) {
+                Stepper("最大 \(viewModel.maxTokens) トークン", value: $viewModel.maxTokens, in: 16...2048, step: 16)
+                    .fixedSize()
+                HStack(spacing: 6) {
+                    Text("種")
+                    TextField("毎回変える", value: $viewModel.seed, format: .number)
+                        .frame(width: 100)
+                        .textFieldStyle(.roundedBorder)
+                }
                 if !viewModel.adaptersForModel.isEmpty {
                     Picker("LoRA", selection: $viewModel.selectedAdapterID) {
                         Text("使わない").tag(UUID?.none)
@@ -203,8 +213,8 @@ struct AttentionView: View {
                     }
                     .fixedSize()
                     Spacer()
-                    Text("行のトークンが、列のトークンをどれだけ見ているか").font(.caption).foregroundStyle(.secondary)
                 }
+                Text("行のトークンが、列のトークンをどれだけ見ているか").font(.caption).foregroundStyle(.secondary)
                 HeatmapView(
                     matrix: attention.matrix(head: viewModel.attentionHead), rowLabels: attention.tokens,
                     columnLabels: attention.tokens, maxValue: 1)

@@ -55,7 +55,8 @@ public protocol SteerUseCase: Sendable {
 
 public protocol LabRecordsUseCase: Sendable {
     func experiments() async throws(LabError) -> [Experiment]
-    func deleteExperiment(_ id: UUID) async throws(LabError)
+    /// 実験の記録をまとめて消す。
+    func deleteExperiments(_ ids: [UUID]) async throws(LabError)
     func adapters() async throws(LabError) -> [Adapter]
     func deleteAdapter(_ adapter: Adapter) async throws(LabError)
     func changes() -> AsyncStream<Void>
@@ -204,8 +205,9 @@ public struct LabInteractor: LabUseCases {
         try await records.experiments()
     }
 
-    public func deleteExperiment(_ id: UUID) async throws(LabError) {
-        try await records.deleteExperiment(id)
+    public func deleteExperiments(_ ids: [UUID]) async throws(LabError) {
+        guard !ids.isEmpty else { return }
+        try await records.deleteExperiments(ids)
     }
 
     public func adapters() async throws(LabError) -> [Adapter] {
@@ -251,7 +253,8 @@ public struct LabInteractor: LabUseCases {
 public protocol ModelManagementUseCase: Sendable {
     func localModels() async throws(LabError) -> [LocalModel]
     func download(_ id: String) -> AsyncThrowingStream<DownloadEvent, any Error>
-    func delete(_ id: String) async throws(LabError)
+    /// モデルをまとめて消す。消せなかったものがあっても残りは消し、最後の失敗を投げる。
+    func delete(_ ids: [String]) async throws(LabError)
     func loadedModels() async throws(LabError) -> LoadedModels
     func unload(_ kind: ModelKind?) async throws(LabError)
 }
@@ -274,13 +277,24 @@ public struct ModelManagementInteractor: ModelManagementUseCase {
     }
 
     /// Hugging Face のキャッシュのモデルはエンジンで消し、工房で作ったモデル（絶対パス）はフォルダを消す。
-    public func delete(_ id: String) async throws(LabError) {
-        if id.hasPrefix("/") {
+    public func delete(_ ids: [String]) async throws(LabError) {
+        // 作ったモデルはメモリに載っているかもしれないので、先に 1 回だけ外す
+        if ids.contains(where: { $0.hasPrefix("/") }) {
             try? await repository.unload(nil)
-            files.remove(id)
-        } else {
-            try await repository.delete(id)
         }
+        var failure: LabError?
+        for id in ids {
+            if id.hasPrefix("/") {
+                files.remove(id)
+            } else {
+                do {
+                    try await repository.delete(id)
+                } catch {
+                    failure = error
+                }
+            }
+        }
+        if let failure { throw failure }
     }
 
     public func loadedModels() async throws(LabError) -> LoadedModels {

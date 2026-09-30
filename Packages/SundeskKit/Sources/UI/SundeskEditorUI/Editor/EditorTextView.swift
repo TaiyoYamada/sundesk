@@ -8,6 +8,7 @@
 import AppKit
 
 /// TextKit 2 の NSTextView。リンクを開く、行番号を描く、行の長さを絞る、指定の行へ移る。
+/// コードでは、今の行を強調し、自動インデントや括弧の補完などの編集をする（`codeEditing`）。
 final class EditorTextView: NSTextView {
     /// リンクが押されたとき。
     var onOpenLink: ((DocumentLink) -> Void)?
@@ -21,6 +22,14 @@ final class EditorTextView: NSTextView {
     /// 1 行の長さを絞って、中央に寄せるか（Markdown）。
     var limitsLineLength = false {
         didSet { updateInsets() }
+    }
+
+    /// コードの編集（自動インデント、コメントの切り替えなど）。nil ならふつうのテキストとして編集する。
+    var codeEditing: CodeEditing?
+
+    /// カーソルのある行を強調するか（コード）。
+    var highlightsCurrentLine = false {
+        didSet { needsDisplay = true }
     }
 
     /// 各行の先頭の位置（UTF-16）。行番号と行への移動に使う。
@@ -114,13 +123,19 @@ final class EditorTextView: NSTextView {
 
     override func drawBackground(in rect: NSRect) {
         super.drawBackground(in: rect)
+        let currentLine = highlightsCurrentLine ? currentLineRect() : nil
+        if let currentLine {
+            EditorTheme.currentLineColor.setFill()
+            currentLine.intersection(rect).fill()
+        }
         guard showsLineNumbers, let layoutManager = textLayoutManager, let content = layoutManager.textContentManager
         else { return }
 
         let origin = textContainerOrigin
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular),
-            .foregroundColor: NSColor.tertiaryLabelColor,
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.tertiaryLabelColor]
+        let currentAttributes: [NSAttributedString.Key: Any] = [
+            .font: font, .foregroundColor: NSColor.secondaryLabelColor,
         ]
         let start =
             layoutManager.textLayoutFragment(for: CGPoint(x: 0, y: max(rect.minY - origin.y, 0)))?.rangeInElement
@@ -140,9 +155,35 @@ final class EditorTextView: NSTextView {
                 x: origin.x - 12 - size.width,
                 y: frame.minY + origin.y + (lineHeight - size.height) / 2
             )
-            number.draw(at: point, withAttributes: attributes)
+            let isCurrent = currentLine.map { abs($0.minY - (frame.minY + origin.y)) < 1 } ?? false
+            number.draw(at: point, withAttributes: isCurrent ? currentAttributes : attributes)
             return true
         }
+    }
+
+    /// カーソルのある行（折り返した行なら、その見た目の 1 行）の四角。文字を選んでいるときは nil。
+    private func currentLineRect() -> NSRect? {
+        let selection = selectedRange()
+        guard selection.length == 0, let layoutManager = textLayoutManager,
+            let content = layoutManager.textContentManager,
+            let location = content.location(content.documentRange.location, offsetBy: selection.location)
+        else { return nil }
+        var lineFrame: CGRect?
+        layoutManager.enumerateTextSegments(
+            in: NSTextRange(location: location), type: .standard, options: [.rangeNotRequired]
+        ) { _, frame, _, _ in
+            lineFrame = frame
+            return false
+        }
+        guard let lineFrame else { return nil }
+        return NSRect(x: 0, y: lineFrame.minY + textContainerOrigin.y, width: bounds.width, height: lineFrame.height)
+    }
+
+    override func setSelectedRanges(
+        _ ranges: [NSValue], affinity: NSSelectionAffinity, stillSelecting stillSelectingFlag: Bool
+    ) {
+        super.setSelectedRanges(ranges, affinity: affinity, stillSelecting: stillSelectingFlag)
+        if highlightsCurrentLine { setNeedsDisplay(visibleRect) }
     }
 
     /// 行の先頭の位置から、1 始まりの行番号を探す。
@@ -155,6 +196,75 @@ final class EditorTextView: NSTextView {
             if lineStarts[middle] < offset { lower = middle + 1 } else { upper = middle - 1 }
         }
         return nil
+    }
+
+    // MARK: - コードの編集
+
+    /// コードの編集をするか。日本語の変換中は何もしない。
+    private var editsCode: Bool { codeEditing != nil && isEditable && !hasMarkedText() }
+
+    override func insertNewline(_ sender: Any?) {
+        guard editsCode, let codeEditing else { return super.insertNewline(sender) }
+        apply(codeEditing.newline(in: string, selection: selectedRange()))
+    }
+
+    override func insertTab(_ sender: Any?) {
+        guard editsCode, let codeEditing else { return super.insertTab(sender) }
+        apply(codeEditing.indent(in: string, selection: selectedRange()))
+    }
+
+    override func insertBacktab(_ sender: Any?) {
+        guard editsCode else { return super.insertBacktab(sender) }
+        perform(.dedent)
+    }
+
+    override func insertText(_ insertString: Any, replacementRange: NSRange) {
+        let text = (insertString as? String) ?? (insertString as? NSAttributedString)?.string
+        guard editsCode, let codeEditing, replacementRange.location == NSNotFound, let text,
+            let edit = codeEditing.insert(text, in: string, selection: selectedRange())
+        else { return super.insertText(insertString, replacementRange: replacementRange) }
+        apply(edit)
+    }
+
+    override func deleteBackward(_ sender: Any?) {
+        guard editsCode, let codeEditing, let edit = codeEditing.deleteBackward(in: string, selection: selectedRange())
+        else { return super.deleteBackward(sender) }
+        apply(edit)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if editsCode, let command = CodeCommand(event: event) {
+            perform(command)
+            return
+        }
+        super.keyDown(with: event)
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if editsCode, window?.firstResponder === self, let command = CodeCommand(event: event) {
+            perform(command)
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        let menu = super.menu(for: event)
+        guard codeEditing != nil, isEditable, let menu else { return menu }
+        addCodeItems(to: menu)
+        return menu
+    }
+
+    /// 補完する語の範囲。コードでは、`_` と数字を含む識別子をひとまとまりにする。
+    override var rangeForUserCompletion: NSRange {
+        guard codeEditing != nil else { return super.rangeForUserCompletion }
+        let selection = selectedRange()
+        let string = self.string as NSString
+        var start = selection.location
+        while let previous = CodeEditing.character(in: string, at: start - 1), CodeEditing.isIdentifier(previous) {
+            start -= 1
+        }
+        return NSRange(location: start, length: selection.location - start)
     }
 
     // MARK: - リンク

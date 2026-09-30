@@ -198,7 +198,7 @@ actor LabRecordsSpy: LabRecordRepository {
 
     func experiments() async throws(LabError) -> [Experiment] { saved }
     func save(_ experiment: Experiment) async throws(LabError) { saved.append(experiment) }
-    func deleteExperiment(_ id: UUID) async throws(LabError) { saved.removeAll { $0.id == id } }
+    func deleteExperiments(_ ids: [UUID]) async throws(LabError) { saved.removeAll { ids.contains($0.id) } }
     func adapters() async throws(LabError) -> [Adapter] { savedAdapters }
     func save(_ adapter: Adapter) async throws(LabError) { savedAdapters.append(adapter) }
     func deleteAdapter(_ id: UUID) async throws(LabError) { savedAdapters.removeAll { $0.id == id } }

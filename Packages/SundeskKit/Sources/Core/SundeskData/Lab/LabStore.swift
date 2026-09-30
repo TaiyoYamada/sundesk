@@ -215,8 +215,10 @@ public actor SwiftDataLabRecordRepository: LabRecordRepository, ModelActor {
         }
     }
 
-    public func deleteExperiment(_ id: UUID) async throws(LabError) {
-        try write { try modelContext.delete(model: ExperimentRecord.self, where: #Predicate { $0.experimentID == id }) }
+    public func deleteExperiments(_ ids: [UUID]) async throws(LabError) {
+        try write {
+            try modelContext.delete(model: ExperimentRecord.self, where: #Predicate { ids.contains($0.experimentID) })
+        }
     }
 
     public func adapters() async throws(LabError) -> [Adapter] {

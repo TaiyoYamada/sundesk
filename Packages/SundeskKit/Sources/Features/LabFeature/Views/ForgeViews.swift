@@ -10,20 +10,19 @@ import Charts
 import SundeskDesignSystem
 import SwiftUI
 
-/// 工房の画面に共通する枠。左に設定、右に進み具合と結果。
+/// 工房の画面に共通する枠。左（狭ければ上）に設定、右（狭ければ下）に進み具合と結果。
 private struct ForgeLayout<Settings: View, Result: View>: View {
     let viewModel: ForgeViewModel
     @ViewBuilder let settings: Settings
     @ViewBuilder let result: Result
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
+        AdaptiveSplit(settingsWidth: 380) {
             Form {
                 settings
             }
             .formStyle(.grouped)
-            .frame(width: 380)
-            Divider()
+        } result: {
             VStack(alignment: .leading, spacing: 16) {
                 if let progress = viewModel.progress {
                     VStack(alignment: .leading, spacing: 6) {
@@ -48,7 +47,7 @@ private struct ForgeLayout<Settings: View, Result: View>: View {
                                 NSWorkspace.shared.activateFileViewerSelecting([URL(filePath: output.path)])
                             }
                             .controlSize(.small)
-                            Text("「評価」で元のモデルと比べたり、「生成」や「スクリプト」で使ったりできます。")
+                            Text("「評価」で元のモデルと比べたり、「生成」やスクリプトで使ったりできます。")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -282,7 +281,7 @@ struct EvaluateView: View {
     @Bindable var viewModel: ForgeViewModel
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
+        AdaptiveSplit(settingsWidth: 380) {
             Form {
                 Section("比べるモデル") {
                     ForEach(viewModel.models) { model in
@@ -329,8 +328,7 @@ struct EvaluateView: View {
                 }
             }
             .formStyle(.grouped)
-            .frame(width: 380)
-            Divider()
+        } result: {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     if let progress = viewModel.progress {
