@@ -25,17 +25,18 @@ body:
     validations:
       required: true
   - type: dropdown
-    id: phase
+    id: area
     attributes:
-      label: フェーズ
+      label: 機能
       options:
-        - 0. 基盤
-        - 1. 取り込み
-        - 2. 知識グラフ
-        - 3. RAG
-        - 4. LLM 実験室
-        - 5. 画像生成
-        - 6. いじる（LoRA、steering）
+        - ノート
+        - 研究ライブラリ
+        - 知識グラフ
+        - チャット
+        - 実験室、工房
+        - 画像生成
+        - エンジン
+        - 開発環境、CI
         - その他
     validations:
       required: true

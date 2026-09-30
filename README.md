@@ -5,26 +5,24 @@
 
 自分の知識グラフの上で、ローカル AI を動かし、覗き、いじるための macOS アプリ。
 
-学習・研究ノート（Markdown）を取り込み、概念と関係の知識グラフを作り、
-出典つきの RAG で問いに答える。Hugging Face のモデルを載せて、トークンの確率分布や
-Attention を覗いたり、LoRA で学習させたり、画像を生成したりできる場所を目指している。
+研究のノート、論文、実験の結果を一か所で読み書きし、そこから概念と関係の知識グラフを作り、
+出典つきのチャットで問いに答える。Hugging Face のモデルを載せて、トークンの確率分布や
+Attention を覗いたり、LoRA で学習させたり、量子化したり、画像を生成したりできる。
 
 > [!NOTE]
 > 個人のプロジェクトです。コードは参照のためだけに公開しており、利用は許諾していません（[LICENSE](LICENSE)）。
 
-## 状態
+## できること
 
-フェーズ 0〜6 の最初の形ができた。使いながら直していく。
-
-| フェーズ | 内容 | 状態 |
-|---|---|---|
-| 0 | 基盤（開発環境、CI、アプリの外枠、エンジン） | 完了 |
-| 1 | ノートの表示と編集（ライブプレビュー、ソース、閲覧）と索引 | 完了 |
-| 2 | 知識グラフ（Metal で描画） | 完了 |
-| 3 | RAG（出典つきのチャット） | 完了 |
-| 4 | LLM 実験室（確率分布、Attention、logit lens、活性） | 完了 |
-| 5 | 画像生成（mflux） | 完了 |
-| 6 | LoRA、steering | 完了 |
+| 機能 | 内容 |
+|---|---|
+| ノート | Markdown（ライブプレビュー、ソース、閲覧）、HTML、コード、画像、PDF、Jupyter のノートブック。`[[リンク]]`、バックリンク、検索、タグ |
+| 研究ライブラリ | ノート、論文、実験、データ、資料をフォルダの木で整理する。~/Research と study-artifact の研究のところは、その場で読む |
+| 知識グラフ | ノートから用語と関係を抜き出し、Metal で描く。2D と 3D、経路、知識が育つ様子の再生 |
+| チャット | 意味・語・知識グラフの 3 つで探し、出典つきで答える。Apple のオンデバイスモデルも選べる |
+| 実験室 | Python のスクリプトでモデルを直接触る。次のトークンの確率、Attention、logit lens、活性、LoRA、steering |
+| 工房 | 量子化、変換、合成、枝刈り、蒸留、評価 |
+| 画像生成 | mflux（FLUX.2 klein 4B、Z-Image Turbo）。ビューア、比べる、お気に入り |
 
 ## 構成
 
@@ -44,7 +42,7 @@ Attention を覗いたり、LoRA で学習させたり、画像を生成した�
 | `Packages/SundeskKit/` | アプリのすべて。App / Features / Core / Infrastructure / UI のモジュール |
 | `engine/` | Python の AI エンジン（uv で管理） |
 | `tools/sundesk-log/` | 実験のスクリプトから結果を取り込み箱へ書く記録用ライブラリ（Python） |
-| `SampleLibrary/` | 研究ライブラリの見本（論文、実験、データ、ノート。[docs/library-format.md](docs/library-format.md)） |
+| `SampleLibrary/` | テストで使う、作り物の研究ライブラリ（[docs/library-format.md](docs/library-format.md)） |
 | `Configurations/` | ビルド設定（xcconfig） |
 | `docs/` | 要件、アーキテクチャ、ADR |
 

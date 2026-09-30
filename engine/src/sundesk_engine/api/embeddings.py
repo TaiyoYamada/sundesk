@@ -1,4 +1,4 @@
-"""フェーズ 3: 埋め込み。"""
+"""埋め込み。"""
 
 from typing import Literal
 

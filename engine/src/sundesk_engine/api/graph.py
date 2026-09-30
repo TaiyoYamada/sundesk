@@ -1,4 +1,4 @@
-"""フェーズ 2: 知識グラフ。"""
+"""知識グラフ。"""
 
 import numpy as np
 from fastapi import APIRouter

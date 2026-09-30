@@ -7,7 +7,7 @@
 
 import Foundation
 
-// 工房（フェーズ 7）でエンジンとやりとりする JSON の形（docs/engine-api.md）。
+// 工房でエンジンとやりとりする JSON の形（docs/engine-api.md）。
 
 enum ForgeBody: Encodable, Sendable {
     case quantize(QuantizeBody)

@@ -1,4 +1,4 @@
-"""フェーズ 6: LoRA の学習（NDJSON）。"""
+"""LoRA の学習（NDJSON）。"""
 
 from pathlib import Path
 

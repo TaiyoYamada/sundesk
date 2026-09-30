@@ -1,4 +1,4 @@
-"""フェーズ 6: steering。残差ストリームにベクトルを足して、生成を曲げる。"""
+"""steering。残差ストリームにベクトルを足して、生成を曲げる。"""
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field

@@ -1,4 +1,4 @@
-"""フェーズ 5: 画像生成。生成は mflux で行う。"""
+"""画像生成。生成は mflux で行う。"""
 
 import secrets
 import time

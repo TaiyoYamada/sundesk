@@ -1,4 +1,4 @@
-"""フェーズ 4: モデルの管理。"""
+"""モデルの管理。"""
 
 from typing import Literal
 
