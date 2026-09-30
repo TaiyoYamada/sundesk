@@ -138,7 +138,7 @@ final class SundeskUITests: XCTestCase {
 
     func testOpeningPaper() {
         showSection("論文")
-        let list = app.outlines["paper-list"]
+        let list = app.outlines["file-tree"]
         XCTAssertTrue(list.waitForExistence(timeout: 10))
         let paper = list.staticTexts["A variational eigenvalue solver on a photonic quantum processor"]
         XCTAssertTrue(paper.waitForExistence(timeout: 10))
@@ -152,7 +152,7 @@ final class SundeskUITests: XCTestCase {
 
     func testOpeningAndComparingExperiments() {
         showSection("実験")
-        let list = app.outlines["experiment-list"]
+        let list = app.outlines["file-tree"]
         XCTAssertTrue(list.waitForExistence(timeout: 10))
         let saRow = list.staticTexts["SA で重みつき Max-Cut（30 頂点、GA と PSO と同じ評価の回数）"]
         let gaRow = list.staticTexts["GA で重みつき Max-Cut（30 頂点）"]
@@ -175,14 +175,14 @@ final class SundeskUITests: XCTestCase {
     /// 取り込み箱の実行は、開いたときに実験へ移る。
     func testInboxRunIsImported() {
         showSection("実験")
-        let list = app.outlines["experiment-list"]
+        let list = app.outlines["file-tree"]
         XCTAssertTrue(
             list.staticTexts["SA の始めの温度を変える（Max-Cut 30 頂点、300 スイープ）"].waitForExistence(timeout: 15))
     }
 
     func testOpeningImageAndPDF() {
         showSection("資料")
-        let list = app.outlines["file-list"]
+        let list = app.outlines["file-tree"]
         XCTAssertTrue(list.waitForExistence(timeout: 10))
 
         openFile("maxcut-w30.png", in: list)

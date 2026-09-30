@@ -22,10 +22,36 @@ public protocol VaultRepository: Sendable {
     func changes() -> AsyncStream<Void>
     /// 読むだけのファイルか（つないだ外のフォルダの中など）。
     func isReadOnly(_ path: String) -> Bool
+
+    /// フォルダを作る。作ったパスを返す（名前が重なれば番号を付ける）。
+    func createFolder(named name: String, in folder: String) async throws(VaultError) -> String
+    /// ファイルやフォルダを、別のフォルダへ移す。移した先のパスを返す。
+    func move(_ path: String, into folder: String) async throws(VaultError) -> String
+    /// 名前を変える。変えたあとのパスを返す。
+    func rename(_ path: String, to name: String) async throws(VaultError) -> String
+    /// ゴミ箱に入れる。
+    func moveToTrash(_ path: String) async throws(VaultError)
+    /// Finder などから、ファイルをフォルダに写す。写した先のパスを返す。
+    func importFiles(_ urls: [URL], into folder: String) async throws(VaultError) -> [String]
 }
 
 extension VaultRepository {
     public func isReadOnly(_ path: String) -> Bool { false }
+    public func createFolder(named name: String, in folder: String) async throws(VaultError) -> String {
+        throw .unwritable(path: folder, reason: "この Vault では作れません")
+    }
+    public func move(_ path: String, into folder: String) async throws(VaultError) -> String {
+        throw .unwritable(path: path, reason: "この Vault では移せません")
+    }
+    public func rename(_ path: String, to name: String) async throws(VaultError) -> String {
+        throw .unwritable(path: path, reason: "この Vault では名前を変えられません")
+    }
+    public func moveToTrash(_ path: String) async throws(VaultError) {
+        throw .unwritable(path: path, reason: "この Vault では消せません")
+    }
+    public func importFiles(_ urls: [URL], into folder: String) async throws(VaultError) -> [String] {
+        throw .unwritable(path: folder, reason: "この Vault では取り込めません")
+    }
 }
 
 /// Markdown のノートの索引（SwiftData）。

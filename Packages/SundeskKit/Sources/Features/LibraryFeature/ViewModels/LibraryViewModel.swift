@@ -98,6 +98,52 @@ public final class LibraryViewModel {
         self.loadProjects = loadProjects
     }
 
+    // MARK: - 木の中で 1 つのものとして見せるフォルダ
+
+    /// パス → 論文、実験、~/Research の実行やプロジェクト。
+    public private(set) var bundles: [String: LibraryBundle] = [:]
+    /// 木で選んでいるもの（パス）。
+    public var selectedPaths: Set<String> = []
+
+    /// 選んでいる自分の実験のキー（2 つ以上なら比べられる）。
+    public var selectedExperimentKeys: [String] {
+        selectedPaths.sorted().compactMap { path in
+            if case .experiment(let key)? = bundles[path]?.kind { return key }
+            return nil
+        }
+    }
+
+    private func rebuildBundles() {
+        var result: [String: LibraryBundle] = [:]
+        for paper in papers {
+            let subtitle = [paper.authors, paper.year.map(String.init), paper.status]
+                .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: "・")
+            result[paper.folderPath] = LibraryBundle(
+                kind: .paper(key: paper.key), title: paper.title, subtitle: subtitle,
+                systemImage: paper.hasPDF ? "doc.richtext" : "doc.text.magnifyingglass", isLeaf: true)
+        }
+        for experiment in experiments {
+            let subtitle = [experiment.algorithm, experiment.status, experiment.headline ?? ""]
+                .filter { !$0.isEmpty }.joined(separator: "・")
+            result[experiment.folderPath] = LibraryBundle(
+                kind: .experiment(key: experiment.key), title: experiment.title, subtitle: subtitle,
+                systemImage: "testtube.2", isLeaf: true)
+        }
+        for project in projects {
+            result[project.path] = LibraryBundle(
+                kind: .researchProject(path: project.path), title: project.title,
+                subtitle: project.runs.isEmpty ? nil : "実行 \(project.runs.count) 件",
+                systemImage: "folder.badge.gearshape", isLeaf: false)
+            for run in project.runs {
+                result[run.path] = LibraryBundle(
+                    kind: .researchRun(path: run.path), title: run.name,
+                    subtitle: [run.date, run.detail].filter { !$0.isEmpty }.joined(separator: "・"),
+                    systemImage: "chart.bar.doc.horizontal", isLeaf: true)
+            }
+        }
+        bundles = result
+    }
+
     // MARK: - 読み込み
 
     /// 一覧を読み、ライブラリが変わるたびに読み直す（取り込み箱も見る）。
@@ -120,6 +166,7 @@ public final class LibraryViewModel {
         papers = paperModels.map(PaperRow.init)
         experiments = ((try? await library.experiments()) ?? []).map(ExperimentRow.init)
         if let loadProjects { projects = await loadProjects().map(ResearchProjectRow.init) }
+        rebuildBundles()
         switch section {
         case .data, .materials: files = ((try? await library.files(in: section.domain)) ?? []).map(FileRow.init)
         default: break
@@ -332,25 +379,5 @@ enum ExperimentFormat {
         if value == value.rounded() && abs(value) < 1e9 { return String(Int64(value)) }
         // 有効数字 7 桁（エネルギーの mHa の桁まで見える）。末尾の 0 は付けない
         return String(format: "%.7g", value)
-    }
-}
-
-/// ~/Research の実験のプロジェクト（一覧の 1 節）。
-public struct ResearchProjectRow: Identifiable, Hashable, Sendable {
-    public var id: String { path }
-    public let path: String
-    public let title: String
-    public let runs: [ResearchRunRow]
-
-    init(_ project: ResearchProject) {
-        path = project.path
-        title = project.title
-        runs = project.runs.map(ResearchRunRow.init)
-    }
-
-    init(path: String, title: String, runs: [ResearchRunRow]) {
-        self.path = path
-        self.title = title
-        self.runs = runs
     }
 }

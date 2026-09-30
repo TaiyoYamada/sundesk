@@ -109,6 +109,18 @@ struct WorkspaceViewModelTests {
         #expect(workspace.tabs.first { $0.content == .experiment("2026-09-17-sa") }?.title == "SA で Max-Cut")
     }
 
+    @Test("フォルダでくくった論文や実験のファイルも、その画面で開く")
+    func opensNestedBundles() {
+        let workspace = makeWorkspace()
+
+        workspace.open(path: "Papers/最適化/p1/note.md")
+        #expect(workspace.selectedTab?.content == .paper("最適化/p1"))
+        workspace.open(path: "Experiments/2026/e1/results/trace.csv")
+        #expect(workspace.selectedTab?.content == .experiment("2026/e1"))
+        workspace.open(path: "Experiments/2026/e1/note.md")
+        #expect(workspace.tabs.count == 2)
+    }
+
     @Test("出典から論文の PDF を開くと、そのページを頼む。頼むたびに別の頼みになる")
     func requestsPDFPage() {
         let workspace = makeWorkspace()

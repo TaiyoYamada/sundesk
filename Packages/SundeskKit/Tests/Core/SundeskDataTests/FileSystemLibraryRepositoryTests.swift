@@ -110,6 +110,21 @@ struct FileSystemLibraryRepositoryTests {
         #expect(FileManager.default.fileExists(atPath: root.appending(path: "Inbox/run-2").path))
     }
 
+    @Test("論文と実験は、フォルダでくくっても見つかる（キーはフォルダを含む）")
+    func findsNestedBundles() async throws {
+        try await repository.prepare()
+        try write("---\ntype: paper\ntitle: \"A\"\n---\n# A", to: "Papers/最適化/群知能/a2020/note.md")
+        try write("---\ntype: paper\ntitle: \"B\"\n---\n# B", to: "Papers/b2021/note.md")
+        try write(
+            #"{"title": "E", "algorithm": "SA", "problem": "p", "status": "done"}"#,
+            to: "Experiments/2026/e1/experiment.json")
+
+        let papers = try await repository.papers()
+        #expect(Set(papers.map(\.key)) == ["最適化/群知能/a2020", "b2021"])
+        #expect(papers.first { $0.key == "最適化/群知能/a2020" }?.notePath == "Papers/最適化/群知能/a2020/note.md")
+        #expect(try await repository.experiments().map(\.key) == ["2026/e1"])
+    }
+
     @Test("ファイルを種類のフォルダに取り込み、名前が重なれば番号を付ける")
     func importsFiles() async throws {
         try await repository.prepare()

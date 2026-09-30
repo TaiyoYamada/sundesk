@@ -17,36 +17,66 @@ struct NavigatorView: View {
     let tags: TagsViewModel
     let library: LibraryViewModel
 
+    /// 種類ごとに、続けてフォルダのまま出す、読むだけでつないだフォルダ。
+    static func extraRoots(for section: LibraryViewModel.Section) -> [TreeRoot] {
+        switch section {
+        case .notes: [TreeRoot(path: "study-artifact", title: "study-artifact")]
+        case .experiments: [TreeRoot(path: "Research/experiment", title: "Research の実験")]
+        case .data: [TreeRoot(path: "Research", title: "Research")]
+        case .papers, .materials: []
+        }
+    }
+
+    static func treeBundle(_ bundle: LibraryBundle) -> TreeBundle {
+        TreeBundle(
+            title: bundle.title, subtitle: bundle.subtitle, systemImage: bundle.systemImage, isLeaf: bundle.isLeaf)
+    }
+
+    /// 開いているタブに当たる、木の中のパス（論文や実験はフォルダ）。
+    private var selectedTreePath: String? {
+        switch workspace.selectedTab?.content {
+        case .document(let path): path
+        case .paper(let key): "Papers/\(key)"
+        case .experiment(let key): "Experiments/\(key)"
+        case .researchProject(let path), .researchRun(let path): path
+        case .tool, .comparison, nil: nil
+        }
+    }
+
+    /// 木で選んだものを開く。1 つのものとして見せるフォルダは、その画面で開く。
+    private func openTreePath(_ path: String) {
+        if let bundle = library.bundles[path] {
+            open(bundle.destination)
+        } else {
+            workspace.open(path: path)
+        }
+    }
+
+    private func open(_ destination: LibraryDestination) {
+        switch destination {
+        case .file(let path): workspace.open(path: path)
+        case .paper(let key, let title): workspace.open(paper: key, title: title)
+        case .experiment(let key, let title): workspace.open(experiment: key, title: title)
+        case .comparison(let keys): workspace.open(comparison: keys)
+        case .researchProject(let path, let title): workspace.open(researchProject: path, title: title)
+        case .researchRun(let path, let title): workspace.open(researchRun: path, title: title)
+        }
+    }
+
     var body: some View {
         // サイドバーはツールバーの下まで伸びるので、アイコンの列はリストの上端の余白に置く
         Group {
             switch workspace.navigatorMode {
             case .library:
-                LibraryNavigatorView(viewModel: library, selectedPath: workspace.selectedTab?.documentPath) {
-                    // 自分のノートに続けて、読むだけでつないだ study-artifact を出す
+                LibraryNavigatorView(viewModel: library) { section in
                     FileTreeView(
-                        navigator: navigator, selectedPath: workspace.selectedTab?.documentPath, rootPath: "Notes",
-                        extraRoots: ["study-artifact"]
-                    ) {
-                        workspace.open(path: $0)
-                    }
-                } data: {
-                    // 取り込んだデータに続けて、読むだけでつないだ ~/Research を出す
-                    FileTreeView(
-                        navigator: navigator, selectedPath: workspace.selectedTab?.documentPath, rootPath: "Data",
-                        extraRoots: ["Research"]
-                    ) {
-                        workspace.open(path: $0)
-                    }
+                        navigator: navigator, selectedPath: selectedTreePath, rootPath: section.folder,
+                        extraRoots: Self.extraRoots(for: section),
+                        bundle: { path in library.bundles[path].map(Self.treeBundle) },
+                        selectionChanged: { library.selectedPaths = $0 },
+                        open: openTreePath)
                 } open: { destination in
-                    switch destination {
-                    case .file(let path): workspace.open(path: path)
-                    case .paper(let key, let title): workspace.open(paper: key, title: title)
-                    case .experiment(let key, let title): workspace.open(experiment: key, title: title)
-                    case .comparison(let keys): workspace.open(comparison: keys)
-                    case .researchProject(let path, let title): workspace.open(researchProject: path, title: title)
-                    case .researchRun(let path, let title): workspace.open(researchRun: path, title: title)
-                    }
+                    open(destination)
                 }
             case .search:
                 SearchNavigatorView(search: search) { workspace.open(path: $0) }

@@ -142,7 +142,8 @@ extension Container {
             FileNavigatorViewModel(
                 syncVault: self.syncVault(),
                 observeChanges: self.observeVaultChanges(),
-                locateFile: self.locateFile()
+                locateFile: self.locateFile(),
+                manageFiles: ManageFilesInteractor(vault: self.vaultRepository())
             )
         }
         .singleton

@@ -70,8 +70,7 @@ public struct FileSystemLibraryRepository: LibraryRepository {
     // MARK: - 論文
 
     public func papers() async throws(LibraryError) -> [Paper] {
-        subfolders(of: folder(.papers)).compactMap { directory in
-            let key = directory.lastPathComponent
+        bundles(in: folder(.papers), marker: "note.md").compactMap { key, directory in
             let note = directory.appending(path: "note.md")
             guard let source = try? String(contentsOf: note, encoding: .utf8) else { return nil }
             let properties = markdown.analyze(source, path: "\(LibrarySection.papers.folder)/\(key)/note.md").properties
@@ -123,11 +122,11 @@ public struct FileSystemLibraryRepository: LibraryRepository {
     // MARK: - 実験
 
     public func experiments() async throws(LibraryError) -> [ResearchExperiment] {
-        subfolders(of: folder(.experiments)).compactMap { directory in
+        bundles(in: folder(.experiments), marker: "experiment.json").compactMap { key, directory in
             guard let data = try? Data(contentsOf: directory.appending(path: "experiment.json")),
                 let file = try? JSONDecoder().decode(ExperimentFile.self, from: data)
             else { return nil }
-            return file.experiment(key: directory.lastPathComponent)
+            return file.experiment(key: key)
         }
         .sorted { ($0.created ?? .distantPast) > ($1.created ?? .distantPast) }
     }

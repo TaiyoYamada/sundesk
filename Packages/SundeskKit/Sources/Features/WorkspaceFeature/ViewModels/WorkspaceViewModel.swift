@@ -87,15 +87,26 @@ public final class WorkspaceViewModel {
     }
 
     /// パスを開くタブの中身。論文と実験のフォルダの中のファイルは、論文や実験の画面にする。
+    ///
+    /// 論文と実験はフォルダでくくれるので、キーは `最適化/peruzzo2014` のようにフォルダを含むことがある。
+    /// 論文はファイルのあるフォルダ、実験は results/・figures/ などの手前までをキーにする。
     static func content(for path: String) -> WorkspaceTab.Content {
         let parts = path.split(separator: "/").map(String.init)
         guard parts.count >= 3 else { return .document(path) }
         switch parts[0] {
-        case LibrarySection.papers.folder: return .paper(parts[1])
-        case LibrarySection.experiments.folder: return .experiment(parts[1])
-        default: return .document(path)
+        case LibrarySection.papers.folder:
+            return .paper(parts[1..<(parts.count - 1)].joined(separator: "/"))
+        case LibrarySection.experiments.folder:
+            let end = parts.firstIndex { experimentParts.contains($0) } ?? (parts.count - 1)
+            guard end > 1 else { return .document(path) }
+            return .experiment(parts[1..<end].joined(separator: "/"))
+        default:
+            return .document(path)
         }
     }
+
+    /// 実験のフォルダの中の、決まった名前（ここより手前が実験のキー）。
+    private static let experimentParts: Set<String> = ["results", "figures", "note.md", "experiment.json"]
 
     /// タブの題名を変える（論文や実験の題名が読めたとき）。
     public func retitle(_ content: WorkspaceTab.Content, to title: String) {

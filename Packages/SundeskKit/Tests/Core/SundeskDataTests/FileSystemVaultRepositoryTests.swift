@@ -184,3 +184,51 @@ struct TemporaryVault {
         try? FileManager.default.removeItem(at: url)
     }
 }
+
+@Suite("ファイルとフォルダの整理")
+struct ManageFilesTests {
+    @Test("フォルダを作り、移し、名前を変え、ゴミ箱に入れる。名前が重なれば番号を付ける")
+    func organizes() async throws {
+        let vault = try TemporaryVault(files: ["Papers/p1/note.md": "# p1", "Papers/p2/note.md": "# p2"])
+        defer { vault.remove() }
+        let files = ManageFilesInteractor(vault: vault.repository)
+
+        let folder = try await files.createFolder(named: "最適化", in: "Papers")
+        #expect(folder == "Papers/最適化")
+        #expect(try await files.createFolder(named: "最適化", in: "Papers") == "Papers/最適化 2")
+
+        let moved = try await files.move(["Papers/p1", "Papers/p2"], into: folder)
+        #expect(moved == ["Papers/最適化/p1", "Papers/最適化/p2"])
+        // 自分の中と、今いるフォルダへは移さない
+        #expect(try await files.move([folder], into: "Papers/最適化/p1").isEmpty)
+        #expect(try await files.move(["Papers/最適化/p1"], into: folder).isEmpty)
+
+        #expect(try await files.rename("Papers/最適化 2", to: "群知能/ACO") == "Papers/群知能-ACO")
+        try await files.moveToTrash(["Papers/群知能-ACO"])
+
+        let tree = try await vault.repository.loadTree()
+        #expect(Set(tree.files.map(\.path)) == ["Papers/最適化/p1/note.md", "Papers/最適化/p2/note.md"])
+    }
+
+    @Test("読むだけでつないだフォルダの中は変えられない")
+    func refusesReadOnly() async throws {
+        let library = try TemporaryVault(files: ["Notes/a.md": "# a"])
+        let research = try TemporaryVault(files: ["paper/x.pdf": ""])
+        defer {
+            library.remove()
+            research.remove()
+        }
+        let repository = FileSystemVaultRepository(
+            root: { library.url }, mounts: { [VaultMount(name: "Research", url: research.url)] })
+        let files = ManageFilesInteractor(vault: repository)
+
+        #expect(files.isReadOnly("Research/paper/x.pdf"))
+        await #expect(throws: VaultError.readOnly(path: "Research/paper/x.pdf")) {
+            try await files.move(["Research/paper/x.pdf"], into: "Notes")
+        }
+        await #expect(throws: VaultError.readOnly(path: "Research")) {
+            try await files.createFolder(named: "x", in: "Research")
+        }
+        #expect(FileManager.default.fileExists(atPath: research.url.appending(path: "paper/x.pdf").path))
+    }
+}

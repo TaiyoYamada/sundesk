@@ -21,12 +21,12 @@ public enum LibraryDestination: Hashable, Sendable {
     case researchRun(path: String, title: String)
 }
 
-/// 研究ライブラリの一覧。上で種類を切り替え、下に一覧を出す。
-public struct LibraryNavigatorView<Notes: View, DataTree: View>: View {
+/// 研究ライブラリの一覧。上で種類を切り替え、下にその種類のファイルの木を出す。
+///
+/// どの種類も、フォルダでくくれるファイルの木（ノートと同じ）。論文、実験、~/Research の実行は、フォルダを 1 つのものとして見せる。
+public struct LibraryNavigatorView<Tree: View>: View {
     @Bindable private var viewModel: LibraryViewModel
-    private let selectedPath: String?
-    private let notes: Notes
-    private let data: DataTree
+    private let tree: (LibraryViewModel.Section) -> Tree
     private let open: (LibraryDestination) -> Void
 
     @State private var sheet: Sheet?
@@ -38,18 +38,14 @@ public struct LibraryNavigatorView<Notes: View, DataTree: View>: View {
     }
 
     /// - Parameters:
-    ///   - selectedPath: 今開いているもののフォルダかパス（一覧の選択と連動させる）。
-    ///   - notes: ノートの一覧（ファイルの木）。
-    ///   - data: データとコードの一覧（ファイルの木。~/Research も含む）。
-    ///   - open: 選んだものを開く。
+    ///   - tree: 種類ごとのファイルの木。
+    ///   - open: 選んだものを開く（足したものを開くときにも使う）。
     public init(
-        viewModel: LibraryViewModel, selectedPath: String?, @ViewBuilder notes: () -> Notes,
-        @ViewBuilder data: () -> DataTree, open: @escaping (LibraryDestination) -> Void
+        viewModel: LibraryViewModel, @ViewBuilder tree: @escaping (LibraryViewModel.Section) -> Tree,
+        open: @escaping (LibraryDestination) -> Void
     ) {
         self.viewModel = viewModel
-        self.selectedPath = selectedPath
-        self.notes = notes()
-        self.data = data()
+        self.tree = tree
         self.open = open
     }
 
@@ -67,8 +63,10 @@ public struct LibraryNavigatorView<Notes: View, DataTree: View>: View {
                 .padding(.horizontal, 10)
                 .padding(.bottom, 4)
             }
-            content
+            tree(viewModel.section)
+                .id(viewModel.section)
                 .frame(maxHeight: .infinity)
+                .overlay(alignment: .bottom) { compareButton }
                 .dropDestination(for: URL.self) { urls, _ in
                     Task { await drop(urls) }
                     return true
@@ -90,6 +88,20 @@ public struct LibraryNavigatorView<Notes: View, DataTree: View>: View {
         }
         .task { await viewModel.observe() }
         .onChange(of: viewModel.section) { Task { await viewModel.sectionChanged() } }
+    }
+
+    /// 実験を 2 つ以上選んだら、比べるボタンを出す。
+    @ViewBuilder
+    private var compareButton: some View {
+        let keys = viewModel.selectedExperimentKeys
+        if viewModel.section == .experiments, keys.count >= 2 {
+            Button("選んだ \(keys.count) 件を比べる", systemImage: "chart.xyaxis.line") {
+                open(.comparison(keys: keys))
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .padding(.bottom, 44)
+        }
     }
 
     private var header: some View {
@@ -131,26 +143,6 @@ public struct LibraryNavigatorView<Notes: View, DataTree: View>: View {
         .accessibilityIdentifier("library-add")
     }
 
-    @ViewBuilder
-    private var content: some View {
-        switch viewModel.section {
-        case .notes:
-            notes
-        case .papers:
-            PaperListView(viewModel: viewModel, selectedPath: selectedPath, open: openPaper)
-        case .experiments:
-            ExperimentListView(viewModel: viewModel, selectedPath: selectedPath, open: openExperiment) { keys in
-                open(.comparison(keys: keys))
-            } openResearch: {
-                open($0)
-            }
-        case .data:
-            data
-        case .materials:
-            FileListView(viewModel: viewModel, selectedPath: selectedPath) { open(.file($0)) }
-        }
-    }
-
     private func openPaper(_ key: String) {
         let title = viewModel.papers.first { $0.key == key }?.title ?? key
         open(.paper(key: key, title: title))
@@ -172,211 +164,5 @@ public struct LibraryNavigatorView<Notes: View, DataTree: View>: View {
         case .experiments:
             break
         }
-    }
-}
-
-// MARK: - 一覧
-
-private struct PaperListView: View {
-    @Bindable var viewModel: LibraryViewModel
-    let selectedPath: String?
-    let open: (String) -> Void
-
-    var body: some View {
-        List(selection: Binding(get: { selectedKey }, set: { if let key = $0 { open(key) } })) {
-            ForEach(viewModel.shownPapers) { paper in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(paper.title).lineLimit(2)
-                    HStack(spacing: 4) {
-                        Text([paper.authors, paper.year.map(String.init)].compactMap { $0 }.joined(separator: "・"))
-                            .lineLimit(1)
-                        Spacer(minLength: 0)
-                        if paper.hasPDF { Image(systemName: "doc.richtext").help("PDF あり") }
-                        StatusBadge(text: paper.status, isStrong: paper.status == "読書中")
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 2)
-                .tag(paper.key)
-                .contextMenu {
-                    Button("ゴミ箱に入れる", role: .destructive) { Task { await viewModel.delete(paper.folderPath) } }
-                }
-            }
-        }
-        .listStyle(.sidebar)
-        .accessibilityIdentifier("paper-list")
-        .overlay {
-            if viewModel.papers.isEmpty {
-                ContentUnavailableView(
-                    "論文はまだありません", systemImage: "doc.text.magnifyingglass",
-                    description: Text("＋ から arXiv や DOI で足すか、PDF をここにドロップします。"))
-            }
-        }
-        .safeAreaInset(edge: .bottom) {
-            FilterBar(text: $viewModel.filterText) {
-                Menu {
-                    Picker("並べ替え", selection: $viewModel.paperSort) {
-                        ForEach(LibraryViewModel.PaperSort.allCases) { Text($0.title).tag($0) }
-                    }
-                    Picker("読んだ状態", selection: $viewModel.statusFilter) {
-                        Text("すべて").tag(String?.none)
-                        ForEach(LibraryViewModel.statuses, id: \.self) { Text($0).tag(String?.some($0)) }
-                    }
-                } label: {
-                    Image(systemName: "arrow.up.arrow.down")
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-            }
-        }
-    }
-
-    private var selectedKey: String? {
-        viewModel.papers.first { selectedPath?.hasPrefix($0.folderPath) == true }?.key
-    }
-}
-
-private struct ExperimentListView: View {
-    @Bindable var viewModel: LibraryViewModel
-    let selectedPath: String?
-    let open: (String) -> Void
-    let compare: ([String]) -> Void
-    let openResearch: (LibraryDestination) -> Void
-
-    var body: some View {
-        List(selection: $viewModel.selectedExperiments) {
-            if !viewModel.experiments.isEmpty {
-                Section(viewModel.projects.isEmpty ? "" : "自分の実験") { ownExperiments }
-            }
-            ForEach(viewModel.shownProjects) { project in
-                Section {
-                    ResearchProjectSection(project: project) { openResearch($0) }
-                } header: {
-                    Label(project.title, systemImage: "folder.badge.gearshape").lineLimit(1)
-                }
-            }
-        }
-        .listStyle(.sidebar)
-        .accessibilityIdentifier("experiment-list")
-        .onChange(of: viewModel.selectedExperiments) { _, keys in
-            guard keys.count == 1, let key = keys.first else { return }
-            // ~/Research はパスで選ばれる。プロジェクトの節（ForEach の行には自動で ID が付く）なら概要を開く
-            if let project = viewModel.projects.first(where: { $0.path == key }) {
-                openResearch(.researchProject(path: project.path, title: project.title))
-            } else if LibraryViewModel.isResearchRun(key) {
-                let name = key.split(separator: "/").last.map(String.init) ?? key
-                openResearch(.researchRun(path: key, title: name))
-            } else {
-                open(key)
-            }
-        }
-        .overlay {
-            if viewModel.experiments.isEmpty && viewModel.projects.isEmpty {
-                ContentUnavailableView(
-                    "実験はまだありません", systemImage: "testtube.2",
-                    description: Text("＋ から作るか、記録用ライブラリ（sundesk-log）で実験のコードから送ります。"))
-            }
-        }
-        .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 0) {
-                let own = viewModel.selectedExperiments.filter { !LibraryViewModel.isResearchRun($0) }
-                if own.count >= 2 {
-                    Button("選んだ \(own.count) 件を比べる", systemImage: "chart.xyaxis.line") {
-                        compare(viewModel.shownExperiments.map(\.key).filter(own.contains))
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .padding(6)
-                }
-                FilterBar(text: $viewModel.filterText) { EmptyView() }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var ownExperiments: some View {
-        ForEach(viewModel.shownExperiments) { experiment in
-            VStack(alignment: .leading, spacing: 2) {
-                Text(experiment.title).lineLimit(2)
-                HStack(spacing: 4) {
-                    Text(experiment.algorithm).fontWeight(.medium)
-                    Text(experiment.problem).lineLimit(1)
-                    Spacer(minLength: 0)
-                    StatusBadge(text: experiment.status, isStrong: !experiment.isDone)
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                if let headline = experiment.headline {
-                    Text(headline).font(.caption.monospacedDigit()).foregroundStyle(.tertiary)
-                }
-            }
-            .padding(.vertical, 2)
-            .tag(experiment.key)
-            .contextMenu {
-                Button("開く") { open(experiment.key) }
-                Button("ゴミ箱に入れる", role: .destructive) { Task { await viewModel.delete(experiment.folderPath) } }
-            }
-        }
-    }
-}
-
-private struct FileListView: View {
-    @Bindable var viewModel: LibraryViewModel
-    let selectedPath: String?
-    let open: (String) -> Void
-
-    var body: some View {
-        List(selection: Binding(get: { selectedPath }, set: { if let path = $0 { open(path) } })) {
-            ForEach(viewModel.shownFiles) { file in
-                VStack(alignment: .leading, spacing: 2) {
-                    Label(file.name, systemImage: file.systemImage).lineLimit(1)
-                    Text(file.detail).font(.caption).foregroundStyle(.secondary)
-                }
-                .tag(file.path)
-                .contextMenu {
-                    Button("ゴミ箱に入れる", role: .destructive) { Task { await viewModel.delete(file.path) } }
-                }
-            }
-        }
-        .listStyle(.sidebar)
-        .accessibilityIdentifier("file-list")
-        .overlay {
-            if viewModel.files.isEmpty {
-                ContentUnavailableView(
-                    "\(viewModel.section.title)はまだありません", systemImage: viewModel.section.systemImage,
-                    description: Text("ファイルをここにドロップするか、＋ から取り込みます。"))
-            }
-        }
-        .safeAreaInset(edge: .bottom) { FilterBar(text: $viewModel.filterText) { EmptyView() } }
-    }
-}
-
-private struct FilterBar<Accessory: View>: View {
-    @Binding var text: String
-    @ViewBuilder let accessory: Accessory
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "line.3.horizontal.decrease").foregroundStyle(.secondary)
-            TextField("絞り込む", text: $text).textFieldStyle(.plain)
-            accessory
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .background(.bar)
-    }
-}
-
-struct StatusBadge: View {
-    let text: String
-    let isStrong: Bool
-
-    var body: some View {
-        Text(text)
-            .font(.caption2)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(isStrong ? AnyShapeStyle(.tint.opacity(0.2)) : AnyShapeStyle(.quaternary), in: .capsule)
     }
 }

@@ -276,35 +276,3 @@ private struct FigureThumbnail: View {
         }
     }
 }
-
-/// ~/Research の 1 つのプロジェクト。プロジェクトの行と、畳める実行の一覧。
-struct ResearchProjectSection: View {
-    let project: ResearchProjectRow
-    let open: (LibraryDestination) -> Void
-    @State private var isExpanded = false
-
-    var body: some View {
-        Button {
-            open(.researchProject(path: project.path, title: project.title))
-        } label: {
-            Label("概要と README", systemImage: "doc.text").font(.callout)
-        }
-        .buttonStyle(.plain)
-        if !project.runs.isEmpty {
-            DisclosureGroup("実行 \(project.runs.count) 件", isExpanded: $isExpanded) {
-                ForEach(project.runs) { run in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(run.name).lineLimit(1)
-                        HStack(spacing: 6) {
-                            Text(run.date)
-                            Text(run.detail)
-                        }
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    }
-                    .tag(run.path)
-                }
-            }
-        }
-    }
-}

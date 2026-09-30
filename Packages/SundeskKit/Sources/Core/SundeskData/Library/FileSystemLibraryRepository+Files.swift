@@ -39,6 +39,25 @@ extension FileSystemLibraryRepository {
 
     // MARK: - 補助（名前の重なりを避ける、失敗を LibraryError に直す、など）
 
+    /// `marker`（note.md、experiment.json）のあるフォルダを、中のフォルダまでたどって探す。
+    /// 見つけたフォルダの中はたどらない。キーは種類のフォルダからのパス（`最適化/peruzzo2014` のようにフォルダで分けてよい）。
+    func bundles(in base: URL, marker: String) -> [(key: String, url: URL)] {
+        var found: [(key: String, url: URL)] = []
+        func visit(_ directory: URL, prefix: String, depth: Int) {
+            guard depth < 8 else { return }
+            for child in subfolders(of: directory) {
+                let key = prefix.isEmpty ? child.lastPathComponent : "\(prefix)/\(child.lastPathComponent)"
+                if exists(child.appending(path: marker)) {
+                    found.append((key, child))
+                } else {
+                    visit(child, prefix: key, depth: depth + 1)
+                }
+            }
+        }
+        visit(base, prefix: "", depth: 0)
+        return found
+    }
+
     func subfolders(of directory: URL) -> [URL] {
         ((try? fileManager.contentsOfDirectory(
             at: directory, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles])) ?? [])
