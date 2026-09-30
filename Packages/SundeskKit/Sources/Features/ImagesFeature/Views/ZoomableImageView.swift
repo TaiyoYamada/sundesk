@@ -123,7 +123,7 @@ struct ZoomableImageView: NSViewRepresentable {
 
         func load(_ url: URL) {
             self.url = url
-            guard let imageView, let scrollView else { return }
+            guard let imageView, scrollView != nil else { return }
             imageView.image = NSImage(contentsOf: url)
             isFitting = true
             resizeDocument()

@@ -107,19 +107,19 @@ public final class FileNavigatorViewModel {
     }
 
     public func move(_ paths: [String], into folder: String) async {
-        await perform { try await $0.move(paths, into: folder) }
+        _ = await perform { try await $0.move(paths, into: folder) }
     }
 
     public func rename(_ path: String, to name: String) async {
-        await perform { try await $0.rename(path, to: name) }
+        _ = await perform { try await $0.rename(path, to: name) }
     }
 
     public func moveToTrash(_ paths: [String]) async {
-        await perform { try await $0.moveToTrash(paths) }
+        _ = await perform { try await $0.moveToTrash(paths) }
     }
 
     public func importFiles(_ urls: [URL], into folder: String) async {
-        await perform { try await $0.importFiles(urls, into: folder) }
+        _ = await perform { try await $0.importFiles(urls, into: folder) }
     }
 
     /// そのフォルダの中の、移し先にできるフォルダ（深さ順）。

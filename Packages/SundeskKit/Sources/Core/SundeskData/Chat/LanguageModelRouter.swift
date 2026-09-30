@@ -128,15 +128,23 @@ enum AppleLanguageModel {
                     }
                     continuation.yield(.done(tokensPerSecond: nil))
                     continuation.finish()
-                } catch let error as LanguageModelSession.GenerationError {
-                    continuation.finish(
-                        throwing: ChatError.model("Apple のモデルで生成できませんでした: \(error.localizedDescription)"))
+                } catch let error as LanguageModelError {
+                    continuation.finish(throwing: Self.appleModelError(error))
+                } catch let error as SystemLanguageModel.Error {
+                    continuation.finish(throwing: Self.appleModelError(error))
+                } catch let error as LanguageModelSession.Error {
+                    continuation.finish(throwing: Self.appleModelError(error))
                 } catch {
                     continuation.finish(throwing: error)
                 }
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+
+    /// Apple のモデルの失敗（文脈の長さ、安全のための制限、モデルの準備など）を、チャットのエラーにする。
+    private static func appleModelError(_ error: any LocalizedError) -> ChatError {
+        .model("Apple のモデルで生成できませんでした: \(error.localizedDescription)")
     }
 }
 

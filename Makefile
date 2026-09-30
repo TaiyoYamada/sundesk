@@ -83,12 +83,25 @@ coverage: test-package ## Swift パッケージのカバレッジをモジュー
 
 # MARK: - ビルドと実行
 
-.PHONY: build run engine clean
+.PHONY: build run install engine clean
 build: ## アプリをビルドする
 	$(XCODEBUILD) build
 
 run: build ## アプリをビルドして起動する
 	open $(DERIVED_DATA)/Build/Products/Debug/sundesk.app
+
+APP_ID := com.taiyou.sundesk
+INSTALL_DIR ?= /Applications
+
+install: ## 普段使いの設定（Release）でビルドし、アプリケーションフォルダに入れ直して起動する
+	$(XCODEBUILD) -configuration Release build
+	@# 動いていれば終了してもらい、終わるまで待つ（編集中のノートは終了するときに保存される）
+	@osascript -e 'if application id "$(APP_ID)" is running then tell application id "$(APP_ID)" to quit'
+	@for i in $$(seq 1 50); do pgrep -xq sundesk || break; sleep 0.2; done
+	@if pgrep -xq sundesk; then echo "sundesk が終了しませんでした。終了してから、もう一度実行してください"; exit 1; fi
+	rm -rf $(INSTALL_DIR)/sundesk.app
+	ditto $(DERIVED_DATA)/Build/Products/Release/sundesk.app $(INSTALL_DIR)/sundesk.app
+	open $(INSTALL_DIR)/sundesk.app
 
 engine: ## Python エンジンだけを単独で起動する（http://127.0.0.1:8765）
 	cd $(ENGINE) && uv run sundesk-engine --log-level debug
