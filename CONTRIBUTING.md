@@ -43,3 +43,9 @@ make engine      # AI エンジンだけを起動する
 
 設計は [docs/architecture.md](docs/architecture.md) にまとめています。大きな判断をしたときは、理由を
 [docs/adr/](docs/adr/README.md) に残しています。Swift ファイルの先頭には Xcode が作る形のヘッダーを付けています。
+
+## 実データ
+
+このリポジトリは公開しているので、研究の実データ（~/Research、study-artifact、アプリのデータフォルダ）は入れません。
+中身だけでなく、論文や実験のファイル名、フォルダ名、設定の名前も、テストや文書に書かないようにしています。
+テストと画面の確認には、作り物の見本（`SampleLibrary/`）と、テストの中で作る一時フォルダを使います。
