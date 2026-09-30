@@ -7,9 +7,13 @@
 
 import AppKit
 import Observation
+import QuartzCore
 import simd
 
-/// 知識グラフの描画の状態（形、カメラ、選択）。View と Metal の描画をつなぐ。
+/// 知識グラフの描画の状態（形、カメラ、選択、経路、時間の再生）。View と Metal の描画をつなぐ。
+///
+/// フレームごとの計算（カメラの動き、点の寄せ方、ラベルの置き場所）は `makeFrame` で行う。
+/// SwiftUI に知らせる値（選んだ点の画面の位置など）は、変わったときだけ書き換える。
 @MainActor
 @Observable
 public final class GraphCanvasModel {
@@ -18,260 +22,211 @@ public final class GraphCanvasModel {
     public private(set) var selectedNodeID: Int?
     /// 目立たせる点の ID（検索に一致したものなど）。
     public var highlightedNodeIDs: Set<Int> = [] {
-        didSet { if highlightedNodeIDs != oldValue { updateColors() } }
+        didSet { if highlightedNodeIDs != oldValue { emphasisDidChange() } }
     }
-    /// 点が選ばれたとき（空いているところを押したら nil）。
-    @ObservationIgnored public var onSelect: ((Int?) -> Void)?
-
-    /// ラベルを描き直すきっかけ（描画のたびに増える）。
-    private(set) var frame = 0
+    /// 経路（たどる順の点の ID）。空なら経路を出さない。
+    public private(set) var pathNodeIDs: [Int] = []
+    /// 奥行きをつけて見ているか。
+    public private(set) var is3D = false
+    /// 時間の再生の位置（0〜1）。nil なら再生していない（すべてを出す）。
+    public internal(set) var timelineCursor: Double?
+    public internal(set) var isPlayingTimeline = false
+    /// 再生の位置までに生まれた点の数。
+    public internal(set) var visibleNodeCount = 0
+    /// 選んだ点の画面の位置（SwiftUI の座標）。画面の外なら nil。
+    public internal(set) var selectionAnchor: CGPoint?
+    /// 選んだ点の半径（pt）。
+    public internal(set) var selectionRadius: Double = 0
+    /// 選んだ点のそばに、出てくるノートを出す濃さ（0〜1。近づくほど 1）。
+    public internal(set) var noteDetail: Double = 0
     /// Metal が使えないとき false。
     public private(set) var isAvailable = true
 
+    /// 点が選ばれたとき（空いているところを押したら nil）。
+    @ObservationIgnored public var onSelect: ((Int?) -> Void)?
+    /// 点をダブルクリックしたか、選んだ点で Return を押したとき（その概念が出てくるノートを開く）。
+    @ObservationIgnored public var onOpen: ((Int) -> Void)?
+    /// ⇧ を押しながら点を押したとき（選んでいる点からの経路をたどる）。nil なら経路を消す（Esc）。
+    @ObservationIgnored public var onPathTarget: ((Int?) -> Void)?
+
     @ObservationIgnored let renderer: GraphRenderer?
-    @ObservationIgnored private var center = SIMD2<Float>.zero {
-        didSet { renderer?.needsDisplay = true }
-    }
-    @ObservationIgnored private var zoom: Float = 1 {
-        didSet { renderer?.needsDisplay = true }
-    }
-    @ObservationIgnored var viewSize = CGSize(width: 800, height: 600) {
-        didSet { renderer?.needsDisplay = true }
-    }
-    @ObservationIgnored private var indexByID: [Int: Int] = [:]
-    @ObservationIgnored private var neighborIndices: [[Int]] = []
-    @ObservationIgnored private var appearanceIsDark = false
+    /// 描いている View（キーボードの操作を受けさせるため）。
+    @ObservationIgnored weak var view: NSView?
+    @ObservationIgnored var camera = GraphCamera()
+    @ObservationIgnored var flight: (flight: CameraFlight, start: Double)?
     /// 配置が落ち着くまで、全体が収まるようにカメラを合わせ続ける。拡大や移動をしたらやめる。
-    @ObservationIgnored private var followsLayout = false
+    @ObservationIgnored var followsLayout = false
+    /// 飛び終わったら、配置が落ち着くまでカメラを合わせる（奥行きを付け外ししたとき）。
+    @ObservationIgnored var followsAfterFlight = false
+    /// 奥行きを付けた直後に、ゆっくり回して立体だと分かるようにする（始めた時刻）。
+    @ObservationIgnored var spinStart: Double?
+    @ObservationIgnored var indexByID: [Int: Int] = [:]
+    /// 点ごとの隣（重い線の順）。
+    @ObservationIgnored var neighborIndices: [[Int]] = []
+    @ObservationIgnored var edgeWeights: [Int64: Float] = [:]
+    @ObservationIgnored var info: [NodeInfo] = []
+    /// まとまりの ID → まとまりの添字（0 から詰めた番号）。
+    @ObservationIgnored var groupIndexByID: [Int: Int] = [:]
+    @ObservationIgnored var groupSizes: [Int] = []
+    /// 名前のあるまとまり（添字、名前の文字の地図の番号）。
+    @ObservationIgnored var namedGroups: [(group: Int, entry: Int)] = []
+    /// 重要な順の点の添字。
+    @ObservationIgnored var importanceOrder: [Int] = []
+    @ObservationIgnored var states: [NodeState] = []
+    @ObservationIgnored var lensVelocities: [Float] = []
+    @ObservationIgnored var lensTargets: Set<Int> = []
+    /// 選んだときの拡大の度合い（隣を並べる円の大きさの基準）。
+    @ObservationIgnored var lensZoom: Float?
+    @ObservationIgnored var emphasized: [Int: Float] = [:]
+    @ObservationIgnored var positions: [SIMD4<Float>] = []
+    @ObservationIgnored var projected: [ProjectedNode] = []
+    @ObservationIgnored var centroids: [SIMD4<Float>] = []
+    @ObservationIgnored var labelPlacer = LabelPlacer()
+    @ObservationIgnored var hoveredIndex: Int?
+    @ObservationIgnored var selectionTime: Double?
+    /// 選んでいるものがあるときに 1 へ近づく（周りを薄くする度合い）。
+    @ObservationIgnored var focusAmount: Float = 0
+    @ObservationIgnored var isDark = false
+    @ObservationIgnored var pixelScale: Float = 2
+    @ObservationIgnored var lastFrameTime = CACurrentMediaTime()
+    @ObservationIgnored let clockStart = CACurrentMediaTime()
+    /// 次のフレームを描く必要があるか（カメラや色が変わった）。
+    @ObservationIgnored var needsFrame = true
+    @ObservationIgnored var emphasisNeedsUpdate = true
+    @ObservationIgnored var labelsAreSettled = true
+    @ObservationIgnored var orderIsFlat = false
+    @ObservationIgnored var emphasisChangedSinceOrder = true
 
     public init() {
         renderer = GraphRenderer()
         isAvailable = renderer != nil
-        renderer?.uniformsProvider = { [weak self] in self?.uniforms() ?? Self.emptyUniforms }
-        renderer?.didDraw = { [weak self] in self?.didDraw() }
+        renderer?.frameProvider = { [weak self] view in self?.makeFrame(view: view) }
     }
 
-    private static let emptyUniforms = GraphUniforms(
-        viewportSize: [1, 1], center: .zero, zoom: 1, nodeScale: 1, selected: -1, ringColor: [0, 0, 0, 1])
+    var viewSize: CGSize {
+        get { CGSize(width: CGFloat(camera.viewSize.x), height: CGFloat(camera.viewSize.y)) }
+        set {
+            camera.viewSize = SIMD2(Float(max(newValue.width, 1)), Float(max(newValue.height, 1)))
+            needsFrame = true
+        }
+    }
 
     // MARK: - 形
 
     public func setScene(_ scene: GraphScene) {
         guard scene != self.scene else { return }
-        self.scene = scene
-        indexByID = Dictionary(scene.nodes.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first })
-        neighborIndices = [[Int]](repeating: [], count: scene.nodes.count)
-        for edge in scene.edges {
-            neighborIndices[edge.source].append(edge.target)
-            neighborIndices[edge.target].append(edge.source)
+        if isSameShape(scene) {
+            // 生まれた時だけが変わった（育った順を後から読んだ）。配置はそのまま
+            self.scene = scene
+            rebuildIndices()
+            renderer?.updateInfo(info)
+            needsFrame = true
+            return
         }
+        self.scene = scene
+        rebuildIndices()
         if let selectedNodeID, indexByID[selectedNodeID] == nil { self.selectedNodeID = nil }
+        pathNodeIDs = pathNodeIDs.filter { indexByID[$0] != nil }
         let positions = scene.initialPositions(spacing: LayoutParams.spacing)
-        renderer?.load(scene, positions: positions)
-        center = .zero
+        states = [NodeState](repeating: NodeState(), count: scene.nodes.count)
+        lensVelocities = [Float](repeating: 0, count: scene.nodes.count)
+        lensTargets = []
+        hoveredIndex = nil
+        labelPlacer.reset()
+        renderer?.load(
+            scene, positions: positions, info: info,
+            groups: info.map { $0.w > 0 ? UInt32($0.z) : GraphLayoutEngine.noGroup })
+        renderer?.loadLabels(
+            scene.nodes.map { ($0.label, LabelAtlas.Style.concept) }
+                + namedGroups.map { (scene.groups[$0.entry].name, LabelAtlas.Style.group) })
+        if is3D { renderer?.layout.setDepth(true) }
+        self.positions = positions
+        camera.center = .zero
         let radius = LayoutParams.spacing * Float(max(scene.nodes.count, 1)).squareRoot() * 0.8
-        zoom = max(Float(min(viewSize.width, viewSize.height)) / (radius * 2.6), 0.02)
+        camera.zoom = max(min(camera.viewSize.x, camera.viewSize.y) / (radius * 2.6), 0.02)
         followsLayout = true
+        flight = nil
         updateColors()
+        emphasisDidChange()
     }
 
-    private func didDraw() {
-        frame &+= 1
-        guard followsLayout else { return }
-        fitAll()
-        if isSettled { followsLayout = false }
+    /// 点と線が同じで、生まれた時だけが違うか。
+    private func isSameShape(_ other: GraphScene) -> Bool {
+        other.edges == scene.edges && other.groups == scene.groups && other.nodes.count == scene.nodes.count
+            && zip(other.nodes, scene.nodes).allSatisfy {
+                $0.id == $1.id && $0.label == $1.label && $0.radius == $1.radius && $0.group == $1.group
+            }
     }
 
-    /// 点を選ぶ。nil なら選択を外す。
+    /// 点を選ぶ。nil なら選択を外す。画面の端にあれば、見えるところへ動かす。
     public func select(nodeID: Int?) {
         guard selectedNodeID != nodeID else { return }
         selectedNodeID = nodeID
-        updateColors()
+        selectionTime = nodeID == nil ? nil : CACurrentMediaTime()
+        lensZoom = nodeID == nil ? nil : camera.zoom
+        if let nodeID { reveal(nodeID) }
+        emphasisDidChange()
     }
 
-    /// 点を画面の中央に持ってくる。
-    public func focus(on nodeID: Int) {
-        guard let index = indexByID[nodeID], let position = positions()[safe: index] else { return }
+    /// 経路を出す（たどる順の点の ID）。経路の全体が見えるようにカメラを動かす。
+    public func setPath(_ nodeIDs: [Int]) {
+        let path = nodeIDs.filter { indexByID[$0] != nil }
+        guard path != pathNodeIDs else { return }
+        pathNodeIDs = path
+        emphasisDidChange()
+        let points = path.compactMap { indexByID[$0] }.map { positions[$0].xyz }
+        if points.count >= 2 { fly(to: camera.fitting(points, margin: 0.6)) }
+    }
+
+    /// 奥行きをつける／平面に戻す。配置は立体にほどけ（平面につぶれ）、カメラも斜めから（正面から）見る向きへ回る。
+    public func setDepth(_ enabled: Bool) {
+        guard enabled != is3D else { return }
+        is3D = enabled
+        renderer?.layout.setDepth(enabled)
+        var target = camera
+        target.perspective = enabled ? 1 : 0
+        target.yaw = enabled ? 0.55 : 0
+        target.pitch = enabled ? -0.42 : 0
         followsLayout = false
-        center = position
-        zoom = max(zoom, 1.2)
+        flight = (CameraFlight(from: camera, to: target, duration: 1.3), CACurrentMediaTime())
+        spinStart = enabled ? CACurrentMediaTime() + 1.3 : nil
+        followsAfterFlight = true
+        needsFrame = true
     }
 
-    /// すべての点が収まるようにする。
-    public func fitAll() {
-        let positions = positions()
-        guard let first = positions.first else { return }
-        var lower = first
-        var upper = first
-        for position in positions {
-            lower = simd_min(lower, position)
-            upper = simd_max(upper, position)
-        }
-        guard viewSize.width > 0, viewSize.height > 0 else { return }
-        center = (lower + upper) / 2
-        let extent = simd_max(upper - lower, [1, 1])
-        zoom = min(max(min(Float(viewSize.width) / extent.x, Float(viewSize.height) / extent.y) * 0.85, 0.02), 20)
+    /// キーボードの操作（矢印、Esc、Return）をグラフで受ける。
+    public func focusKeyboard() {
+        guard let view else { return }
+        view.window?.makeFirstResponder(view)
     }
 
     /// 点の配置をもう一度動かす。
     public func reheat() {
         renderer?.layout.reheat(to: 0.5)
+        needsFrame = true
     }
 
     var isSettled: Bool { renderer?.layout.isSettled ?? true }
 
-    // MARK: - 座標
-
-    func positions() -> [SIMD2<Float>] {
-        renderer?.layout.readPositions() ?? []
-    }
-
-    /// View の座標（左下が原点）を、グラフの座標にする。
-    func world(at point: CGPoint) -> SIMD2<Float> {
-        let offset = SIMD2(Float(point.x - viewSize.width / 2), Float(point.y - viewSize.height / 2))
-        return center + offset / zoom
-    }
-
-    /// グラフの座標を、SwiftUI の座標（左上が原点）にする。
-    func screen(_ position: SIMD2<Float>) -> CGPoint {
-        let offset = (position - center) * zoom
-        return CGPoint(x: viewSize.width / 2 + CGFloat(offset.x), y: viewSize.height / 2 - CGFloat(offset.y))
-    }
-
-    /// 押した場所にある点（添字）。
-    func hitTest(_ point: CGPoint) -> Int? {
-        let target = world(at: point)
-        let positions = positions()
-        var best: (index: Int, distance: Float)?
-        for (index, position) in positions.enumerated() {
-            let radius = (scene.nodes[index].radius * nodeScale + 4) / zoom
-            let distance = simd_distance(position, target)
-            if distance <= radius, distance < (best?.distance ?? .infinity) { best = (index, distance) }
+    func setAppearance(isDark: Bool, pixelScale: Float) {
+        self.pixelScale = pixelScale
+        guard self.isDark != isDark else {
+            needsFrame = true
+            return
         }
-        return best?.index
-    }
-
-    // MARK: - 操作
-
-    func pan(by delta: CGSize) {
-        followsLayout = false
-        center -= SIMD2(Float(delta.width), Float(delta.height)) / zoom
-    }
-
-    func zoom(by factor: CGFloat, around point: CGPoint) {
-        followsLayout = false
-        let anchor = world(at: point)
-        zoom = min(max(zoom * Float(factor), 0.02), 20)
-        let offset = SIMD2(Float(point.x - viewSize.width / 2), Float(point.y - viewSize.height / 2))
-        center = anchor - offset / zoom
-    }
-
-    func click(at point: CGPoint) {
-        let nodeID = hitTest(point).map { scene.nodes[$0].id }
-        select(nodeID: nodeID)
-        onSelect?(nodeID)
-    }
-
-    func drag(node index: Int, to point: CGPoint) {
-        renderer?.layout.pin(index, at: world(at: point))
-        renderer?.needsDisplay = true
-    }
-
-    func release(node index: Int) {
-        renderer?.layout.pin(index, at: nil)
-    }
-
-    func setAppearance(isDark: Bool) {
-        guard appearanceIsDark != isDark else { return }
-        appearanceIsDark = isDark
+        self.isDark = isDark
         updateColors()
     }
 
-    // MARK: - ラベル
-
-    struct Label: Identifiable {
-        let id: Int
-        let text: String
-        let point: CGPoint
-        let isEmphasized: Bool
-    }
-
-    /// 画面に出すラベル。大きい点（中心的な概念）と、選んだ点とその隣、目立たせる点。
-    func labels(limit: Int = 40) -> [Label] {
-        _ = frame
-        let positions = positions()
-        guard positions.count == scene.nodes.count else { return [] }
-        let selectedIndex = selectedNodeID.flatMap { indexByID[$0] }
-        var emphasized = Set(highlightedNodeIDs.compactMap { indexByID[$0] })
-        if let selectedIndex {
-            emphasized.insert(selectedIndex)
-            emphasized.formUnion(neighborIndices[selectedIndex])
-        }
-        let largest = scene.nodes.indices.sorted { scene.nodes[$0].radius > scene.nodes[$1].radius }.prefix(limit)
-        let bounds = CGRect(origin: .zero, size: viewSize).insetBy(dx: -40, dy: -20)
-        return Set(largest).union(emphasized).compactMap { index in
-            let node = scene.nodes[index]
-            var point = screen(positions[index])
-            point.y += CGFloat(node.radius * nodeScale) + 9
-            guard bounds.contains(point) else { return nil }
-            return Label(id: node.id, text: node.label, point: point, isEmphasized: emphasized.contains(index))
-        }
-    }
-
-    // MARK: - 色
-
-    private var nodeScale: Float { min(max(zoom, 0.5), 2).squareRoot() }
-
-    private func uniforms() -> GraphUniforms {
-        let ring: SIMD4<Float> = appearanceIsDark ? [1, 1, 1, 1] : [0.1, 0.1, 0.1, 1]
-        return GraphUniforms(
-            viewportSize: [Float(viewSize.width), Float(viewSize.height)], center: center, zoom: zoom,
-            nodeScale: nodeScale, selected: Int32(selectedNodeID.flatMap { indexByID[$0] } ?? -1), ringColor: ring)
-    }
-
-    private func updateColors() {
+    func updateColors() {
         guard let renderer, !scene.nodes.isEmpty else { return }
-        let selectedIndex = selectedNodeID.flatMap { indexByID[$0] }
-        var focus = Set(highlightedNodeIDs.compactMap { indexByID[$0] })
-        if let selectedIndex {
-            focus.insert(selectedIndex)
-            focus.formUnion(neighborIndices[selectedIndex])
-        }
-        let isFocused = !focus.isEmpty
-        let nodes = scene.nodes.enumerated().map { index, node in
-            var color = GraphPalette.color(for: node.group)
-            color.w = !isFocused || focus.contains(index) ? 0.95 : 0.18
-            return color
-        }
-        let base: SIMD4<Float> = appearanceIsDark ? [0.8, 0.8, 0.85, 1] : [0.35, 0.35, 0.4, 1]
-        let edges = scene.edges.map { edge -> SIMD4<Float> in
-            var color = base
-            if let selectedIndex, edge.source == selectedIndex || edge.target == selectedIndex {
-                color.w = 0.7
-            } else {
-                color.w = isFocused ? 0.04 : 0.14
-            }
-            return color
-        }
-        renderer.updateColors(nodes: nodes, edges: edges)
+        renderer.updateColors(scene.nodes.map { GraphPalette.color(for: $0.group, isDark: isDark) })
+        needsFrame = true
     }
-}
 
-/// コミュニティごとの色（システムの色に近い配色）。
-enum GraphPalette {
-    static let colors: [SIMD4<Float>] = [
-        [0.0, 0.48, 1.0, 1], [1.0, 0.58, 0.0, 1], [0.2, 0.78, 0.35, 1], [1.0, 0.18, 0.33, 1],
-        [0.69, 0.32, 0.87, 1], [0.35, 0.78, 0.98, 1], [1.0, 0.8, 0.0, 1], [0.64, 0.52, 0.37, 1],
-        [0.35, 0.34, 0.84, 1], [0.0, 0.78, 0.75, 1], [1.0, 0.39, 0.51, 1], [0.56, 0.56, 0.58, 1],
-    ]
-
-    static func color(for group: Int) -> SIMD4<Float> {
-        colors[((group % colors.count) + colors.count) % colors.count]
-    }
-}
-
-extension Array {
-    fileprivate subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
+    /// 強調するもの（選択、経路、検索の一致、ホバー）が変わった。
+    func emphasisDidChange() {
+        emphasisNeedsUpdate = true
+        needsFrame = true
     }
 }

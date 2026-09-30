@@ -75,6 +75,10 @@ extension Container {
         self { FindConceptSourcesInteractor(repository: self.knowledgeRepository()) }
     }
 
+    var loadKnowledgeTimeline: Factory<any LoadKnowledgeTimelineUseCase> {
+        self { LoadKnowledgeTimelineInteractor(repository: self.knowledgeRepository(), vault: self.vaultRepository()) }
+    }
+
     // MARK: - ViewModel
 
     /// ウインドウごとに作る。
@@ -85,7 +89,7 @@ extension Container {
                 loadGraph: self.loadKnowledgeGraph(), observeKnowledge: self.observeKnowledge(),
                 rebuildKnowledge: RebuildKnowledgeInteractor(builder: self.knowledgeBuilder()),
                 observeBuild: ObserveKnowledgeBuildInteractor(builder: self.knowledgeBuilder()),
-                findSources: self.findConceptSources())
+                findSources: self.findConceptSources(), loadTimeline: self.loadKnowledgeTimeline())
         }
     }
 }

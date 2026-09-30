@@ -10,13 +10,23 @@ import SundeskGraphRenderer
 import SwiftUI
 
 /// 知識グラフのタブ。
+///
+/// 遠くからはまとまりの雲と名前、近づくと概念の名前、さらに近づくと選んだ概念が出てくるノートを見せる。
+/// 検索して選ぶとカメラが飛び、⇧ を押しながら別の概念を押すと経路が光る。奥行き（3D）と、育つ様子の再生もできる。
 public struct GraphScreen: View {
     @Bindable private var viewModel: GraphViewModel
-    @State private var canvas = GraphCanvasModel()
+    @AppStorage("graph.depth") private var prefersDepth = false
+    @FocusState private var isSearchFocused: Bool
+    @State private var suggestionIndex = 0
+    private let openNote: ((String, Int) -> Void)?
 
-    public init(viewModel: GraphViewModel) {
+    /// - Parameter openNote: ノートを開く（パス、行番号）。nil ならインスペクタが渡したものを使う。
+    public init(viewModel: GraphViewModel, openNote: ((String, Int) -> Void)? = nil) {
         self.viewModel = viewModel
+        self.openNote = openNote
     }
+
+    private var canvas: GraphCanvasModel { viewModel.canvas }
 
     public var body: some View {
         VStack(spacing: 0) {
@@ -33,11 +43,15 @@ public struct GraphScreen: View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .onAppear { canvas.onSelect = { id in Task { await viewModel.select(conceptID: id) } } }
+        .background { shortcuts }
+        .onAppear(perform: connect)
         .onChange(of: viewModel.nodes, initial: true) { applyScene() }
         .onChange(of: viewModel.edges) { applyScene() }
+        .onChange(of: viewModel.communities) { applyScene() }
         .onChange(of: viewModel.matchingNodeIDs, initial: true) { _, ids in canvas.highlightedNodeIDs = ids }
         .onChange(of: viewModel.selected?.id) { _, id in canvas.select(nodeID: id) }
+        .onChange(of: viewModel.path) { _, path in canvas.setPath(path.map(\.id)) }
+        .onChange(of: viewModel.searchText) { suggestionIndex = 0 }
     }
 
     @ViewBuilder
@@ -56,8 +70,9 @@ public struct GraphScreen: View {
                     .disabled(viewModel.build != nil)
             }
         case .ready:
-            KnowledgeGraphView(model: canvas)
-                .overlay(alignment: .bottomLeading) { legend }
+            GraphCanvasArea(
+                viewModel: viewModel, canvas: canvas, suggestionIndex: suggestionIndex,
+                showsSuggestions: isSearchFocused, choose: choose)
         case .failed(let message):
             ContentUnavailableView(
                 "知識グラフを読めませんでした", systemImage: "exclamationmark.triangle", description: Text(message))
@@ -66,15 +81,7 @@ public struct GraphScreen: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            TextField("概念を探す", text: $viewModel.searchText)
-                .textFieldStyle(.roundedBorder)
-                .frame(maxWidth: 220)
-                .onSubmit {
-                    if let first = viewModel.matchingNodeIDs.first {
-                        canvas.focus(on: first)
-                        Task { await viewModel.select(conceptID: first) }
-                    }
-                }
+            searchField
             Picker("表示する概念", selection: $viewModel.nodeLimit) {
                 ForEach(GraphViewModel.nodeLimits, id: \.self) { Text("上位 \($0)").tag($0) }
             }
@@ -82,9 +89,21 @@ public struct GraphScreen: View {
             Text(viewModel.summary)
                 .font(.callout)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
             Spacer()
+            Picker("見え方", selection: depthBinding) {
+                Text("2D").tag(false)
+                Text("3D").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            .help("奥行きをつけて、回して眺める（3D ではドラッグで回転、⌥ ドラッグで移動）")
+            Button("育つ様子を再生", systemImage: "play.circle") { canvas.playTimeline() }
+                .help("ノートを作った順に、知識が育つ様子を再生する")
+                .disabled(viewModel.timeline.isEmpty || !canvas.hasTimeline)
             Button("全体を表示", systemImage: "arrow.up.left.and.arrow.down.right") { canvas.fitAll() }
-                .help("全体を表示")
+                .help("全体を表示（空いているところをダブルクリック）")
             Button("配置し直す", systemImage: "wind") { canvas.reheat() }
                 .help("点の配置をもう一度計算する")
             Button("作り直す", systemImage: "arrow.clockwise") { Task { await viewModel.rebuild() } }
@@ -97,32 +116,78 @@ public struct GraphScreen: View {
         .padding(.vertical, 8)
     }
 
-    private var legend: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ForEach(viewModel.communities.prefix(8)) { community in
-                HStack(spacing: 6) {
-                    Circle().fill(GraphColors.color(for: community.id)).frame(width: 8, height: 8)
-                    Text(community.topLabels.joined(separator: "・"))
-                        .lineLimit(1)
-                }
+    private var searchField: some View {
+        TextField("概念を探す（⌘F）", text: $viewModel.searchText)
+            .textFieldStyle(.roundedBorder)
+            .frame(maxWidth: 220)
+            .focused($isSearchFocused)
+            .onSubmit {
+                let suggestions = viewModel.searchSuggestions
+                if suggestions.indices.contains(suggestionIndex) { choose(suggestions[suggestionIndex].id) }
             }
+            .onKeyPress(.downArrow) {
+                suggestionIndex = min(suggestionIndex + 1, max(viewModel.searchSuggestions.count - 1, 0))
+                return .handled
+            }
+            .onKeyPress(.upArrow) {
+                suggestionIndex = max(suggestionIndex - 1, 0)
+                return .handled
+            }
+            .onKeyPress(.escape) {
+                viewModel.searchText = ""
+                isSearchFocused = false
+                canvas.focusKeyboard()
+                return .handled
+            }
+    }
+
+    /// 見えないボタンで、キーボードの近道を受ける。
+    private var shortcuts: some View {
+        Button("概念を探す") { isSearchFocused = true }
+            .keyboardShortcut("f", modifiers: .command)
+            .hidden()
+    }
+
+    private var depthBinding: Binding<Bool> {
+        Binding(
+            get: { canvas.is3D },
+            set: { value in
+                prefersDepth = value
+                canvas.setDepth(value)
+            })
+    }
+
+    /// 検索の候補を選んだ: カメラを飛ばして選ぶ。
+    private func choose(_ id: Int) {
+        viewModel.searchText = ""
+        isSearchFocused = false
+        canvas.fly(toNode: id)
+        canvas.focusKeyboard()
+        Task { await viewModel.select(conceptID: id) }
+    }
+
+    private func connect() {
+        canvas.onSelect = { id in Task { await viewModel.select(conceptID: id) } }
+        canvas.onOpen = { id in Task { await viewModel.openSource(of: id) } }
+        canvas.onPathTarget = { id in
+            if let id { viewModel.findPath(to: id) } else { viewModel.clearPath() }
         }
-        .font(.caption)
-        .padding(10)
-        .background(.regularMaterial, in: .rect(cornerRadius: 8))
-        .padding(12)
-        .opacity(viewModel.communities.isEmpty ? 0 : 1)
+        if let openNote { viewModel.noteOpener = openNote }
+        canvas.setDepth(prefersDepth)
     }
 
     private func applyScene() {
         canvas.setScene(
             GraphScene(
                 nodes: viewModel.nodes.map {
-                    GraphScene.Node(id: $0.id, label: $0.label, radius: Float($0.radius), group: $0.community)
+                    GraphScene.Node(
+                        id: $0.id, label: $0.label, radius: Float($0.radius), group: $0.group,
+                        birth: $0.birth.map(Float.init))
                 },
                 edges: viewModel.edges.map {
                     GraphScene.Edge(source: $0.source, target: $0.target, weight: Float($0.weight))
-                }
+                },
+                groups: viewModel.communities.map { GraphScene.Group(id: $0.group, name: $0.name) }
             ))
     }
 }

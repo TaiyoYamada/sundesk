@@ -26,11 +26,14 @@ struct GraphViewModelTests {
         mentions: [ConceptMention(concept: 0, chunk: "a.md#0", count: 4)]
     )
 
-    private func makeViewModel(graph: KnowledgeGraph = graph, rebuildFailure: KnowledgeError? = nil) -> GraphViewModel {
+    private func makeViewModel(
+        graph: KnowledgeGraph = graph, rebuildFailure: KnowledgeError? = nil,
+        timeline: KnowledgeTimeline? = nil
+    ) -> GraphViewModel {
         GraphViewModel(
             loadGraph: GraphStub(graph: graph), observeKnowledge: GraphStub(graph: graph),
             rebuildKnowledge: RebuildStub(failure: rebuildFailure), observeBuild: RebuildStub(failure: nil),
-            findSources: GraphStub(graph: graph))
+            findSources: GraphStub(graph: graph), loadTimeline: timeline.map(TimelineStub.init))
     }
 
     @Test("知識がなければ空、あれば点と線と分野を出す")
@@ -76,6 +79,81 @@ struct GraphViewModelTests {
         #expect(viewModel.selected == nil)
     }
 
+    @Test("まとまりは大きい順に番号を振り、色と名前に使う")
+    func communityGroups() async {
+        let viewModel = makeViewModel()
+        await viewModel.load()
+
+        #expect(viewModel.nodes.map(\.group) == [0, 0, 1])
+        #expect(viewModel.communities.map(\.group) == [0, 1])
+        #expect(viewModel.communities.first?.name == "固有値・固有ベクトル")
+    }
+
+    @Test("検索の候補は、名前の頭が一致するものを先に出す")
+    func searchSuggestionsPreferPrefix() async {
+        let viewModel = makeViewModel()
+        await viewModel.load()
+
+        viewModel.searchText = "ベクトル"
+        #expect(viewModel.searchSuggestions.map(\.label) == ["固有ベクトル"])
+        viewModel.searchText = "固有"
+        #expect(viewModel.searchSuggestions.map(\.label) == ["固有値", "固有ベクトル"])
+        viewModel.searchText = ""
+        #expect(viewModel.searchSuggestions.isEmpty)
+    }
+
+    @Test("選んだ概念から別の概念までの経路をたどり、つながっていなければ知らせる")
+    func findsPath() async {
+        let graph = KnowledgeGraph(
+            concepts: Self.graph.concepts + [
+                Concept(id: 3, label: "孤立", normalized: "孤立", score: 1, frequency: 1, pagerank: 0.1, community: 2)
+            ],
+            relations: Self.graph.relations, mentions: Self.graph.mentions)
+        let viewModel = makeViewModel(graph: graph)
+        await viewModel.load()
+        await viewModel.select(conceptID: 0)
+
+        viewModel.findPath(to: 2)
+        #expect(viewModel.path.map(\.label) == ["固有値", "固有ベクトル", "量子ビット"])
+        #expect(viewModel.pathMessage == nil)
+
+        viewModel.findPath(to: 3)
+        #expect(viewModel.path.isEmpty)
+        #expect(viewModel.pathMessage?.contains("つながっていません") == true)
+
+        viewModel.findPath(to: 2)
+        await viewModel.select(conceptID: 1)
+        #expect(viewModel.path.isEmpty)
+    }
+
+    @Test("ノートを作った順を読み、概念ごとの生まれた時と、再生の目盛りを出す")
+    func loadsTimeline() async {
+        let timeline = KnowledgeTimeline(
+            notes: [
+                .init(path: "a.md", title: "最初のノート", date: Date(timeIntervalSince1970: 0)),
+                .init(path: "b.md", title: "次のノート", date: Date(timeIntervalSince1970: 86_400 * 400)),
+            ],
+            firstNote: [0: 0, 1: 1])
+        let viewModel = makeViewModel(timeline: timeline)
+
+        await viewModel.load()
+
+        #expect(viewModel.timeline.map(\.title) == ["最初のノート", "次のノート"])
+        #expect(viewModel.nodes.map(\.birth) == [0, 1, nil])
+    }
+
+    @Test("ダブルクリックで、概念がいちばん多く出てくるノートを開く")
+    func opensFirstSource() async {
+        let viewModel = makeViewModel()
+        await viewModel.load()
+        var opened: [String] = []
+        viewModel.noteOpener = { path, line in opened.append("\(path):\(line)") }
+
+        await viewModel.openSource(of: 0)
+
+        #expect(opened == ["数学/固有値.md:5"])
+    }
+
     @Test("作り直しに失敗したらメッセージを出す")
     func rebuildFailure() async {
         let viewModel = makeViewModel(rebuildFailure: .engine("エンジンを起動できませんでした"))
@@ -102,6 +180,12 @@ private struct GraphStub: LoadKnowledgeGraphUseCase, ObserveKnowledgeUseCase, Fi
                 count: 4)
         ]
     }
+}
+
+private struct TimelineStub: LoadKnowledgeTimelineUseCase {
+    let timeline: KnowledgeTimeline
+
+    func callAsFunction(for graph: KnowledgeGraph) async throws(KnowledgeError) -> KnowledgeTimeline { timeline }
 }
 
 private struct RebuildStub: RebuildKnowledgeUseCase, ObserveKnowledgeBuildUseCase {
