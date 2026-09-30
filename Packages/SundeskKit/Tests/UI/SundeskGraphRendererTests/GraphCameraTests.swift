@@ -34,6 +34,22 @@ struct GraphCameraTests {
         #expect(simd_distance(back, point) < 1e-4)
     }
 
+    @Test("トラックパッドの 2 本指では、中身が指と同じ向きに動く（ナチュラルなスクロール）")
+    func trackpadPanFollowsFingers() {
+        // ナチュラルなスクロールで指を右上へ動かすと、scrollingDeltaX は正、scrollingDeltaY は負になる
+        let offset = GraphMTKView.panOffset(scrollingDeltaX: 10, scrollingDeltaY: -6)
+        let model = GraphCanvasModel()
+        model.camera = camera()
+        let point = SIMD3<Float>(20, 30, 0)
+        let before = model.camera.project(point)
+
+        model.pan(by: offset)
+
+        let after = model.camera.project(point)
+        #expect(abs(after.x - before.x - 10) < 1e-3)
+        #expect(abs(after.y - before.y - 6) < 1e-3)
+    }
+
     @Test("透視では、手前の点ほど大きく写る")
     func perspectiveScalesNearPoints() {
         var camera = camera()
