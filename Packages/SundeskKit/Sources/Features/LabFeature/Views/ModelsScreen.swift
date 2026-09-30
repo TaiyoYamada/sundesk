@@ -77,6 +77,7 @@ public struct ModelsScreen: View {
                     }
                 }
                 .onDeleteCommand { requestDeletion(selection) }
+                .focusesOnClick()
                 .onChange(of: viewModel.models) {
                     selection.formIntersection(viewModel.models.map(\.id))
                 }

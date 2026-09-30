@@ -6,6 +6,7 @@
 //
 
 import AppKit
+import SundeskDesignSystem
 import SwiftUI
 
 /// 木の中で、フォルダを 1 つのものとして見せる（論文、実験、実行など）。
@@ -120,6 +121,7 @@ public struct FileTreeView: View {
                     }
                 }
                 .listStyle(.sidebar)
+                .focusesOnClick()
                 .accessibilityIdentifier("file-tree")
                 .contextMenu(forSelectionType: String.self) { paths in
                     contextMenu(for: paths)

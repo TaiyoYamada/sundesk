@@ -164,6 +164,7 @@ struct RecordsView: View {
                     }
                 }
                 .onDeleteCommand { if !selection.isEmpty { pendingDeletion = selection } }
+                .focusesOnClick()
                 .accessibilityIdentifier("lab-records")
                 Divider()
                 HStack {

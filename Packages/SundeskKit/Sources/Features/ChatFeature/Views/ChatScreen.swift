@@ -114,6 +114,7 @@ private struct SessionListView: View {
             }
             // Finder と同じく、⌫ で選んだものをまとめて消す
             .onDeleteCommand { if !selection.isEmpty { pendingDeletion = selection } }
+            .focusesOnClick()
             .onChange(of: selection) { _, ids in
                 guard ids.count == 1, let id = ids.first, id != viewModel.selectedSessionID else { return }
                 Task { await viewModel.select(sessionID: id) }

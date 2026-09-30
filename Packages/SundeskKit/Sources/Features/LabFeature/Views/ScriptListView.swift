@@ -5,6 +5,7 @@
 //  Created by 山田大陽 on 2026/09/30.
 //
 
+import SundeskDesignSystem
 import SwiftUI
 
 /// スクリプトの一覧。クリックで開き、⇧クリックと⌘クリックで複数選んで、⌫ か右クリックでまとめて消す。
@@ -30,6 +31,7 @@ struct ScriptListView: View {
                 contextMenu(names)
             }
             .onDeleteCommand { requestDeletion(viewModel.selection) }
+            .focusesOnClick()
             .onChange(of: viewModel.selection) { Task { await viewModel.selectionChanged() } }
             .accessibilityIdentifier("scratch-scripts")
             Divider()
