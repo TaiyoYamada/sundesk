@@ -25,7 +25,11 @@ final class SundeskUITests: XCTestCase {
         try FileManager.default.copyItem(at: Self.sampleLibrary, to: library)
         app = XCUIApplication()
         // UI テストでは Python エンジンを起動しない（UserDefaults の引数ドメインで上書きする）
-        app.launchArguments += ["-engine.startsAutomatically", "NO", "-vault.directory", library.path]
+        // ~/Research と study-artifact はつながない（見本だけで確かめる）
+        app.launchArguments += [
+            "-engine.startsAutomatically", "NO", "-vault.directory", library.path,
+            "-research.directory", "/nonexistent", "-study.directory", "/nonexistent",
+        ]
         app.launch()
     }
 

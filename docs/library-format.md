@@ -4,7 +4,8 @@ sundesk の研究ライブラリは、アプリのデータフォルダの中の
 ファイルが正で、SwiftData の索引はそこから作り直せる（[requirements.md](requirements.md) の C 案）。
 
 - 置き場所: `~/Library/Application Support/com.taiyou.sundesk/Library/`
-- 開発とテストでは、リポジトリの `SampleLibrary/`（研究向けの見本）を使う
+- `~/Research` と study-artifact は、コピーせずに一番上の `Research/`、`study-artifact/` としてつなぐ（読むだけ。[ADR 0016](adr/0016-read-research-in-place.md)）
+- テストでは、リポジトリの `SampleLibrary/`（研究向けの見本）を使う
 
 ```
 Library/
@@ -58,6 +59,7 @@ added: 2026-09-29
 | `status` | `未読`、`読書中`、`読了` のどれか |
 | `tags` | 配列 |
 | `added` | 追加した日（`YYYY-MM-DD`） |
+| `pdf` | 写さずに指している PDF（`Research/paper/example.pdf` のようなライブラリの中でのパス）。`paper.pdf` があればそちらを使う |
 
 ## 実験（`Experiments/<キー>/experiment.json`）
 

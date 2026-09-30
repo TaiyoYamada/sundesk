@@ -20,5 +20,6 @@
 | [0013](0013-lab-and-image-generation.md) | 実験室は mlx-lm の計算を差し替えて覗き、画像生成は mflux を使う | 採用 |
 | [0014](0014-forge-and-scratch.md) | 実験室に工房と Python のスクラッチを置く | 採用 |
 | [0015](0015-research-library.md) | 研究の一次資料を、アプリの中の研究ライブラリに置く | 採用 |
+| [0016](0016-read-research-in-place.md) | ~/Research と study-artifact を、コピーせずその場で読む | 採用 |
 
 新しく書くときは [template.md](template.md) を写して使う。
