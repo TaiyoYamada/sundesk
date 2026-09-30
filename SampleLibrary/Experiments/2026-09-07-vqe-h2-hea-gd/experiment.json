@@ -1,0 +1,58 @@
+{
+  "title": "VQE で H2（HEA、パラメータシフトの勾配法、深さ 1 と 2）",
+  "algorithm": "VQE",
+  "problem": "H2 STO-3G, 0.735 Å（パリティ写像、2 量子ビット）",
+  "status": "done",
+  "created": "2026-09-07T14:12:05+09:00",
+  "finished": "2026-09-07T14:12:07+09:00",
+  "tags": [
+    "VQE",
+    "H2",
+    "勾配法"
+  ],
+  "parameters": {
+    "ansatz": "HEA (RY + CNOT)",
+    "depths": "1, 2",
+    "optimizer": "gradient descent (parameter shift)",
+    "learning_rate": 0.4,
+    "iterations": 60,
+    "shots": 0,
+    "init": "uniform(-π, π)"
+  },
+  "seed": 42,
+  "objective": {
+    "name": "energy",
+    "direction": "minimize",
+    "reference": -1.1373060357534193
+  },
+  "metrics": {
+    "final_energy_depth1": -1.1373055672452577,
+    "error_mha_depth1": 0.000469,
+    "iterations_to_chemical_accuracy_depth1": 20,
+    "evaluations_depth1": 541,
+    "final_energy_depth2": -1.13730603575342,
+    "error_mha_depth2": 0.0,
+    "iterations_to_chemical_accuracy_depth2": 11,
+    "evaluations_depth2": 781,
+    "time_seconds": 0.042
+  },
+  "series": [
+    {
+      "file": "results/trace.csv",
+      "x": "iteration",
+      "y": [
+        "depth1",
+        "depth2"
+      ]
+    }
+  ],
+  "attachments": [
+    "figures/convergence.png"
+  ],
+  "links": [
+    "Papers/peruzzo2014-vqe",
+    "Papers/kandala2017-hardware-efficient-vqe",
+    "Data/molecules/h2-sto3g-0.735.json",
+    "Data/code/vqe_h2_gd.py"
+  ]
+}

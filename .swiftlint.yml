@@ -48,6 +48,13 @@ identifier_name:
     - y
     - ai
     - uv
+    # プログラミング言語の名前
+    - c
+    - go
+
+# 列挙型を振り分けるだけの switch（記法ごとの色、言語ごとの文法など）は、case の数を複雑さに数えない
+cyclomatic_complexity:
+  ignores_case_statements: true
 
 # すべての Swift ファイルに Xcode 形式のヘッダーを求める（CONTRIBUTING.md を参照）
 file_header:
@@ -58,3 +65,25 @@ file_header:
     \/\/
     \/\/  Created by 山田大陽 on \d{4}\/\d{2}\/\d{2}\.
     \/\/
+
+# アーキテクチャのルール（docs/adr/0011）。モジュールの依存はコンパイラが守り、
+# 同じモジュールの中の決まりはここで守る。
+custom_rules:
+  view_imports_domain:
+    name: "View は Domain を import しない"
+    regex: '^import SundeskDomain$'
+    included: 'Packages/SundeskKit/Sources/Features/.*/Views/.*\.swift'
+    message: "View は ViewModel が渡す表示用の型だけを使う。Domain の型が要るなら ViewModel で変換する"
+    severity: error
+  domain_imports_framework:
+    name: "Domain は画面や保存の仕組みを import しない"
+    regex: '^import (SwiftUI|AppKit|SwiftData|WebKit|Combine)$'
+    included: 'Packages/SundeskKit/Sources/Core/SundeskDomain/.*\.swift'
+    message: "Domain は Foundation 以外に依存しない"
+    severity: error
+  feature_imports_data:
+    name: "Features は Data や Infrastructure を import しない"
+    regex: '^import (SundeskData|SundeskEngineClient|SundeskMarkdown|SundeskCodeHighlight|FactoryKit)$'
+    included: 'Packages/SundeskKit/Sources/Features/.*\.swift'
+    message: "Data と DI の組み立ては AppFeature の役目"
+    severity: error

@@ -23,7 +23,7 @@ final class SundeskUITestsLaunchTests: XCTestCase {
         app.launchArguments += ["-engine.startsAutomatically", "NO"]
         app.launch()
 
-        let attachment = XCTAttachment(screenshot: app.screenshot())
+        let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
         attachment.name = "起動直後の画面"
         attachment.lifetime = .keepAlways
         add(attachment)

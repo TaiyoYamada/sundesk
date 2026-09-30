@@ -1,0 +1,66 @@
+{
+  "title": "VQE で H2（HEA 深さ 1、SPSA、ショットなし）",
+  "algorithm": "VQE",
+  "problem": "H2 STO-3G, 0.735 Å（パリティ写像、2 量子ビット）",
+  "status": "done",
+  "created": "2026-09-08T10:31:40+09:00",
+  "finished": "2026-09-08T10:31:42+09:00",
+  "tags": [
+    "VQE",
+    "H2",
+    "SPSA"
+  ],
+  "parameters": {
+    "ansatz": "HEA (RY + CNOT)",
+    "depth": 1,
+    "optimizer": "SPSA",
+    "a": 0.6,
+    "c": 0.1,
+    "alpha": 0.602,
+    "gamma": 0.101,
+    "A": 10.0,
+    "iterations": 300,
+    "shots": 0
+  },
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "objective": {
+    "name": "energy",
+    "direction": "minimize",
+    "reference": -1.1373060357534193
+  },
+  "metrics": {
+    "best_energy": -1.1372463365110286,
+    "mean_error_mha": 5.757581224899288,
+    "median_error_mha": 1.6052042155414448,
+    "worst_error_mha": 24.456402537382125,
+    "seeds_within_chemical_accuracy": 2,
+    "evaluations_per_seed": 600,
+    "time_seconds": 0.103
+  },
+  "series": [
+    {
+      "file": "results/trace.csv",
+      "x": "iteration",
+      "y": [
+        "mean",
+        "best",
+        "worst"
+      ]
+    }
+  ],
+  "attachments": [
+    "figures/convergence.png"
+  ],
+  "links": [
+    "Papers/peruzzo2014-vqe",
+    "Papers/kandala2017-hardware-efficient-vqe",
+    "Data/molecules/h2-sto3g-0.735.json",
+    "Data/code/vqe_h2_spsa.py"
+  ]
+}

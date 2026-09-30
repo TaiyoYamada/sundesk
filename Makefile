@@ -2,6 +2,7 @@
 
 PACKAGE := Packages/SundeskKit
 ENGINE := engine
+LOG := tools/sundesk-log
 SWIFT_SOURCES := sundesk sundeskTests sundeskUITests $(PACKAGE)/Sources $(PACKAGE)/Tests $(PACKAGE)/Package.swift
 DERIVED_DATA := build/DerivedData
 
@@ -25,11 +26,12 @@ bootstrap: ## 開発に必要な道具と依存関係をそろえる
 	@command -v actionlint >/dev/null || brew install actionlint
 	swift package --package-path $(PACKAGE) resolve
 	cd $(ENGINE) && uv sync
+	cd $(LOG) && uv sync
 
 # MARK: - 静的チェック
 
-.PHONY: lint lint-swift lint-python lint-actions
-lint: lint-swift lint-python lint-actions ## Swift、Python、GitHub Actions の静的チェック
+.PHONY: lint lint-swift lint-python lint-log lint-actions
+lint: lint-swift lint-python lint-log lint-actions ## Swift、Python、GitHub Actions の静的チェック
 
 lint-swift: ## SwiftLint と swift-format で検査する
 	swiftlint lint --strict --quiet
@@ -38,6 +40,9 @@ lint-swift: ## SwiftLint と swift-format で検査する
 lint-python: ## ruff と pyright で検査する
 	cd $(ENGINE) && uv run ruff check . && uv run ruff format --check . && uv run pyright
 
+lint-log: ## 記録用ライブラリ（tools/sundesk-log）を ruff と pyright で検査する
+	cd $(LOG) && uv run ruff check . && uv run ruff format --check . && uv run pyright
+
 lint-actions: ## GitHub Actions のワークフローを actionlint で検査する
 	actionlint
 
@@ -45,17 +50,21 @@ lint-actions: ## GitHub Actions のワークフローを actionlint で検査す
 format: ## Swift と Python のコードを自動で整形する
 	swift format format --in-place --recursive --parallel $(SWIFT_SOURCES)
 	cd $(ENGINE) && uv run ruff check --fix . && uv run ruff format .
+	cd $(LOG) && uv run ruff check --fix . && uv run ruff format .
 
 # MARK: - テスト
 
-.PHONY: test test-package test-integration test-app test-ui test-python coverage
-test: test-package test-app test-python ## UI テスト以外のすべてのテスト
+.PHONY: test test-package test-integration test-models test-app test-ui test-python test-log coverage
+test: test-package test-app test-python test-log ## UI テスト以外のすべてのテスト
 
 test-package: ## Swift パッケージのテスト
 	swift test --package-path $(PACKAGE) --enable-code-coverage
 
 test-integration: ## 本物の Python エンジンを起動する結合テスト
 	SUNDESK_INTEGRATION=1 swift test --package-path $(PACKAGE) --filter EngineProcessTests
+
+test-models: ## 本物のモデルで、知識、チャット、実験室、工房を端から端まで確かめる（約 1GB をダウンロードする）
+	SUNDESK_MODELS=1 swift test --package-path $(PACKAGE) --filter EngineEndToEndTests
 
 test-app: ## アプリのユニットテスト
 	$(XCODEBUILD) test -only-testing:sundeskTests
@@ -65,6 +74,9 @@ test-ui: ## アプリの UI テスト（画面を実際に操作する）
 
 test-python: ## Python エンジンのテスト
 	cd $(ENGINE) && uv run pytest --cov
+
+test-log: ## 記録用ライブラリ（tools/sundesk-log）のテスト
+	cd $(LOG) && uv run pytest --cov
 
 coverage: test-package ## Swift パッケージのカバレッジをモジュールごとに出す
 	scripts/swift-coverage.sh $(PACKAGE)

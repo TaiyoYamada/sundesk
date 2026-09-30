@@ -14,17 +14,17 @@ Attention を覗いたり、LoRA で学習させたり、画像を生成した�
 
 ## 状態
 
-フェーズ 0（基盤）。アプリの外枠と、Python エンジンの起動・停止までができている。
+フェーズ 0〜6 の最初の形ができた。使いながら直していく。
 
 | フェーズ | 内容 | 状態 |
 |---|---|---|
-| 0 | 基盤（開発環境、CI、アプリの外枠、エンジン） | 進行中 |
-| 1 | ノートの取り込みと表示 | |
-| 2 | 知識グラフ（Metal で描画） | |
-| 3 | RAG（出典つきのチャット） | |
-| 4 | LLM 実験室（確率分布、Attention、logit lens） | |
-| 5 | 画像生成 | |
-| 6 | LoRA、steering | |
+| 0 | 基盤（開発環境、CI、アプリの外枠、エンジン） | 完了 |
+| 1 | ノートの表示と編集（ライブプレビュー、ソース、閲覧）と索引 | 完了 |
+| 2 | 知識グラフ（Metal で描画） | 完了 |
+| 3 | RAG（出典つきのチャット） | 完了 |
+| 4 | LLM 実験室（確率分布、Attention、logit lens、活性） | 完了 |
+| 5 | 画像生成（mflux） | 完了 |
+| 6 | LoRA、steering | 完了 |
 
 ## 構成
 
@@ -40,9 +40,11 @@ Attention を覗いたり、LoRA で学習させたり、画像を生成した�
 
 | フォルダ | 中身 |
 |---|---|
-| `sundesk/` | アプリ本体（View、ウインドウ、メニュー） |
-| `Packages/SundeskKit/` | 画面以外のすべて（Clean Architecture の各層） |
+| `sundesk/` | アプリのターゲット（起動するだけ） |
+| `Packages/SundeskKit/` | アプリのすべて。App / Features / Core / Infrastructure / UI のモジュール |
 | `engine/` | Python の AI エンジン（uv で管理） |
+| `tools/sundesk-log/` | 実験のスクリプトから結果を取り込み箱へ書く記録用ライブラリ（Python） |
+| `SampleLibrary/` | 研究ライブラリの見本（論文、実験、データ、ノート。[docs/library-format.md](docs/library-format.md)） |
 | `Configurations/` | ビルド設定（xcconfig） |
 | `docs/` | 要件、アーキテクチャ、ADR |
 

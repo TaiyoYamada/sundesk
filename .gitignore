@@ -22,3 +22,20 @@ htmlcov/
 
 # make でのビルド
 build/
+
+
+# カバレッジの途中のファイル
+*.profraw
+
+# 実データ（~/Research、study-artifact、アプリのデータフォルダ）はリポジトリに入れない。
+# sundesk はそれぞれの場所で読むので、写しをここに置く必要はない
+/Research/
+/research/
+/study-artifact/
+/Library/
+*.store
+*.store-shm
+*.store-wal
+
+# Claude Code の作業フォルダ（並行作業のワークツリーなど）
+/.claude/
