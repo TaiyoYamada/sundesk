@@ -119,12 +119,21 @@ final class GraphMTKView: MTKView {
         guard let model else { return }
         if event.hasPreciseScrollingDeltas && !event.modifierFlags.contains(.command) {
             // トラックパッドの 2 本指は移動
-            model.pan(by: CGSize(width: -event.scrollingDeltaX, height: event.scrollingDeltaY))
+            model.pan(
+                by: Self.panOffset(scrollingDeltaX: event.scrollingDeltaX, scrollingDeltaY: event.scrollingDeltaY))
         } else {
             model.zoom(
                 by: pow(1.1, event.scrollingDeltaY / (event.hasPreciseScrollingDeltas ? 10 : 1)),
                 around: location(of: event))
         }
+    }
+
+    /// スクロールのずれを、中身を動かす向き（pt、上が正）にする。
+    ///
+    /// `scrollingDelta` は中身が動くべき向き（x は右、y は下が正）で、システムの「ナチュラルなスクロール」の設定も
+    /// 反映済み。ナチュラルなら、中身は指と同じ向きに動く（地図と同じ）。
+    static func panOffset(scrollingDeltaX: CGFloat, scrollingDeltaY: CGFloat) -> CGSize {
+        CGSize(width: scrollingDeltaX, height: -scrollingDeltaY)
     }
 
     override func magnify(with event: NSEvent) {
