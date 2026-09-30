@@ -36,3 +36,6 @@ build/
 *.store
 *.store-shm
 *.store-wal
+
+# Claude Code の作業フォルダ（並行作業のワークツリーなど）
+/.claude/
