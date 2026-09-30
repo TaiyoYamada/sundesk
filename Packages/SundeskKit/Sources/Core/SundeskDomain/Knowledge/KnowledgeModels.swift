@@ -185,8 +185,8 @@ extension KnowledgeGraph {
         .sorted { $0.weight > $1.weight }
     }
 
-    /// 重要な概念から `limit` 個と、その間の線（同じ組はまとめる）。
-    public func subgraph(limit: Int) -> Subgraph {
+    /// 重要な概念から `limit` 個と、その間の線（同じ組はまとめ、重い順に `edgeLimit` 本まで。既定は `limit` の 4 倍）。
+    public func subgraph(limit: Int, edgeLimit: Int? = nil) -> Subgraph {
         let top = concepts.sorted { $0.pagerank > $1.pagerank }.prefix(limit)
         let included = Set(top.map(\.id))
         var weights: [Pair: Double] = [:]
@@ -195,7 +195,7 @@ extension KnowledgeGraph {
         }
         let edges = weights.map { Subgraph.Edge(source: $0.key.lower, target: $0.key.upper, weight: $0.value) }
             .sorted { $0.weight > $1.weight }
-            .prefix(limit * 4)
+            .prefix(edgeLimit ?? limit * 4)
         return Subgraph(concepts: Array(top), edges: Array(edges))
     }
 
