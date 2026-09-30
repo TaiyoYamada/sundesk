@@ -82,7 +82,7 @@ struct EditorView: View {
                         }
                         .id(tab.id)
                     case .tool(.graph):
-                        GraphScreen(viewModel: graph)
+                        GraphScreen(viewModel: graph) { path, line in workspace.open(path: path, line: line) }
                     case .tool(.chat):
                         ChatScreen(viewModel: chat) { path, line in workspace.open(path: path, line: line) }
                     case .tool(.lab):
