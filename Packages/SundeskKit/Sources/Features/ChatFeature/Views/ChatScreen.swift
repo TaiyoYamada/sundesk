@@ -78,6 +78,9 @@ public struct ChatScreen: View {
 /// 会話の履歴。
 private struct SessionListView: View {
     let viewModel: ChatViewModel
+    /// 選んでいる会話（⌘ や ⇧ でいくつも選べる）。
+    @State private var selection: Set<UUID> = []
+    @State private var pendingDeletion: Set<UUID> = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -92,12 +95,7 @@ private struct SessionListView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            List(
-                selection: Binding(
-                    get: { viewModel.selectedSessionID },
-                    set: { id in if let id { Task { await viewModel.select(sessionID: id) } } }
-                )
-            ) {
+            List(selection: $selection) {
                 ForEach(viewModel.sessions) { session in
                     VStack(alignment: .leading, spacing: 2) {
                         // 題名が変わっても行の高さを変えない
@@ -105,10 +103,36 @@ private struct SessionListView: View {
                         Text(session.date).font(.caption).foregroundStyle(.secondary)
                     }
                     .tag(session.id)
-                    .contextMenu {
-                        Button("削除", role: .destructive) { Task { await viewModel.delete(sessionID: session.id) } }
+                }
+            }
+            .contextMenu(forSelectionType: UUID.self) { ids in
+                if !ids.isEmpty {
+                    Button(ids.count == 1 ? "削除…" : "\(ids.count) 件を削除…", role: .destructive) {
+                        pendingDeletion = ids
                     }
                 }
+            }
+            // Finder と同じく、⌫ で選んだものをまとめて消す
+            .onDeleteCommand { if !selection.isEmpty { pendingDeletion = selection } }
+            .onChange(of: selection) { _, ids in
+                guard ids.count == 1, let id = ids.first, id != viewModel.selectedSessionID else { return }
+                Task { await viewModel.select(sessionID: id) }
+            }
+            .onChange(of: viewModel.selectedSessionID, initial: true) { _, id in
+                if let id, !selection.contains(id) { selection = [id] }
+            }
+            .confirmationDialog(
+                "\(pendingDeletion.count) 件の会話を削除しますか？",
+                isPresented: Binding(get: { !pendingDeletion.isEmpty }, set: { if !$0 { pendingDeletion = [] } })
+            ) {
+                Button("削除", role: .destructive) {
+                    let ids = pendingDeletion
+                    pendingDeletion = []
+                    selection.subtract(ids)
+                    Task { await viewModel.delete(sessionIDs: ids) }
+                }
+            } message: {
+                Text("会話と、その中の質問と答えを消します。元には戻せません。")
             }
             .listStyle(.sidebar)
             // タブの中ではサイドバーの素材を使わず、周りと同じ背景にする

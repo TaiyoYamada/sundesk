@@ -126,6 +126,13 @@ public struct FileTreeView: View {
                 } primaryAction: { paths in
                     if paths.count == 1, let path = paths.first { open(path) }
                 }
+                // Finder と同じく、⌘⌫ や ⌫ で選んだものをゴミ箱へ（ゴミ箱から戻せるので確かめない）
+                .onDeleteCommand {
+                    let paths = selection.filter { navigator.canEdit($0) }
+                    guard !paths.isEmpty else { return }
+                    selection = []
+                    Task { await navigator.moveToTrash(paths.sorted()) }
+                }
                 // 何もないところに落としたら、一番上のフォルダへ
                 .dropDestination(for: String.self) { paths, _ in
                     guard navigator.canEdit(mainFolder) else { return false }

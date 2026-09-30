@@ -125,12 +125,21 @@ public final class ChatViewModel {
     }
 
     public func delete(sessionID: UUID) async {
-        do {
-            try await deleteSession(sessionID)
-            if selectedSessionID == sessionID { newSession() }
-        } catch {
-            errorMessage = error.message
+        await delete(sessionIDs: [sessionID])
+    }
+
+    /// 会話をまとめて消す。
+    public func delete(sessionIDs: Set<UUID>) async {
+        for id in sessionIDs {
+            do {
+                try await deleteSession(id)
+            } catch {
+                errorMessage = error.message
+                break
+            }
         }
+        if let selectedSessionID, sessionIDs.contains(selectedSessionID) { newSession() }
+        await reloadSessions()
     }
 
     /// 入力した質問を送る。答えは少しずつ届く。
