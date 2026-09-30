@@ -129,10 +129,6 @@ public final class DocumentViewModel {
 
     // MARK: - 表示
 
-    public var title: String {
-        analysis?.title ?? fileName
-    }
-
     private var fileName: String {
         path.split(separator: "/").last.map(String.init) ?? path
     }

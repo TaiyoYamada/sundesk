@@ -18,7 +18,6 @@ struct OpenDocumentTests {
         let document = try await OpenDocumentInteractor(vault: vault, markdown: MarkdownParserStub())(path: "ノート.md")
 
         #expect(document.kind == .markdown)
-        #expect(document.title == "タイトル")
         guard case .markdown(let source, let analysis) = document.content else {
             Issue.record("Markdown ではない: \(document.content)")
             return

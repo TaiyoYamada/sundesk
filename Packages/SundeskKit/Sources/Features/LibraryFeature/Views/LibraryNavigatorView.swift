@@ -87,7 +87,6 @@ public struct LibraryNavigatorView<Tree: View>: View {
             Task { await drop(urls) }
         }
         .task { await viewModel.observe() }
-        .onChange(of: viewModel.section) { Task { await viewModel.sectionChanged() } }
     }
 
     /// 実験を 2 つ以上選んだら、比べるボタンを出す。

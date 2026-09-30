@@ -36,13 +36,11 @@ public protocol LibraryRepository: Sendable {
     /// 結果や図のファイルを実験に取り込む（CSV は曲線として登録する）。
     func attach(_ files: [URL], to key: String) async throws(LibraryError)
 
-    func files(in section: LibrarySection) async throws(LibraryError) -> [LibraryFile]
     /// ファイルを種類のフォルダに写す。写した先のパスを返す。
     func importFiles(_ urls: [URL], into section: LibrarySection) async throws(LibraryError) -> [String]
     func createNote(named name: String) async throws(LibraryError) -> String
     /// 取り込み箱の終わった実行を、実験に移す。移した実験のキーを返す。
     func importInbox() async throws(LibraryError) -> [String]
-    func delete(_ path: String) async throws(LibraryError)
 
     /// ライブラリを丸ごと書き出す。
     func export(to destination: URL) async throws(LibraryError)
@@ -91,11 +89,9 @@ public protocol ManageLibraryUseCase: Sendable {
     func series(of experiment: ResearchExperiment) async throws(LibraryError) -> [SeriesData]
     func attach(_ files: [URL], to experiment: ResearchExperiment) async throws(LibraryError)
 
-    func files(in section: LibrarySection) async throws(LibraryError) -> [LibraryFile]
     func importFiles(_ urls: [URL], into section: LibrarySection) async throws(LibraryError) -> [String]
     func createNote(named name: String) async throws(LibraryError) -> String
     func importInbox() async throws(LibraryError) -> [String]
-    func delete(_ path: String) async throws(LibraryError)
     func export(to destination: URL) async throws(LibraryError)
     func restore(from source: URL) async throws(LibraryError)
     func root() -> URL
@@ -226,10 +222,6 @@ public struct LibraryInteractor: ManageLibraryUseCase {
         try await repository.attach(files, to: experiment.key)
     }
 
-    public func files(in section: LibrarySection) async throws(LibraryError) -> [LibraryFile] {
-        try await repository.files(in: section)
-    }
-
     public func importFiles(_ urls: [URL], into section: LibrarySection) async throws(LibraryError) -> [String] {
         try await repository.importFiles(urls, into: section)
     }
@@ -240,10 +232,6 @@ public struct LibraryInteractor: ManageLibraryUseCase {
 
     public func importInbox() async throws(LibraryError) -> [String] {
         try await repository.importInbox()
-    }
-
-    public func delete(_ path: String) async throws(LibraryError) {
-        try await repository.delete(path)
     }
 
     public func export(to destination: URL) async throws(LibraryError) {

@@ -118,10 +118,6 @@ public final class FileNavigatorViewModel {
         _ = await perform { try await $0.moveToTrash(paths) }
     }
 
-    public func importFiles(_ urls: [URL], into folder: String) async {
-        _ = await perform { try await $0.importFiles(urls, into: folder) }
-    }
-
     /// そのフォルダの中の、移し先にできるフォルダ（深さ順）。
     public func folders(under root: String) -> [String] {
         guard let node = tree?.node(at: root) else { return [] }

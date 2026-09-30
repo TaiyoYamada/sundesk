@@ -56,10 +56,9 @@ struct CodeHighlighterTests {
 
     @Test("別名を受け付け、知らない言語は色を付けない")
     func aliasesAndUnknown() {
-        #expect(highlighter.supports("py"))
-        #expect(highlighter.supports("sh"))
-        #expect(highlighter.supports("yml"))
-        #expect(!highlighter.supports("brainfuck"))
+        #expect(!highlighter.highlight("x = 1", language: "py").isEmpty)
+        #expect(!highlighter.highlight("echo a", language: "sh").isEmpty)
+        #expect(!highlighter.highlight("key: value", language: "yml").isEmpty)
         #expect(highlighter.highlight("+++", language: "brainfuck").isEmpty)
     }
 

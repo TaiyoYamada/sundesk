@@ -54,7 +54,7 @@ extension GraphLayoutTests {
                 model.needsFrame = true
                 if frame == 10 { model.select(nodeID: 42) }
                 let start = CACurrentMediaTime()
-                let made = try #require(model.makeFrame(view: nil))
+                let made = try #require(model.makeFrame())
                 cpu.append((CACurrentMediaTime() - start) * 1000)
                 gpu.append(renderer.renderOffscreen(made, width: 2800, height: 1800))
             }

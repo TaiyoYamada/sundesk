@@ -202,31 +202,6 @@ public struct FileSystemLibraryRepository: LibraryRepository {
 
     // MARK: - データ、資料、ノート
 
-    public func files(in section: LibrarySection) async throws(LibraryError) -> [LibraryFile] {
-        listFiles(in: folder(section))
-    }
-
-    /// フォルダの下のファイル（隠しファイルを除く）。非同期の文脈では列挙できないので、同期の関数に分ける。
-    private func listFiles(in base: URL) -> [LibraryFile] {
-        let keys: [URLResourceKey] = [.isRegularFileKey, .fileSizeKey, .contentModificationDateKey]
-        guard
-            let enumerator = fileManager.enumerator(
-                at: base, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles])
-        else { return [] }
-        let rootPath = rootURL().standardizedFileURL.path
-        var files: [LibraryFile] = []
-        while let file = enumerator.nextObject() as? URL {
-            let values = try? file.resourceValues(forKeys: Set(keys))
-            guard values?.isRegularFile == true else { continue }
-            let relative = String(file.standardizedFileURL.path.dropFirst(rootPath.count + 1))
-            files.append(
-                LibraryFile(
-                    path: relative, name: file.lastPathComponent, size: Int64(values?.fileSize ?? 0),
-                    modified: values?.contentModificationDate ?? .distantPast))
-        }
-        return files.sorted { $0.path.localizedStandardCompare($1.path) == .orderedAscending }
-    }
-
     public func importFiles(_ urls: [URL], into section: LibrarySection) async throws(LibraryError) -> [String] {
         let destination = folder(section)
         return try storage {
@@ -276,11 +251,5 @@ public struct FileSystemLibraryRepository: LibraryRepository {
             imported.append(key)
         }
         return imported
-    }
-
-    public func delete(_ path: String) async throws(LibraryError) {
-        let target = url(path).standardizedFileURL
-        guard target.path.hasPrefix(rootURL().standardizedFileURL.path + "/") else { throw .invalid("ライブラリの外は消せません") }
-        try storage { try fileManager.trashItem(at: target, resultingItemURL: nil) }
     }
 }

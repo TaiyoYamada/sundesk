@@ -244,25 +244,6 @@ public struct SeriesData: Hashable, Sendable {
     }
 }
 
-// MARK: - データと資料
-
-/// データや資料のファイル。
-public struct LibraryFile: Hashable, Sendable, Identifiable {
-    public var id: String { path }
-    /// ライブラリのルートからのパス。
-    public let path: String
-    public let name: String
-    public let size: Int64
-    public let modified: Date
-
-    public init(path: String, name: String, size: Int64, modified: Date) {
-        self.path = path
-        self.name = name
-        self.size = size
-        self.modified = modified
-    }
-}
-
 public enum LibraryError: Error, Equatable, Sendable {
     case storage(String)
     case notFound(String)

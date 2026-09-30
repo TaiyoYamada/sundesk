@@ -5,13 +5,12 @@
 //  Created by 山田大陽 on 2026/09/30.
 //
 
-import MetalKit
 import QuartzCore
 import simd
 
 extension GraphCanvasModel {
     /// 1 フレーム分の計算をして、描くものを返す。何も変わっていなければ nil（描かずに休む）。
-    func makeFrame(view: MTKView?) -> GraphFrame? {
+    func makeFrame() -> GraphFrame? {
         guard let renderer else { return nil }
         let now = CACurrentMediaTime()
         let elapsed = Float(min(max(now - lastFrameTime, 1.0 / 240), 0.1))

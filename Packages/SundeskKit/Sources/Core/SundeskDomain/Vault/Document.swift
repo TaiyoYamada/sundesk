@@ -22,12 +22,6 @@ public struct Document: Sendable, Equatable {
         self.info = info
         self.content = content
     }
-
-    /// 画面に出す名前。Markdown ならノートのタイトル。
-    public var title: String {
-        if case .markdown(_, let analysis) = content, let title = analysis.title { return title }
-        return name
-    }
 }
 
 public enum DocumentContent: Sendable, Equatable {

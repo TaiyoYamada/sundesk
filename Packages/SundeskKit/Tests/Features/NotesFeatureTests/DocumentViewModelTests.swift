@@ -163,7 +163,6 @@ struct DocumentViewModelTests {
 
         await document.load()
 
-        #expect(document.title == "A")
         #expect(document.properties.map(\.key) == ["status"])
         #expect(document.properties.map(\.value) == ["下書き"])
         #expect(document.tags == ["x"])
@@ -174,13 +173,12 @@ struct DocumentViewModelTests {
         #expect(document.fileURL == URL(filePath: "/vault/a.md"))
     }
 
-    @Test("編集すると、目次とタイトルが書いたそばから変わる")
+    @Test("編集すると、目次が書いたそばから変わる")
     func reanalyzesWhileEditing() async {
         let document = await markdownDocument()
 
         document.text = "# 新しい題\n\n## 一\n## 二"
 
-        #expect(document.title == "新しい題")
         #expect(document.outline.map(\.title) == ["新しい題", "一", "二"])
         #expect(document.outline.map(\.line) == [1, 3, 4])
     }

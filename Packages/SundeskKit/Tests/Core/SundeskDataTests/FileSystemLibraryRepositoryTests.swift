@@ -136,7 +136,9 @@ struct FileSystemLibraryRepositoryTests {
 
         #expect(first == ["Data/qubo.json"])
         #expect(second == ["Data/qubo-2.json"])
-        #expect(try await repository.files(in: .data).map(\.name) == ["qubo-2.json", "qubo.json"])
+        for path in first + second {
+            #expect(FileManager.default.fileExists(atPath: root.appending(path: path).path))
+        }
     }
 
     @Test("書き出して、戻せる（今のライブラリは横に残す）")

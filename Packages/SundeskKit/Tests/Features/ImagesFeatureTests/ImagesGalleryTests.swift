@@ -135,7 +135,7 @@ struct ImagesGalleryTests {
         viewModel.requestDelete()
         #expect(viewModel.pendingDeletion == [ids[1], ids[2], ids[3]])
         #expect(viewModel.deletionTitle == "3 枚の画像を削除しますか？")
-        await viewModel.confirmDeletion()
+        await viewModel.delete(viewModel.pendingDeletion)
 
         #expect(await generation.deleted == [ids[1], ids[2], ids[3]])
         #expect(viewModel.images.map(\.prompt) == ["0", "4"])
@@ -151,7 +151,7 @@ struct ImagesGalleryTests {
 
         viewModel.requestDelete([ids[2]])
         #expect(viewModel.deletionTitle == "この画像を削除しますか？")
-        await viewModel.confirmDeletion()
+        await viewModel.delete(viewModel.pendingDeletion)
 
         #expect(viewModel.selection == [ids[1]])
     }
@@ -180,7 +180,7 @@ struct ImagesGalleryTests {
         viewModel.selectAll()
 
         viewModel.requestDelete()
-        await viewModel.confirmDeletion()
+        await viewModel.delete(viewModel.pendingDeletion)
 
         #expect(viewModel.images.map(\.prompt) == ["dog"])
     }
@@ -222,7 +222,7 @@ struct ImagesGalleryTests {
         viewModel.openViewer(ids[1])
 
         viewModel.requestDelete([ids[1]])
-        await viewModel.confirmDeletion()
+        await viewModel.delete(viewModel.pendingDeletion)
 
         #expect(viewModel.viewerImage?.id == ids[2])
     }

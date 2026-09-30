@@ -33,19 +33,13 @@ struct FileKindTests {
         #expect(FileKind(fileName: name) == expected)
     }
 
-    @Test("Markdown と HTML は、表示とソースの両方を持つ")
-    func markdownAndHTMLHaveBothViews() {
-        for kind in [FileKind.markdown, .html] {
-            #expect(kind.hasRenderedView)
+    @Test("テキストとして開けるのは、Markdown、HTML、コード、テキスト、ノートブック")
+    func sourceView() {
+        for kind in [FileKind.markdown, .html, .code(language: "swift"), .text, .notebook] {
             #expect(kind.hasSourceView)
         }
-    }
-
-    @Test("コードはソースだけ、画像と PDF は表示だけ")
-    func codeIsSourceOnlyAndImagesAreRenderedOnly() {
-        #expect(!FileKind.code(language: "swift").hasRenderedView)
-        #expect(FileKind.code(language: "swift").sourceLanguage == "swift")
-        #expect(FileKind.image.hasRenderedView && !FileKind.image.hasSourceView)
-        #expect(FileKind.pdf.sourceLanguage == nil)
+        for kind in [FileKind.image, .pdf, .folder, .other] {
+            #expect(!kind.hasSourceView)
+        }
     }
 }

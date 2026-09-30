@@ -20,12 +20,6 @@ public struct ResearchProjectRow: Identifiable, Hashable, Sendable {
         title = project.title
         runs = project.runs.map(ResearchRunRow.init)
     }
-
-    init(path: String, title: String, runs: [ResearchRunRow]) {
-        self.path = path
-        self.title = title
-        self.runs = runs
-    }
 }
 
 /// 木の中で 1 つのものとして見せるフォルダ。

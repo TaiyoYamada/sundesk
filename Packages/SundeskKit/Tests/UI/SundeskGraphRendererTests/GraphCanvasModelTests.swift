@@ -76,7 +76,7 @@ extension GraphLayoutTests {
                     groups: (0..<4).map { GraphScene.Group(id: $0, name: "分野\($0)") }))
             model.renderer?.layout.run(steps: 300)
             model.fitAll(animated: false)
-            _ = model.makeFrame(view: nil)
+            _ = model.makeFrame()
             return model
         }
 
@@ -132,7 +132,7 @@ extension GraphLayoutTests {
             model.select(nodeID: model.scene.nodes[selected].id)
             for _ in 0..<90 {
                 model.lastFrameTime -= 1.0 / 60
-                _ = model.makeFrame(view: nil)
+                _ = model.makeFrame()
             }
 
             let ring = 92 / min(model.camera.zoom, model.lensZoom ?? model.camera.zoom)
@@ -175,7 +175,7 @@ extension GraphLayoutTests {
             model.setScene(scene)
 
             model.setTimelineCursor(0.5)
-            _ = model.makeFrame(view: nil)
+            _ = model.makeFrame()
 
             #expect(model.hasTimeline)
             #expect(model.visibleNodeCount == 5)

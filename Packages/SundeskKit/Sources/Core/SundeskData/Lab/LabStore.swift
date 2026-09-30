@@ -273,10 +273,6 @@ public actor SwiftDataLabRecordRepository: LabRecordRepository, ModelActor {
         }
     }
 
-    public func deleteImage(_ id: UUID) async throws(LabError) {
-        try write { try modelContext.delete(model: GeneratedImageRecord.self, where: #Predicate { $0.imageID == id }) }
-    }
-
     public func deleteImages(_ ids: [UUID]) async throws(LabError) {
         guard !ids.isEmpty else { return }
         try write {

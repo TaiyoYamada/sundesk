@@ -7,7 +7,6 @@
 
 import Foundation
 import Markdown
-import SundeskDomain
 
 /// 閲覧表示のための、ノートのブロックの並び。
 public struct MarkdownDocument: Equatable, Sendable {
