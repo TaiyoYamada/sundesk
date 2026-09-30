@@ -8,6 +8,7 @@
 import Foundation
 import SundeskData
 import SundeskDomain
+import SwiftData
 import Testing
 
 @Suite("SwiftDataLabRecordRepository")
@@ -51,5 +52,54 @@ struct SwiftDataLabRecordRepositoryTests {
         try await repository.deleteImage(image.id)
         #expect(try await repository.adapters().isEmpty)
         #expect(try await repository.images().isEmpty)
+    }
+
+    @Test("画像をまとめて消し、お気に入りを付け外しできる")
+    func deletesImagesAndFavorites() async throws {
+        let repository = try makeRepository()
+        let images = (0..<3).map { index in
+            GeneratedImage(
+                id: UUID(), model: "m", prompt: "\(index)", width: 512, height: 512, steps: nil, seed: index,
+                path: "/\(index).png", seconds: 1, createdAt: Date(timeIntervalSince1970: Double(index)))
+        }
+        for image in images {
+            try await repository.save(image)
+        }
+
+        try await repository.setImagesFavorite([images[0].id, images[2].id], isFavorite: true)
+        #expect(try await repository.images().filter(\.isFavorite).map(\.prompt) == ["2", "0"])
+
+        try await repository.deleteImages([images[0].id, images[1].id])
+        let rest = try await repository.images()
+        #expect(rest.map(\.prompt) == ["2"])
+        #expect(rest.first?.isFavorite == true)
+    }
+
+    @Test("前の版（お気に入りのない版）の記録を、そのまま読み込める")
+    func migratesFromV1() async throws {
+        let directory = URL.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appending(path: "lab.store")
+        let id = UUID()
+        do {
+            let schema = Schema(versionedSchema: LabSchemaV1.self)
+            let container = try ModelContainer(
+                for: schema, configurations: ModelConfiguration(schema: schema, url: url))
+            let context = ModelContext(container)
+            context.insert(
+                LabSchemaV1.GeneratedImageRecord(
+                    imageID: id, model: "m", prompt: "前の画像", width: 512, height: 512, steps: 4, seed: 7, path: "/a.png",
+                    seconds: 3, createdAt: .now))
+            try context.save()
+        }
+
+        let repository = SwiftDataLabRecordRepository(modelContainer: try LabStore.makeContainer(url: url))
+        let images = try await repository.images()
+
+        #expect(images.map(\.id) == [id])
+        #expect(images.first?.isFavorite == false)
+        try await repository.setImagesFavorite([id], isFavorite: true)
+        #expect(try await repository.images().first?.isFavorite == true)
     }
 }

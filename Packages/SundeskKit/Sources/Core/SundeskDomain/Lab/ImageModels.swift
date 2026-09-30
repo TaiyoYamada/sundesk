@@ -68,10 +68,12 @@ public struct GeneratedImage: Hashable, Sendable, Identifiable {
     public let path: String
     public let seconds: Double
     public let createdAt: Date
+    /// お気に入り（星）。
+    public let isFavorite: Bool
 
     public init(
         id: UUID, model: String, prompt: String, width: Int, height: Int, steps: Int?, seed: Int, path: String,
-        seconds: Double, createdAt: Date
+        seconds: Double, createdAt: Date, isFavorite: Bool = false
     ) {
         self.id = id
         self.model = model
@@ -83,5 +85,6 @@ public struct GeneratedImage: Hashable, Sendable, Identifiable {
         self.path = path
         self.seconds = seconds
         self.createdAt = createdAt
+        self.isFavorite = isFavorite
     }
 }

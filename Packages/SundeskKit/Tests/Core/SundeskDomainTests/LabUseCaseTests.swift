@@ -95,7 +95,7 @@ struct LabUseCaseTests {
         #expect(events.count == 3)
         let image = try #require(await records.savedImages.first)
         #expect(image.path == "/images/new.png")
-        try await generation.delete(image)
+        try await generation.delete([image])
         #expect(await records.savedImages.isEmpty)
         #expect(files.removed.value == ["/images/new.png"])
     }
@@ -194,6 +194,7 @@ actor LabRecordsSpy: LabRecordRepository {
     private(set) var saved: [Experiment] = []
     private(set) var savedAdapters: [Adapter] = []
     private(set) var savedImages: [GeneratedImage] = []
+    private(set) var favoriteImageIDs: Set<UUID> = []
 
     func experiments() async throws(LabError) -> [Experiment] { saved }
     func save(_ experiment: Experiment) async throws(LabError) { saved.append(experiment) }
@@ -204,6 +205,10 @@ actor LabRecordsSpy: LabRecordRepository {
     func images() async throws(LabError) -> [GeneratedImage] { savedImages }
     func save(_ image: GeneratedImage) async throws(LabError) { savedImages.append(image) }
     func deleteImage(_ id: UUID) async throws(LabError) { savedImages.removeAll { $0.id == id } }
+    func deleteImages(_ ids: [UUID]) async throws(LabError) { savedImages.removeAll { ids.contains($0.id) } }
+    func setImagesFavorite(_ ids: [UUID], isFavorite: Bool) async throws(LabError) {
+        if isFavorite { favoriteImageIDs.formUnion(ids) } else { favoriteImageIDs.subtract(ids) }
+    }
     nonisolated func changes() -> AsyncStream<Void> { AsyncStream { $0.finish() } }
 }
 

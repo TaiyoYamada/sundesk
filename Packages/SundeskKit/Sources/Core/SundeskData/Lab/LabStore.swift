@@ -106,19 +106,65 @@ public enum LabSchemaV1: VersionedSchema {
     }
 }
 
+/// 生成した画像に、お気に入り（星）を足した版。変わらないモデルは V1 のものをそのまま使う。
+public enum LabSchemaV2: VersionedSchema {
+    public static let versionIdentifier = Schema.Version(2, 0, 0)
+
+    public static var models: [any PersistentModel.Type] {
+        [LabSchemaV1.ExperimentRecord.self, LabSchemaV1.AdapterRecord.self, GeneratedImageRecord.self]
+    }
+
+    @Model
+    public final class GeneratedImageRecord {
+        #Unique<GeneratedImageRecord>([\.imageID])
+
+        public var imageID: UUID
+        public var model: String
+        public var prompt: String
+        public var width: Int
+        public var height: Int
+        public var steps: Int?
+        public var seed: Int
+        public var path: String
+        public var seconds: Double
+        public var createdAt: Date
+        public var isFavorite: Bool = false
+
+        public init(
+            imageID: UUID, model: String, prompt: String, width: Int, height: Int, steps: Int?, seed: Int, path: String,
+            seconds: Double, createdAt: Date, isFavorite: Bool = false
+        ) {
+            self.imageID = imageID
+            self.model = model
+            self.prompt = prompt
+            self.width = width
+            self.height = height
+            self.steps = steps
+            self.seed = seed
+            self.path = path
+            self.seconds = seconds
+            self.createdAt = createdAt
+            self.isFavorite = isFavorite
+        }
+    }
+}
+
 public enum LabMigrationPlan: SchemaMigrationPlan {
-    public static var schemas: [any VersionedSchema.Type] { [LabSchemaV1.self] }
-    public static var stages: [MigrationStage] { [] }
+    public static var schemas: [any VersionedSchema.Type] { [LabSchemaV1.self, LabSchemaV2.self] }
+    public static var stages: [MigrationStage] {
+        // 列を足しただけなので、軽い移行で済む
+        [.lightweight(fromVersion: LabSchemaV1.self, toVersion: LabSchemaV2.self)]
+    }
 }
 
 typealias ExperimentRecord = LabSchemaV1.ExperimentRecord
 typealias AdapterRecord = LabSchemaV1.AdapterRecord
-typealias GeneratedImageRecord = LabSchemaV1.GeneratedImageRecord
+typealias GeneratedImageRecord = LabSchemaV2.GeneratedImageRecord
 
 public enum LabStore {
     /// - Parameter url: 保存するファイル。nil ならメモリの上だけに置く（テスト用）。
     public static func makeContainer(url: URL?) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: LabSchemaV1.self)
+        let schema = Schema(versionedSchema: LabSchemaV2.self)
         let configuration =
             if let url {
                 ModelConfiguration(schema: schema, url: url)
@@ -210,7 +256,7 @@ public actor SwiftDataLabRecordRepository: LabRecordRepository, ModelActor {
                 GeneratedImage(
                     id: record.imageID, model: record.model, prompt: record.prompt, width: record.width,
                     height: record.height, steps: record.steps, seed: record.seed, path: record.path,
-                    seconds: record.seconds, createdAt: record.createdAt)
+                    seconds: record.seconds, createdAt: record.createdAt, isFavorite: record.isFavorite)
             }
         }
     }
@@ -221,12 +267,30 @@ public actor SwiftDataLabRecordRepository: LabRecordRepository, ModelActor {
                 GeneratedImageRecord(
                     imageID: image.id, model: image.model, prompt: image.prompt, width: image.width,
                     height: image.height, steps: image.steps, seed: image.seed, path: image.path,
-                    seconds: image.seconds, createdAt: image.createdAt))
+                    seconds: image.seconds, createdAt: image.createdAt, isFavorite: image.isFavorite))
         }
     }
 
     public func deleteImage(_ id: UUID) async throws(LabError) {
         try write { try modelContext.delete(model: GeneratedImageRecord.self, where: #Predicate { $0.imageID == id }) }
+    }
+
+    public func deleteImages(_ ids: [UUID]) async throws(LabError) {
+        guard !ids.isEmpty else { return }
+        try write {
+            try modelContext.delete(model: GeneratedImageRecord.self, where: #Predicate { ids.contains($0.imageID) })
+        }
+    }
+
+    public func setImagesFavorite(_ ids: [UUID], isFavorite: Bool) async throws(LabError) {
+        guard !ids.isEmpty else { return }
+        try write {
+            let records = try modelContext.fetch(
+                FetchDescriptor<GeneratedImageRecord>(predicate: #Predicate { ids.contains($0.imageID) }))
+            for record in records {
+                record.isFavorite = isFavorite
+            }
+        }
     }
 
     nonisolated public func changes() -> AsyncStream<Void> {

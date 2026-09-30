@@ -299,7 +299,10 @@ public protocol ImageGenerationUseCase: Sendable {
     /// 生成して記録する。
     func generate(_ request: ImageRequest) -> AsyncThrowingStream<ImageGenerationEvent, any Error>
     func images() async throws(LabError) -> [GeneratedImage]
-    func delete(_ image: GeneratedImage) async throws(LabError)
+    /// 記録とファイルを、まとめて消す。
+    func delete(_ images: [GeneratedImage]) async throws(LabError)
+    /// お気に入り（星）を付ける、外す。
+    func setFavorite(_ images: [GeneratedImage], isFavorite: Bool) async throws(LabError)
     func changes() -> AsyncStream<Void>
 }
 
@@ -342,9 +345,18 @@ public struct ImageGenerationInteractor: ImageGenerationUseCase {
         try await records.images()
     }
 
-    public func delete(_ image: GeneratedImage) async throws(LabError) {
-        try await records.deleteImage(image.id)
-        files.remove(image.path)
+    public func delete(_ images: [GeneratedImage]) async throws(LabError) {
+        guard !images.isEmpty else { return }
+        // 記録を先に消す。消せなければ、ファイルは残しておく
+        try await records.deleteImages(images.map(\.id))
+        for image in images {
+            files.remove(image.path)
+        }
+    }
+
+    public func setFavorite(_ images: [GeneratedImage], isFavorite: Bool) async throws(LabError) {
+        guard !images.isEmpty else { return }
+        try await records.setImagesFavorite(images.map(\.id), isFavorite: isFavorite)
     }
 
     public func changes() -> AsyncStream<Void> {
