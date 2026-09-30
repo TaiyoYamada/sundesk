@@ -94,6 +94,14 @@ public struct DocumentView: View {
             ImageDocumentView(url: url)
         case .pdf(let url):
             PDFDocumentView(url: url)
+        case .notebook(let notebook, let vaultRoot):
+            NotebookReadingView(
+                cells: notebook.cells.map(NotebookCellContent.init),
+                language: notebook.language,
+                notePath: document.path,
+                vaultRoot: vaultRoot,
+                onOpen: open
+            )
         case .quickLook(let url):
             QuickLookView(url: url)
         }
@@ -127,6 +135,31 @@ public struct DocumentView: View {
             document.scrollTarget = document.outline.first { HeadingAnchor.matches(anchor, heading: $0.title) }
         case .tag(let name):
             showTag(name)
+        }
+    }
+}
+
+extension NotebookCellContent {
+    init(_ cell: NotebookCellItem) {
+        let kind: Kind =
+            switch cell.kind {
+            case .markdown(let source): .markdown(source)
+            case .raw(let source): .raw(source)
+            case .code(let source, let count, let outputs):
+                .code(source: source, executionCount: count, outputs: outputs.map(NotebookOutputContent.init))
+            }
+        self.init(id: cell.id, kind: kind)
+    }
+}
+
+extension NotebookOutputContent {
+    init(_ output: NotebookOutputItem) {
+        switch output {
+        case .text(let text): self = .text(text)
+        case .image(let data): self = .image(data)
+        case .table(let rows, let truncated): self = .table(rows: rows, truncated: truncated)
+        case .error(let name, let message, let traceback):
+            self = .error(name: name, message: message, traceback: traceback)
         }
     }
 }

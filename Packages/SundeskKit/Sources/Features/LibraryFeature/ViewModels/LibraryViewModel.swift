@@ -367,6 +367,7 @@ public struct FileRow: Identifiable, Hashable, Sendable {
             case .code: "chevron.left.forwardslash.chevron.right"
             case .image: "photo"
             case .pdf: "doc.richtext"
+            case .notebook: "book.pages"
             case .markdown: "doc.text"
             case .text: "doc.plaintext"
             default: "doc"

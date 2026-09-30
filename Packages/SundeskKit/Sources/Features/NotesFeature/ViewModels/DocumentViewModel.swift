@@ -111,7 +111,7 @@ public final class DocumentViewModel {
             switch kind {
             // 読むだけのノートは閲覧から開く（ソースも見られる）
             case .markdown: isReadOnly ? [.reading, .source] : [.livePreview, .source, .reading]
-            case .html: [.reading, .source]
+            case .html, .notebook: [.reading, .source]
             case .code, .text: [.source]
             case .image, .pdf, .other, .folder: [.reading]
             }
@@ -148,8 +148,9 @@ public final class DocumentViewModel {
     }
 
     /// 本文を編集できるファイルか。読むだけでつないだフォルダ（~/Research など）の中は書き換えない。
+    /// ノートブックは JSON を見せるだけにする（編集は Jupyter で行う）。
     public var isEditable: Bool {
-        kind.hasSourceView && !isReadOnly
+        kind.hasSourceView && !isReadOnly && kind != .notebook
     }
 
     /// 読むだけのファイルか。
@@ -175,6 +176,10 @@ public final class DocumentViewModel {
             return .image(url)
         case (.pdf(let url), _):
             return .pdf(url)
+        case (.notebook(_, let notebook), .reading):
+            return .notebook(NotebookItem(notebook), vaultRoot: locateFile.vaultRoot())
+        case (.notebook, _):
+            return .codeEditor(language: "json")
         case (.other(let url), _):
             return .quickLook(url)
         }

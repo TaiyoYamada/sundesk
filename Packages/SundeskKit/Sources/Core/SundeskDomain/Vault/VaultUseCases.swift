@@ -77,6 +77,9 @@ public struct OpenDocumentInteractor: OpenDocumentUseCase {
             content = .image(url)
         case .pdf:
             content = .pdf(url)
+        case .notebook:
+            let source = try await vault.readText(at: path)
+            content = Notebook.parse(source).map { .notebook(source: source, notebook: $0) } ?? .text(source: source)
         case .folder, .other:
             content = .other(url)
         }

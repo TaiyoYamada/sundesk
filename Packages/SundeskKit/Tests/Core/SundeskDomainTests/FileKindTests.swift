@@ -23,6 +23,7 @@ struct FileKindTests {
             ("メモ.txt", .text),
             ("図.PNG", .image),
             ("スライド.pdf", .pdf),
+            ("解析.ipynb", .notebook),
             ("archive.zip", .other),
             ("拡張子なし", .other),
             (".gitignore", .other),

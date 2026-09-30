@@ -36,12 +36,14 @@ public enum DocumentContent: Sendable, Equatable {
     case text(source: String)
     case image(URL)
     case pdf(URL)
+    /// ノートブック。`source` は JSON のまま、`notebook` は読んだもの。
+    case notebook(source: String, notebook: Notebook)
     case other(URL)
 
     /// ソース表示に使うテキスト。
     public var source: String? {
         switch self {
-        case .markdown(let source, _), .html(let source, _), .text(let source): source
+        case .markdown(let source, _), .html(let source, _), .text(let source), .notebook(let source, _): source
         case .image, .pdf, .other: nil
         }
     }

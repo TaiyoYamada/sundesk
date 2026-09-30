@@ -127,6 +127,30 @@ struct DocumentViewModelTests {
         #expect(!image.isEditable)
     }
 
+    @Test("ノートブックは閲覧でセルを並べ、ソースでは JSON を読むだけにする")
+    func notebook() async {
+        let notebook = Notebook(
+            language: "python", cells: [.markdown("# A"), .code(source: "1", executionCount: 1, outputs: [.text("1")])])
+        let document = makeDocument(
+            "a.ipynb",
+            documents: [
+                "a.ipynb": OpenDocumentStub.file(
+                    "a.ipynb", kind: .notebook, content: .notebook(source: "{}", notebook: notebook))
+            ])
+        await document.load()
+
+        #expect(document.availableModes == [.reading, .source])
+        guard case .notebook(let item, _) = document.display else {
+            Issue.record("ノートブックとして描いていない")
+            return
+        }
+        #expect(item.cells.count == 2)
+        #expect(item.cells[1].kind == .code(source: "1", executionCount: 1, outputs: [.text("1")]))
+        #expect(!document.isEditable)
+        document.toggleDisplayMode()
+        #expect(document.display == .codeEditor(language: "json"))
+    }
+
     // MARK: - インスペクタ
 
     @Test("インスペクタ: プロパティ（タイトルとタグを除く）、タグ、目次、バックリンク")

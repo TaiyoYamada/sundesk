@@ -16,6 +16,8 @@ public enum FileKind: Hashable, Sendable {
     case text
     case image
     case pdf
+    /// Jupyter のノートブック（`.ipynb`）。セルと出力を並べて見せる。
+    case notebook
     /// それ以外。Quick Look でプレビューする。
     case other
 
@@ -37,7 +39,7 @@ public enum FileKind: Hashable, Sendable {
     /// 描画した表示を持つか（持たないものは、ソースだけを見せる）。
     public var hasRenderedView: Bool {
         switch self {
-        case .markdown, .html, .image, .pdf, .other: true
+        case .markdown, .html, .image, .pdf, .notebook, .other: true
         case .folder, .code, .text: false
         }
     }
@@ -45,7 +47,7 @@ public enum FileKind: Hashable, Sendable {
     /// 生のソース（テキスト）として見られるか。
     public var hasSourceView: Bool {
         switch self {
-        case .markdown, .html, .code, .text: true
+        case .markdown, .html, .code, .text, .notebook: true
         case .folder, .image, .pdf, .other: false
         }
     }
@@ -57,6 +59,7 @@ public enum FileKind: Hashable, Sendable {
         case .html: "html"
         case .code(let language): language
         case .text: "text"
+        case .notebook: "json"
         case .folder, .image, .pdf, .other: nil
         }
     }
@@ -73,7 +76,7 @@ public enum FileKind: Hashable, Sendable {
             "md": .markdown, "markdown": .markdown,
             "html": .html, "htm": .html,
             "txt": .text, "log": .text, "csv": .text, "tsv": .text,
-            "pdf": .pdf,
+            "pdf": .pdf, "ipynb": .notebook,
         ]
         for fileExtension in ["png", "jpg", "jpeg", "gif", "heic", "heif", "webp", "tiff", "tif", "bmp", "svg"] {
             table[fileExtension] = .image

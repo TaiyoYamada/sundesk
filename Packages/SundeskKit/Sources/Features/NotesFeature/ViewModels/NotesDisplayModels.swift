@@ -113,8 +113,62 @@ public enum DocumentDisplay: Equatable, Sendable {
     case codeEditor(language: String?)
     case image(URL)
     case pdf(URL)
+    /// Jupyter のノートブックを、セルと出力を並べて読む。
+    case notebook(NotebookItem, vaultRoot: URL)
     /// その他のファイルを Quick Look で描く。
     case quickLook(URL)
+}
+
+/// ノートブック（表示用）。
+public struct NotebookItem: Equatable, Sendable {
+    public let language: String
+    public let cells: [NotebookCellItem]
+
+    init(_ notebook: Notebook) {
+        language = notebook.language
+        cells = notebook.cells.enumerated().map { index, cell in
+            switch cell {
+            case .markdown(let source):
+                NotebookCellItem(id: index, kind: .markdown(source))
+            case .code(let source, let count, let outputs):
+                NotebookCellItem(
+                    id: index,
+                    kind: .code(source: source, executionCount: count, outputs: outputs.map(NotebookOutputItem.init)))
+            case .raw(let source):
+                NotebookCellItem(id: index, kind: .raw(source))
+            }
+        }
+    }
+}
+
+/// ノートブックの 1 つのセル（表示用）。
+public struct NotebookCellItem: Identifiable, Equatable, Sendable {
+    public enum Kind: Equatable, Sendable {
+        case markdown(String)
+        case code(source: String, executionCount: Int?, outputs: [NotebookOutputItem])
+        case raw(String)
+    }
+
+    public let id: Int
+    public let kind: Kind
+}
+
+/// コードのセルの出力（表示用）。
+public enum NotebookOutputItem: Equatable, Sendable {
+    case text(String)
+    case image(Data)
+    case table(rows: [[String]], truncated: Bool)
+    case error(name: String, message: String, traceback: String)
+
+    init(_ output: Notebook.Output) {
+        switch output {
+        case .text(let text): self = .text(text)
+        case .image(let data): self = .image(data)
+        case .table(let rows, let truncated): self = .table(rows: rows, truncated: truncated)
+        case .error(let name, let message, let traceback):
+            self = .error(name: name, message: message, traceback: traceback)
+        }
+    }
 }
 
 /// ファイルの種類ごとのアイコン（SF Symbols）と名前。
@@ -132,6 +186,7 @@ public enum FileIcon {
         case .text: "doc.plaintext"
         case .image: "photo"
         case .pdf: "doc.text.image"
+        case .notebook: "book.pages"
         case .other: "doc"
         }
     }
@@ -145,6 +200,7 @@ public enum FileIcon {
         case .text: "テキスト"
         case .image: "画像"
         case .pdf: "PDF"
+        case .notebook: "Jupyter ノートブック"
         case .other: "その他"
         }
     }
