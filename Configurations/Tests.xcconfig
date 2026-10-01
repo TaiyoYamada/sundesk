@@ -1,0 +1,9 @@
+//
+//  Tests.xcconfig
+//  sundesk
+//
+//  Created by 山田大陽 on 2026/09/29.
+//
+//  ユニットテスト（sundeskTests ターゲット）の設定。
+
+PRODUCT_BUNDLE_IDENTIFIER = $(BUNDLE_ID_PREFIX).sundeskTests

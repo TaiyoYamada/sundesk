@@ -1,0 +1,69 @@
+{
+  "title": "二値 PSO で重みつき Max-Cut（30 頂点）",
+  "algorithm": "PSO",
+  "problem": "重みつき Max-Cut, maxcut-w30（30 頂点、175 辺）",
+  "status": "done",
+  "created": "2026-09-16T13:40:51+09:00",
+  "finished": "2026-09-16T13:40:53+09:00",
+  "tags": [
+    "PSO",
+    "Max-Cut",
+    "群知能"
+  ],
+  "parameters": {
+    "variant": "binary PSO (sigmoid)",
+    "particles": 40,
+    "inertia": 0.7,
+    "c1": 1.5,
+    "c2": 1.5,
+    "vmax": 4.0,
+    "topology": "global best",
+    "budget_evaluations": 20000
+  },
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "objective": {
+    "name": "cut",
+    "direction": "maximize",
+    "reference": 671.0
+  },
+  "metrics": {
+    "best_cut": 667.0,
+    "mean_cut": 662.2,
+    "worst_cut": 656.0,
+    "mean_gap_percent": 1.3115,
+    "success_rate": 0.0,
+    "evaluations_per_seed": 20000,
+    "time_seconds": 0.479
+  },
+  "series": [
+    {
+      "file": "results/trace.csv",
+      "x": "evaluations",
+      "y": [
+        "mean",
+        "best",
+        "worst"
+      ]
+    }
+  ],
+  "attachments": [
+    "figures/convergence.png"
+  ],
+  "links": [
+    "Papers/kennedy1995-pso",
+    "Papers/lucas2014-ising-formulations",
+    "Data/instances/maxcut-w30.json",
+    "Data/code/pso_maxcut.py"
+  ]
+}

@@ -1,0 +1,21 @@
+//
+//  Shared.xcconfig
+//  sundesk
+//
+//  Created by 山田大陽 on 2026/09/29.
+//
+//  プロジェクト全体（すべてのターゲット）に効く設定。
+//  ターゲットごとの設定は App.xcconfig、Tests.xcconfig、UITests.xcconfig に書く。
+
+MARKETING_VERSION = 0.1.0
+CURRENT_PROJECT_VERSION = 1
+BUNDLE_ID_PREFIX = com.taiyou
+DEVELOPMENT_TEAM = HJC5DQ3PVM
+
+MACOSX_DEPLOYMENT_TARGET = 27.0
+
+// Swift 6 言語モードで、並行性を厳密に検査する
+SWIFT_VERSION = 6.0
+SWIFT_STRICT_CONCURRENCY = complete
+SWIFT_APPROACHABLE_CONCURRENCY = YES
+SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES

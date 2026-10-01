@@ -1,0 +1,25 @@
+{
+  "title": "QAOA で小さな Max-Cut（p = 1〜3）",
+  "algorithm": "QAOA",
+  "problem": "重みつき Max-Cut, maxcut-w30 の頂点 0〜11 の部分グラフ（12 頂点）",
+  "status": "planned",
+  "created": "2026-09-26T18:03:41+09:00",
+  "tags": ["QAOA", "Max-Cut", "CMA-ES"],
+  "parameters": {
+    "p": "1, 2, 3",
+    "optimizer": "CMA-ES",
+    "shots": 0,
+    "init": "linear ramp (QA のスケジュールをまねる)",
+    "simulator": "statevector (numpy)"
+  },
+  "seeds": [0, 1, 2, 3, 4],
+  "objective": {"name": "approximation_ratio", "direction": "maximize", "reference": 1.0},
+  "metrics": {},
+  "series": [],
+  "attachments": [],
+  "links": [
+    "Papers/farhi2014-qaoa",
+    "Papers/hansen2016-cma-es-tutorial",
+    "Data/instances/maxcut-w30.json"
+  ]
+}

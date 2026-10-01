@@ -1,0 +1,38 @@
+name: 不具合
+description: 期待どおりに動かないもの
+title: "fix: "
+labels: [bug]
+body:
+  - type: textarea
+    id: actual
+    attributes:
+      label: 起きたこと
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待していたこと
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現する手順
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: ログ
+      description: "`log show --last 10m --info --predicate 'subsystem == \"com.taiyou.sundesk\"'` の出力など"
+      render: text
+  - type: input
+    id: environment
+    attributes:
+      label: 環境
+      placeholder: macOS 27.0.1 / Xcode 27.0 / コミット abc1234

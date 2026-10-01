@@ -1,0 +1,6 @@
+# actionlint がまだ知らない GitHub のランナーのラベル。
+# xcode-27 は 2026-09-10 に公開プレビューになったもの（macOS 27 + Xcode 27）。
+self-hosted-runner:
+  labels:
+    - xcode-27
+    - xcode-27-xlarge

@@ -5,15 +5,15 @@
 //  Created by 山田大陽 on 2026/09/29.
 //
 
+import Foundation
 import Testing
-@testable import sundesk
 
-struct sundeskTests {
-
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
-        // Swift Testing Documentation
-        // https://developer.apple.com/documentation/testing
+/// アプリ本体（入口だけ）のテスト。機能のテストは Packages/SundeskKit/Tests にある。
+@Suite("アプリ本体")
+struct AppBundleTests {
+    @Test("バンドル ID と対象の OS")
+    func bundleIdentifier() {
+        #expect(Bundle.main.bundleIdentifier == "com.taiyou.sundesk")
+        #expect(ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 27)
     }
-
 }

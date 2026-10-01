@@ -1,0 +1,42 @@
+name: 機能
+description: 新しい機能や改善
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: purpose
+    attributes:
+      label: 目的
+      description: なぜ必要か。何ができるようになるか。
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: やること
+      description: 実装する内容。箇条書きで。
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: 完了の条件
+      description: これを満たしたら閉じてよい、という条件。
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 機能
+      options:
+        - ノート
+        - 研究ライブラリ
+        - 知識グラフ
+        - チャット
+        - 実験室、工房
+        - 画像生成
+        - エンジン
+        - 開発環境、CI
+        - その他
+    validations:
+      required: true

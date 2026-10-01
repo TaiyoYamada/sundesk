@@ -1,0 +1,67 @@
+{
+  "title": "H2 の解離曲線（HF、VQE、FCI）",
+  "algorithm": "VQE",
+  "problem": "H2 STO-3G, 0.3〜3.0 Å（パリティ写像、2 量子ビット）",
+  "status": "done",
+  "created": "2026-09-12T11:20:33+09:00",
+  "finished": "2026-09-12T11:20:38+09:00",
+  "tags": [
+    "VQE",
+    "H2",
+    "解離曲線",
+    "静的相関"
+  ],
+  "parameters": {
+    "ansatz": "HEA (RY + CNOT)",
+    "depth": 1,
+    "optimizer": "gradient descent (parameter shift)",
+    "learning_rate": 0.4,
+    "iterations": 150,
+    "restarts": 3,
+    "points": 55,
+    "shots": 0
+  },
+  "seed": 7,
+  "objective": {
+    "name": "energy",
+    "direction": "minimize"
+  },
+  "metrics": {
+    "equilibrium_bond_length": 0.75,
+    "min_fci_energy": -1.1371170673457536,
+    "min_vqe_energy": -1.1371170673457536,
+    "max_vqe_error_mha": 2.686386,
+    "hf_error_at_3_0_mha": 277.583593,
+    "hf_error_at_equilibrium_mha": 20.965618,
+    "evaluations": 198165,
+    "time_seconds": 3.971
+  },
+  "series": [
+    {
+      "file": "results/curve.csv",
+      "x": "bond_length",
+      "y": [
+        "hf",
+        "vqe",
+        "fci"
+      ]
+    },
+    {
+      "file": "results/error.csv",
+      "x": "bond_length",
+      "y": [
+        "vqe_error_mha",
+        "hf_error_mha"
+      ]
+    }
+  ],
+  "attachments": [
+    "figures/dissociation.png"
+  ],
+  "links": [
+    "Papers/peruzzo2014-vqe",
+    "Papers/kandala2017-hardware-efficient-vqe",
+    "Data/code/h2_sto3g.py",
+    "Data/code/vqe_h2_dissociation.py"
+  ]
+}

@@ -1,0 +1,62 @@
+//
+//  WorkspaceCommands.swift
+//  AppFeature
+//
+//  Created by 山田大陽 on 2026/09/29.
+//
+
+import NotesFeature
+import SwiftUI
+import WorkspaceFeature
+
+/// タブ、表示の切り替え、ナビゲータのメニューとショートカット。いちばん手前のウインドウに効く。
+struct WorkspaceCommands: Commands {
+    @FocusedValue(WorkspaceViewModel.self) private var workspace
+
+    var body: some Commands {
+        CommandGroup(replacing: .saveItem) {
+            Button("タブを閉じる") { workspace?.closeSelectedTab() }
+                .keyboardShortcut("w")
+                .disabled(workspace?.selectedTab == nil)
+            Button("保存") {
+                let workspace = workspace
+                Task { await workspace?.saveSelectedDocument() }
+            }
+            .keyboardShortcut("s")
+            .disabled(workspace?.selectedDocument?.isEditable != true)
+        }
+
+        CommandGroup(before: .sidebar) {
+            Button("編集と閲覧を切り替え") { workspace?.selectedDocument?.toggleDisplayMode() }
+                .keyboardShortcut("e")
+                .disabled(workspace?.selectedDocument?.canToggleDisplayMode != true)
+            Button(workspace?.isInspectorPresented == true ? "インスペクタを隠す" : "インスペクタを表示") {
+                workspace?.isInspectorPresented.toggle()
+            }
+            .keyboardShortcut("0", modifiers: [.command, .option])
+            Divider()
+        }
+
+        CommandMenu("移動") {
+            ForEach(Array(WorkspaceViewModel.NavigatorMode.allCases.enumerated()), id: \.element) { index, mode in
+                Button(mode.title) { workspace?.navigatorMode = mode }
+                    .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")))
+            }
+            Divider()
+            // サイドバーの上のアイコンの列と同じ順に、⌘4〜⌘8 で機能を開く（Xcode のナビゲータと同じ）
+            ForEach(Array(WorkspaceTool.allCases.enumerated()), id: \.element) { index, tool in
+                Button(tool.title) { workspace?.open(tool: tool) }
+                    .keyboardShortcut(
+                        KeyEquivalent(Character("\(WorkspaceViewModel.NavigatorMode.allCases.count + index + 1)")))
+            }
+            Divider()
+            Button("ノートを検索") { workspace?.navigatorMode = .search }
+                .keyboardShortcut("f", modifiers: [.command, .shift])
+            Divider()
+            Button("次のタブ") { workspace?.selectAdjacentTab(offset: 1) }
+                .keyboardShortcut("]", modifiers: [.command, .shift])
+            Button("前のタブ") { workspace?.selectAdjacentTab(offset: -1) }
+                .keyboardShortcut("[", modifiers: [.command, .shift])
+        }
+    }
+}

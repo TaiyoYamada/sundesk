@@ -1,0 +1,68 @@
+{
+  "title": "SA で重みつき Max-Cut（30 頂点、GA と PSO と同じ評価の回数）",
+  "algorithm": "SA",
+  "problem": "重みつき Max-Cut, maxcut-w30（30 頂点、175 辺）",
+  "status": "done",
+  "created": "2026-09-17T09:55:24+09:00",
+  "finished": "2026-09-17T09:55:27+09:00",
+  "tags": [
+    "SA",
+    "Max-Cut",
+    "アニーリング"
+  ],
+  "parameters": {
+    "schedule": "geometric",
+    "t_start": 30.0,
+    "t_end": 0.3,
+    "sweeps": 666,
+    "move": "single spin flip (Metropolis)",
+    "budget_evaluations": 20000
+  },
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "objective": {
+    "name": "cut",
+    "direction": "maximize",
+    "reference": 671.0
+  },
+  "metrics": {
+    "best_cut": 671.0,
+    "mean_cut": 671.0,
+    "worst_cut": 671.0,
+    "mean_gap_percent": 0.0,
+    "success_rate": 1.0,
+    "evaluations_per_seed": 19980,
+    "median_evaluations_to_optimum": 3031.0,
+    "time_seconds": 1.628
+  },
+  "series": [
+    {
+      "file": "results/trace.csv",
+      "x": "evaluations",
+      "y": [
+        "mean",
+        "best",
+        "worst"
+      ]
+    }
+  ],
+  "attachments": [
+    "figures/convergence.png"
+  ],
+  "links": [
+    "Papers/kirkpatrick1983-simulated-annealing",
+    "Papers/lucas2014-ising-formulations",
+    "Data/instances/maxcut-w30.json",
+    "Data/code/sa_maxcut.py"
+  ]
+}

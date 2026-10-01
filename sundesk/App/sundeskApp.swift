@@ -5,28 +5,15 @@
 //  Created by 山田大陽 on 2026/09/29.
 //
 
+import AppFeature
 import SwiftUI
-import SwiftData
 
+/// アプリの入口。画面の組み立てはすべて AppFeature（Packages/SundeskKit）にある。
 @main
-struct sundeskApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+struct SundeskApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
-        .modelContainer(sharedModelContainer)
+        SundeskScenes()
     }
 }

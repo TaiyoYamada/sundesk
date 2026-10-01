@@ -1,0 +1,19 @@
+//
+//  App.xcconfig
+//  sundesk
+//
+//  Created by 山田大陽 on 2026/09/29.
+//
+//  アプリ本体（sundesk ターゲット）の設定。
+
+PRODUCT_BUNDLE_IDENTIFIER = $(BUNDLE_ID_PREFIX).sundesk
+
+// View と App は MainActor で動かす
+SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor
+
+// 自分専用のアプリなので App Sandbox は外す。
+// study のノートやモデルのフォルダを自由に読み、Python エンジンを起動するため（docs/adr/0002）。
+ENABLE_APP_SANDBOX = NO
+
+INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.productivity
+INFOPLIST_KEY_NSHumanReadableCopyright = Copyright © 2026 Taiyo Yamada. All rights reserved.

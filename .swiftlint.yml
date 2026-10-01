@@ -1,0 +1,89 @@
+# SwiftLint の設定。整形（インデントや改行）は swift-format に任せ、
+# ここでは書き方の決まりと、ファイルのヘッダーを検査する。
+
+included:
+  - sundesk
+  - sundeskTests
+  - sundeskUITests
+  - Packages/SundeskKit/Sources
+  - Packages/SundeskKit/Tests
+
+excluded:
+  - Packages/SundeskKit/.build
+
+disabled_rules:
+  # 以下は swift-format と重なる、または食い違うので無効にする
+  - trailing_comma
+  - opening_brace
+  - vertical_parameter_alignment
+
+opt_in_rules:
+  - closure_spacing
+  - contains_over_first_not_nil
+  - empty_count
+  - empty_string
+  - explicit_init
+  - fatal_error_message
+  - file_header
+  - first_where
+  - last_where
+  - modifier_order
+  - private_swiftui_state
+  - redundant_nil_coalescing
+  - sorted_first_last
+  - toggle_bool
+  - vertical_whitespace_closing_braces
+
+line_length:
+  warning: 120
+  error: 160
+  ignores_comments: true
+  ignores_urls: true
+
+identifier_name:
+  excluded:
+    - id
+    - fd
+    - x
+    - y
+    - ai
+    - uv
+    # プログラミング言語の名前
+    - c
+    - go
+
+# 列挙型を振り分けるだけの switch（記法ごとの色、言語ごとの文法など）は、case の数を複雑さに数えない
+cyclomatic_complexity:
+  ignores_case_statements: true
+
+# すべての Swift ファイルに Xcode 形式のヘッダーを求める（CONTRIBUTING.md を参照）
+file_header:
+  required_pattern: |
+    \/\/
+    \/\/  SWIFTLINT_CURRENT_FILENAME
+    \/\/  [A-Za-z]+
+    \/\/
+    \/\/  Created by 山田大陽 on \d{4}\/\d{2}\/\d{2}\.
+    \/\/
+
+# アーキテクチャのルール（docs/adr/0011）。モジュールの依存はコンパイラが守り、
+# 同じモジュールの中の決まりはここで守る。
+custom_rules:
+  view_imports_domain:
+    name: "View は Domain を import しない"
+    regex: '^import SundeskDomain$'
+    included: 'Packages/SundeskKit/Sources/Features/.*/Views/.*\.swift'
+    message: "View は ViewModel が渡す表示用の型だけを使う。Domain の型が要るなら ViewModel で変換する"
+    severity: error
+  domain_imports_framework:
+    name: "Domain は画面や保存の仕組みを import しない"
+    regex: '^import (SwiftUI|AppKit|SwiftData|WebKit|Combine)$'
+    included: 'Packages/SundeskKit/Sources/Core/SundeskDomain/.*\.swift'
+    message: "Domain は Foundation 以外に依存しない"
+    severity: error
+  feature_imports_data:
+    name: "Features は Data や Infrastructure を import しない"
+    regex: '^import (SundeskData|SundeskEngineClient|SundeskMarkdown|SundeskCodeHighlight|FactoryKit)$'
+    included: 'Packages/SundeskKit/Sources/Features/.*\.swift'
+    message: "Data と DI の組み立ては AppFeature の役目"
+    severity: error

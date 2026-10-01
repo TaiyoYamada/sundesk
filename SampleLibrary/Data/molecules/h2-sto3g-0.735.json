@@ -1,0 +1,21 @@
+{
+  "molecule": "H2",
+  "basis": "STO-3G",
+  "bond_length_angstrom": 0.735,
+  "mapping": "parity, 2-qubit reduction",
+  "unit": "hartree",
+  "nuclear_repulsion": 0.7199689944489797,
+  "pauli_terms": {
+    "II": -1.0523732457729031,
+    "IZ": -0.3979374248431682,
+    "YY": 0.18093119978423405,
+    "ZI": 0.3979374248431683,
+    "ZZ": -0.011280104256237378
+  },
+  "energies": {
+    "hartree_fock": -1.1169989967540226,
+    "fci": -1.1373060357534193
+  },
+  "hartree_fock_state": "10",
+  "note": "Data/code/h2_sto3g.py で積分から作った。pauli_terms は電子の部分だけで、全エネルギーは nuclear_repulsion を足したもの。Qiskit のチュートリアルの係数とは、量子ビットの順（IZ と ZI）と、XX が YY になっている点だけが違う（固有値は同じ）"
+}
