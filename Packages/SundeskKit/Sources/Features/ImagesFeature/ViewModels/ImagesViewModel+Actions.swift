@@ -74,15 +74,9 @@ extension ImagesViewModel {
         pendingDeletion = []
     }
 
-    /// 尋ねていた画像を消す。
-    public func confirmDeletion() async {
-        let ids = pendingDeletion
-        pendingDeletion = []
-        await delete(ids)
-    }
-
     /// 画像を、ファイルと記録ごと消す。消したあとは、すぐ後ろの画像を選ぶ。
     public func delete(_ ids: [UUID]) async {
+        pendingDeletion = []
         let targets = ids.compactMap { records[$0] }
         guard !targets.isEmpty else { return }
         let deleted = Set(ids)

@@ -47,13 +47,6 @@ public struct ThinkingFilter: Sendable {
         return isThinking ? "" : buffer
     }
 
-    /// 答えの全文から、考える過程を取り除く。
-    public static func strip(_ text: String) -> String {
-        var filter = ThinkingFilter()
-        let body = filter.feed(text) + filter.finish()
-        return body.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
     private static func partialSuffixLength(of text: String, tag: String) -> Int {
         for length in stride(from: min(tag.count - 1, text.count), to: 0, by: -1)
         where tag.hasPrefix(text.suffix(length)) {

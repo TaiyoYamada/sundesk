@@ -5,7 +5,7 @@
 
 ## 背景
 
-フェーズ 4〜6 で、LLM の中を覗き（トークン、確率、Attention、logit lens、活性）、いじり（LoRA、steering）、
+LLM の中を覗き（トークン、確率、Attention、logit lens、活性）、いじり（LoRA、steering）、
 画像を生成する。どれも Python のエンジンで動かす（[ADR 0002](0002-swift-app-with-python-engine.md)）。
 
 ## 決定

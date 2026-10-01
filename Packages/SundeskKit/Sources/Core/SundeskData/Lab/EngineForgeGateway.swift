@@ -9,7 +9,7 @@ import Foundation
 import SundeskDomain
 import SundeskEngineClient
 
-/// モデルを作る・比べる計算と、Python のスクラッチを、エンジンに頼む（docs/engine-api.md のフェーズ 7）。
+/// モデルを作る・比べる計算と、Python のスクラッチを、エンジンに頼む（docs/engine-api.md の工房）。
 public struct EngineForgeGateway: ForgeEngine, ScratchEngine {
     private let process: EngineProcess
 

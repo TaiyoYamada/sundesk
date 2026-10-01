@@ -1,7 +1,6 @@
 # sundesk アーキテクチャ
 
-- 状態: フェーズ 0〜6 の実装を反映済み
-- 最終更新: 2026-09-29
+- 最終更新: 2026-10-01
 - 要件は [requirements.md](requirements.md)、個々の判断の理由は [ADR](adr/README.md) を参照
 
 ## 1. 方針
@@ -74,7 +73,7 @@ sundesk/
 │   │   │   ├── LabFeature/                 LLM の実験室（覗く・いじる）と、モデルの管理
 │   │   │   ├── ImagesFeature/              画像生成
 │   │   │   ├── EngineFeature/              エンジンの状態と設定
-│   │   │   └── SettingsFeature/            Vault の設定
+│   │   │   └── SettingsFeature/            設定画面（ライブラリの場所、読むだけでつなぐフォルダ、外観）
 │   │   ├── Core/
 │   │   │   ├── SundeskDomain/              Entity、UseCase、Repository の protocol
 │   │   │   ├── SundeskData/                Repository の実装、SwiftData のスキーマ、設定の保存
@@ -90,7 +89,7 @@ sundesk/
 │   │       └── SundeskWebView/             HTML ファイルの表示（WebKit）
 │   └── Tests/                              モジュールごとのテスト（Sources と同じグループ分け）
 ├── engine/                       Python エンジン（uv で管理。LLM、画像生成、埋め込み、NLP、グラフ計算）
-├── SampleLibrary/                研究向けの見本のライブラリ（開発とテスト用）
+├── SampleLibrary/                テストで使う、作り物の研究ライブラリ
 ├── tools/sundesk-log/            実験のコードから結果を送る Python の記録用ライブラリ
 ├── Configurations/               xcconfig（バンドル ID、対象 OS、Swift の設定）
 ├── scripts/                      補助スクリプト（カバレッジの集計など）
@@ -168,7 +167,7 @@ public final class ChatViewModel {
 - 設定: エンジンのフォルダと uv の場所は設定画面で変えられる。既定はリポジトリの `engine/` と、Homebrew などの決まった場所
 - ログ: OSLog のサブシステム `com.taiyou.sundesk`。エンジン自身の出力はカテゴリ `engine.output` に流す。起動にかかった時間は signpost で Instruments に出る
 
-## 7. ノートの表示、編集、索引（フェーズ 1）
+## 7. ノートの表示、編集、索引
 
 画面の構成は [ADR 0009](adr/0009-workspace-layout.md)、描画と編集の技術は [ADR 0010](adr/0010-native-rendering-and-editing.md) を参照。
 
@@ -181,6 +180,7 @@ public final class ChatViewModel {
 | テキスト、コード | ソースだけ | エディタ（tree-sitter で色づけ、行番号つき） |
 | 画像 | — | SwiftUI（拡大・縮小） |
 | PDF | — | PDFKit |
+| Jupyter のノートブック | 閲覧、ソース（読むだけ） | セル、コード、保存された出力（文字、図、表、エラー）を SwiftUI で並べる |
 | その他 | — | Quick Look |
 
 - ⌘E で編集と閲覧を切り替える（編集に戻るときは、前に使っていた編集のモード）
@@ -203,16 +203,17 @@ public final class ChatViewModel {
 
 ## 7.5. 研究ライブラリ
 
-形式は [library-format.md](library-format.md)、判断の理由は [ADR 0015](adr/0015-research-library.md)。
+形式は [library-format.md](library-format.md)、判断の理由は [ADR 0015](adr/0015-research-library.md) と [ADR 0016](adr/0016-read-research-in-place.md)。
 
 - ライブラリはアプリのデータフォルダの中のふつうのファイル。ノート、論文、実験、データ、資料、取り込み箱のフォルダに分ける
-- 左のナビゲータ（⌘1）は種類ごとの一覧。論文は読んだ状態で絞り込み、題名や年で並べ替える。実験は複数選ぶと比べられる
+- 左のナビゲータ（⌘1）は、種類ごとのファイルの木（`FileTreeView`）。フォルダでくくり、ドラッグで移し、⌘ や ⇧ で複数選んでゴミ箱へ送る。論文と実験は 1 つのものとして見せ、実験は複数選ぶと比べられる
+- ~/Research と study-artifact の研究のところは、コピーせず読むだけでつなぐ（`VaultMount`）。~/Research のプロジェクトは、`config.json` か CSV のあるフォルダを実行として自動で見つけ、設定、図、表の先頭、所見を見せる
 - 論文のタブ: PDF（PDFKit）、書誌情報、論文メモ（エディタ）。arXiv の ID か DOI から書誌情報を取る（`OnlineBibliography`。アプリで唯一の通信）
 - 実験のタブ: 設定、指標、収束の曲線（Swift Charts。最適値の線つき）、図、仮説と考察のメモ。CSV や画像をドロップすると取り込む
 - 比べるタブ: 収束の曲線を重ね（最適値との差を対数で見ることもできる）、指標の最もよい値と、値の違うパラメータを表にする
 - 取り込み箱: 記録用ライブラリが `Inbox/<ID>/` に書き、`.complete` を置く。ライブラリの変化を見張っていて、見つけたら `Experiments/` に移す
 
-## 8. 知識グラフ（フェーズ 2）
+## 8. 知識グラフ
 
 作り方と更新の仕方は [ADR 0012](adr/0012-knowledge-and-rag.md)、描画は [ADR 0005](adr/0005-metal-knowledge-graph.md) を参照。
 
@@ -237,7 +238,7 @@ public final class ChatViewModel {
    - テストでは、配置と画面に写す計算の GPU の結果を CPU の参照実装と突き合わせ、1,500 点・2.4 万本の描画の時間も測る
 5. インスペクタに、つながる概念（関係の種類つき）と、概念が出てくるノートの節を出す。押すとその節を開く
 
-## 9. RAG（フェーズ 3）
+## 9. RAG
 
 1. 質問を、意味（ruri-v3 の埋め込みとベクトル検索）、語（bigram）、知識グラフの 3 つで探し、Reciprocal Rank Fusion でまとめる
 2. 上位 6 節に番号を付けてシステムの指示に入れ、前の会話と一緒にモデルへ渡す
@@ -245,7 +246,7 @@ public final class ChatViewModel {
 4. 会話は `KnowledgeStore` に残し、あとから見返せる
 5. モデルは、Apple のオンデバイスモデル（Foundation Models）か、エンジンの MLX のモデル（既定は Qwen3-4B-Instruct の 4bit）
 
-## 10. 実験室と画像生成（フェーズ 4〜6）
+## 10. 実験室と画像生成
 
 詳しくは [ADR 0013](adr/0013-lab-and-image-generation.md) を参照。
 
@@ -296,5 +297,4 @@ public final class ChatViewModel {
 ## 12. 未決事項
 
 - [ ] ライブプレビューで数式を画像にして見せるか（今は色を変えたソースのまま）
-- [ ] 大きなテンソル（Attention の行列など）の転送形式（フェーズ 4）
 - [ ] CodeQL の Swift 対応（CodeQL が Swift 6.4 に対応したら加える）

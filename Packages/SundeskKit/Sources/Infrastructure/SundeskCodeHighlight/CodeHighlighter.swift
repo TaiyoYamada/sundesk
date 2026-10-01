@@ -65,11 +65,6 @@ public final class CodeHighlighter: Sendable {
 
     public init() {}
 
-    /// 色づけできる言語か。別名（`py`、`sh` など）も受け付ける。
-    public func supports(_ language: String) -> Bool {
-        CodeLanguage(name: language) != nil
-    }
-
     public func highlight(_ code: String, language: String) -> [CodeToken] {
         guard let language = CodeLanguage(name: language) else { return [] }
         return configurations.withLock { cache in

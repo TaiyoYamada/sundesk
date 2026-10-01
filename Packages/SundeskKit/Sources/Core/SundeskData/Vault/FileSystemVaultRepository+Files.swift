@@ -61,22 +61,6 @@ extension FileSystemVaultRepository {
         }
     }
 
-    @concurrent
-    public func importFiles(_ urls: [URL], into folder: String) async throws(VaultError) -> [String] {
-        let parent = try writableURL(folder)
-        var imported: [String] = []
-        for url in urls {
-            let target = Self.unique(url.lastPathComponent, in: parent)
-            do {
-                try FileManager.default.copyItem(at: url, to: target)
-            } catch {
-                throw .unwritable(path: folder, reason: error.localizedDescription)
-            }
-            imported.append(Self.join(folder, target.lastPathComponent))
-        }
-        return imported
-    }
-
     // MARK: - 内部
 
     /// 書き換えてよい、ライブラリの中の場所（空のパスはライブラリのルート）。

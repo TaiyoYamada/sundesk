@@ -24,8 +24,8 @@ struct LibraryViewModelTests {
             series: [SeriesSpec(file: "results/trace.csv", x: "generation", y: ["best"])], attachments: [], links: [])
     }
 
-    @Test("一覧を読み、取り込み箱から取り込んだら知らせる。論文は絞り込みと並べ替えができる")
-    func loadsAndFilters() async {
+    @Test("一覧を読み、取り込み箱から取り込んだら知らせる")
+    func loads() async {
         let library = LibraryStub(papers: [
             Paper(
                 key: "a", metadata: PaperMetadata(title: "QAOA", authors: ["Edward Farhi"], year: 2014), status: .read,
@@ -41,13 +41,6 @@ struct LibraryViewModelTests {
 
         #expect(viewModel.message == "取り込み箱から 1 件の実験を取り込みました")
         #expect(viewModel.papers.map(\.authors) == ["Farhi", "Peruzzo"])
-        viewModel.statusFilter = "未読"
-        #expect(viewModel.shownPapers.map(\.key) == ["b"])
-        viewModel.statusFilter = nil
-        viewModel.paperSort = .year
-        #expect(viewModel.shownPapers.map(\.key) == ["a", "b"])
-        viewModel.filterText = "vqe"
-        #expect(viewModel.shownPapers.map(\.key) == ["b"])
     }
 
     @Test("論文の ID が読めなければ断る")
@@ -132,14 +125,12 @@ private final class LibraryStub: ManageLibraryUseCase, @unchecked Sendable {
         ]
     }
     func attach(_ files: [URL], to experiment: ResearchExperiment) async throws(LibraryError) {}
-    func files(in section: LibrarySection) async throws(LibraryError) -> [LibraryFile] { [] }
     func importFiles(_ urls: [URL], into section: LibrarySection) async throws(LibraryError) -> [String] { [] }
     func createNote(named name: String) async throws(LibraryError) -> String { "Notes/\(name).md" }
     func importInbox() async throws(LibraryError) -> [String] {
         defer { inbox = [] }
         return inbox
     }
-    func delete(_ path: String) async throws(LibraryError) {}
     func export(to destination: URL) async throws(LibraryError) {}
     func restore(from source: URL) async throws(LibraryError) {}
     func root() -> URL { URL(filePath: "/library") }

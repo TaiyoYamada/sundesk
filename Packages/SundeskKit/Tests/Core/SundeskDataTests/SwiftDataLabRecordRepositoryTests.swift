@@ -53,7 +53,7 @@ struct SwiftDataLabRecordRepositoryTests {
         #expect(try await repository.adapters() == [adapter])
         #expect(try await repository.images() == [image])
         try await repository.deleteAdapter(adapter.id)
-        try await repository.deleteImage(image.id)
+        try await repository.deleteImages([image.id])
         #expect(try await repository.adapters().isEmpty)
         #expect(try await repository.images().isEmpty)
     }

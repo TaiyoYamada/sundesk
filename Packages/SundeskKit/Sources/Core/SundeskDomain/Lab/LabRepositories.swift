@@ -56,7 +56,6 @@ public protocol LabRecordRepository: Sendable {
 
     func images() async throws(LabError) -> [GeneratedImage]
     func save(_ image: GeneratedImage) async throws(LabError)
-    func deleteImage(_ id: UUID) async throws(LabError)
     /// まとめて消す（1 度に保存する）。
     func deleteImages(_ ids: [UUID]) async throws(LabError)
     func setImagesFavorite(_ ids: [UUID], isFavorite: Bool) async throws(LabError)

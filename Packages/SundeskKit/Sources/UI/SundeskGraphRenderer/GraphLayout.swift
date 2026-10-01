@@ -39,7 +39,6 @@ struct LayoutParams: Equatable {
 
 enum GraphLayoutError: Error {
     case noDevice
-    case compileFailed(String)
 }
 
 /// 点の置き場所を、Metal のコンピュートシェーダーで少しずつ計算する（Fruchterman-Reingold 法、3 次元）。

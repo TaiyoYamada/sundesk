@@ -211,8 +211,5 @@ struct ThinkingFilterTests {
         output += filter.finish()
 
         #expect(output == "\n\n答えは [1]。<")
-        #expect(ThinkingFilter.strip("<think>a</think>\n答え") == "答え")
-        #expect(ThinkingFilter.strip("考えずに答える") == "考えずに答える")
-        #expect(ThinkingFilter.strip("<think>途中で終わった").isEmpty)
     }
 }

@@ -124,10 +124,6 @@ public final class ChatViewModel {
         messages = ((try? await loadMessages(sessionID)) ?? []).map(ChatMessageItem.init)
     }
 
-    public func delete(sessionID: UUID) async {
-        await delete(sessionIDs: [sessionID])
-    }
-
     /// 会話をまとめて消す。
     public func delete(sessionIDs: Set<UUID>) async {
         for id in sessionIDs {

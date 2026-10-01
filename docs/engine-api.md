@@ -27,11 +27,11 @@
 - 埋め込みモデルは小さいので、別枠で載せたままにする
 - LoRA のアダプタは、LLM を載せるときに合わせて読む（アダプタが変われば載せ直す）
 
-## フェーズ 0: 死活確認
+## 死活確認
 
 `GET /health` → `{"status": "ok", "version": "0.1.0", "python_version": "3.13.13"}`
 
-## フェーズ 2: 知識グラフ
+## 知識グラフ
 
 ### `POST /graph/build`
 
@@ -86,7 +86,7 @@
 | `similar` | 埋め込みの類似度が高い（`similarity` が true のときだけ） |
 | 分析 | networkx の PageRank（重み付き）と、Louvain 法のコミュニティ検出（乱数の種は固定） |
 
-## フェーズ 3: RAG
+## RAG
 
 ### `POST /embeddings`
 
@@ -119,7 +119,7 @@
 
 出典の番号づけとプロンプトの組み立ては、アプリが行う。
 
-## フェーズ 4: モデルの管理と LLM 実験室
+## モデルの管理と LLM 実験室
 
 ### モデル
 
@@ -146,7 +146,7 @@
 | `POST /lab/logit-lens` `{"model", "prompt", "chat_template", "top_k": 3}` | `{"tokens", "num_layers", "layers": [{"layer", "positions": [{"top": [{"id", "text", "probability"}]}]}]}` 各層の途中の状態を最後の正規化と出力層に通したときの予測 |
 | `POST /lab/activations` `{"model", "prompt", "chat_template"}` | `{"tokens", "num_layers", "norms": [[f]]}` 各層・各位置の残差ストリームの大きさ（L2 ノルム。`norms[layer][position]`） |
 
-## フェーズ 5: 画像生成
+## 画像生成
 
 | 要求 | 応答 |
 |---|---|
@@ -168,7 +168,7 @@
 - `seed` が null なら、エンジンが決めて `done` で返す。保存先はアプリが決める（絶対パス）
 - `width`、`height` は 256〜2048 の 16 の倍数。`quantize` は 3、4、5、6、8 か null
 
-## フェーズ 6: いじる
+## いじる（LoRA、steering）
 
 ### `POST /lora/train`（NDJSON）
 
@@ -195,7 +195,7 @@
 | `POST /steering/vector` `{"model", "layer", "positive": [str], "negative": [str]}` | `{"layer", "vector": [f], "norm"}` 指定した層の残差ストリームの平均の差（positive − negative。最後のトークンの位置） |
 | `POST /steering/generate` `{"model", "prompt", "chat_template", "layer", "vector", "strength", "max_tokens", "temperature", "seed"}` | `{"baseline": str, "steered": str}` 同じ種で、ベクトルを足さない生成と足した生成（`seed` が null なら毎回変える） |
 
-## フェーズ 7: 工房（作る・比べる・書く）
+## 工房（作る・比べる・書く）
 
 モデルを量子化し、変換し、混ぜ、枝を刈り、蒸留して、できたものを比べる。Python を書いて、載せたモデルを直接いじることもできる。
 

@@ -52,24 +52,7 @@ public final class LibraryViewModel {
         }
     }
 
-    public enum PaperSort: String, CaseIterable, Identifiable, Sendable {
-        case added, year, title
-
-        public var id: Self { self }
-        public var title: String {
-            switch self {
-            case .added: "追加した順"
-            case .year: "年"
-            case .title: "題名"
-            }
-        }
-    }
-
     public var section: Section = .notes
-    public var filterText = ""
-    public var paperSort: PaperSort = .added
-    /// 読んだ状態で絞り込む（nil ならすべて）。
-    public var statusFilter: String?
     /// 比べるために選んだ実験。
     public var selectedExperiments: Set<String> = []
 
@@ -77,7 +60,6 @@ public final class LibraryViewModel {
     public private(set) var experiments: [ExperimentRow] = []
     /// ~/Research の実験のプロジェクト（読むだけ）。
     public private(set) var projects: [ResearchProjectRow] = []
-    public private(set) var files: [FileRow] = []
     public private(set) var isWorking = false
     public var message: String?
     public var errorMessage: String?
@@ -87,7 +69,6 @@ public final class LibraryViewModel {
     @ObservationIgnored private let library: any ManageLibraryUseCase
     @ObservationIgnored private let observeChanges: any ObserveVaultChangesUseCase
     @ObservationIgnored private let loadProjects: (any LoadResearchProjectsUseCase)?
-    @ObservationIgnored private var paperModels: [Paper] = []
 
     public init(
         library: any ManageLibraryUseCase, observeChanges: any ObserveVaultChangesUseCase,
@@ -162,58 +143,10 @@ public final class LibraryViewModel {
         if let linked = try? await library.linkResearchPapers(), linked > 0 {
             message = "~/Research の PDF を \(linked) 本、論文につなぎました"
         }
-        paperModels = (try? await library.papers()) ?? []
-        papers = paperModels.map(PaperRow.init)
+        papers = ((try? await library.papers()) ?? []).map(PaperRow.init)
         experiments = ((try? await library.experiments()) ?? []).map(ExperimentRow.init)
         if let loadProjects { projects = await loadProjects().map(ResearchProjectRow.init) }
         rebuildBundles()
-        switch section {
-        case .data, .materials: files = ((try? await library.files(in: section.domain)) ?? []).map(FileRow.init)
-        default: break
-        }
-    }
-
-    public func sectionChanged() async {
-        filterText = ""
-        await refresh()
-    }
-
-    /// 絞り込み、並べ替えた論文。
-    public var shownPapers: [PaperRow] {
-        var rows = papers.filter { row in
-            (statusFilter == nil || row.status == statusFilter)
-                && (filterText.isEmpty || row.searchText.localizedStandardContains(filterText))
-        }
-        switch paperSort {
-        case .added: break
-        case .year: rows.sort { ($0.year ?? 0) > ($1.year ?? 0) }
-        case .title: rows.sort { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
-        }
-        return rows
-    }
-
-    /// 選んだものが ~/Research の実行か（実行はパスで、自分の実験はキーで選ばれる）。
-    public static func isResearchRun(_ key: String) -> Bool {
-        key.hasPrefix(ResearchSources.researchName + "/")
-    }
-
-    /// 絞り込んだ ~/Research のプロジェクト（プロジェクトの名前か、実行の名前に一致するもの）。
-    public var shownProjects: [ResearchProjectRow] {
-        let query = filterText.trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return projects }
-        return projects.compactMap { project in
-            if project.title.localizedStandardContains(query) { return project }
-            let runs = project.runs.filter { $0.name.localizedStandardContains(query) }
-            return runs.isEmpty ? nil : ResearchProjectRow(path: project.path, title: project.title, runs: runs)
-        }
-    }
-
-    public var shownExperiments: [ExperimentRow] {
-        experiments.filter { filterText.isEmpty || $0.searchText.localizedStandardContains(filterText) }
-    }
-
-    public var shownFiles: [FileRow] {
-        files.filter { filterText.isEmpty || $0.path.localizedStandardContains(filterText) }
     }
 
     // MARK: - 足す
@@ -265,13 +198,6 @@ public final class LibraryViewModel {
         }
     }
 
-    public func delete(_ path: String) async {
-        _ = await work(nil) {
-            try await self.library.delete(path)
-            return ""
-        }
-    }
-
     private func work<T>(_ title: String?, _ body: @escaping () async throws -> T) async -> T? {
         isWorking = true
         errorMessage = nil
@@ -306,7 +232,6 @@ public struct PaperRow: Identifiable, Hashable, Sendable {
     public let tags: [String]
     /// 論文のフォルダ（タブで開くときに使う）。
     public let folderPath: String
-    var searchText: String { [title, authors, tags.joined(separator: " ")].joined(separator: " ") }
 
     init(_ paper: Paper) {
         key = paper.key
@@ -333,7 +258,6 @@ public struct ExperimentRow: Identifiable, Hashable, Sendable {
     /// 目的関数の値（あれば）。
     public let headline: String?
     public let folderPath: String
-    var searchText: String { [title, algorithm, problem].joined(separator: " ") }
 
     init(_ experiment: ResearchExperiment) {
         key = experiment.key
@@ -345,33 +269,6 @@ public struct ExperimentRow: Identifiable, Hashable, Sendable {
         date = experiment.created?.formatted(date: .abbreviated, time: .omitted) ?? ""
         headline = experiment.headlineMetric.map { "\($0.name) \(ExperimentFormat.number($0.value))" }
         folderPath = experiment.folderPath
-    }
-}
-
-public struct FileRow: Identifiable, Hashable, Sendable {
-    public var id: String { path }
-    public let path: String
-    public let name: String
-    public let detail: String
-    public let systemImage: String
-
-    init(_ file: LibraryFile) {
-        path = file.path
-        name = file.name
-        detail =
-            ByteCountFormatter.string(fromByteCount: file.size, countStyle: .file)
-            + "・" + file.modified.formatted(date: .abbreviated, time: .omitted)
-        let kind = FileKind(fileName: file.name)
-        systemImage =
-            switch kind {
-            case .code: "chevron.left.forwardslash.chevron.right"
-            case .image: "photo"
-            case .pdf: "doc.richtext"
-            case .notebook: "book.pages"
-            case .markdown: "doc.text"
-            case .text: "doc.plaintext"
-            default: "doc"
-            }
     }
 }
 

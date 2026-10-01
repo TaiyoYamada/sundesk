@@ -31,8 +31,6 @@ public protocol VaultRepository: Sendable {
     func rename(_ path: String, to name: String) async throws(VaultError) -> String
     /// ゴミ箱に入れる。
     func moveToTrash(_ path: String) async throws(VaultError)
-    /// Finder などから、ファイルをフォルダに写す。写した先のパスを返す。
-    func importFiles(_ urls: [URL], into folder: String) async throws(VaultError) -> [String]
 }
 
 extension VaultRepository {
@@ -48,9 +46,6 @@ extension VaultRepository {
     }
     public func moveToTrash(_ path: String) async throws(VaultError) {
         throw .unwritable(path: path, reason: "この Vault では消せません")
-    }
-    public func importFiles(_ urls: [URL], into folder: String) async throws(VaultError) -> [String] {
-        throw .unwritable(path: folder, reason: "この Vault では取り込めません")
     }
 }
 

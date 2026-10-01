@@ -100,7 +100,7 @@ public final class GraphCanvasModel {
     public init() {
         renderer = GraphRenderer()
         isAvailable = renderer != nil
-        renderer?.frameProvider = { [weak self] view in self?.makeFrame(view: view) }
+        renderer?.frameProvider = { [weak self] _ in self?.makeFrame() }
     }
 
     var viewSize: CGSize {

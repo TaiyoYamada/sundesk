@@ -16,7 +16,6 @@ public protocol ManageFilesUseCase: Sendable {
     func move(_ paths: [String], into folder: String) async throws(VaultError) -> [String]
     func rename(_ path: String, to name: String) async throws(VaultError) -> String
     func moveToTrash(_ paths: [String]) async throws(VaultError)
-    func importFiles(_ urls: [URL], into folder: String) async throws(VaultError) -> [String]
 }
 
 public struct ManageFilesInteractor: ManageFilesUseCase {
@@ -61,11 +60,6 @@ public struct ManageFilesInteractor: ManageFilesUseCase {
             guard !vault.isReadOnly(path) else { throw .readOnly(path: path) }
             try await vault.moveToTrash(path)
         }
-    }
-
-    public func importFiles(_ urls: [URL], into folder: String) async throws(VaultError) -> [String] {
-        guard !vault.isReadOnly(folder) else { throw .readOnly(path: folder) }
-        return try await vault.importFiles(urls, into: folder)
     }
 
     /// ファイル名に使えない文字（`/` と `:`）を除き、前後の空白を落とす。

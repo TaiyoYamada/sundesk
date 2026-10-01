@@ -204,7 +204,6 @@ actor LabRecordsSpy: LabRecordRepository {
     func deleteAdapter(_ id: UUID) async throws(LabError) { savedAdapters.removeAll { $0.id == id } }
     func images() async throws(LabError) -> [GeneratedImage] { savedImages }
     func save(_ image: GeneratedImage) async throws(LabError) { savedImages.append(image) }
-    func deleteImage(_ id: UUID) async throws(LabError) { savedImages.removeAll { $0.id == id } }
     func deleteImages(_ ids: [UUID]) async throws(LabError) { savedImages.removeAll { ids.contains($0.id) } }
     func setImagesFavorite(_ ids: [UUID], isFavorite: Bool) async throws(LabError) {
         if isFavorite { favoriteImageIDs.formUnion(ids) } else { favoriteImageIDs.subtract(ids) }

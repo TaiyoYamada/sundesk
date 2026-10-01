@@ -36,31 +36,11 @@ public enum FileKind: Hashable, Sendable {
         self = Self.byExtension[fileExtension] ?? .other
     }
 
-    /// 描画した表示を持つか（持たないものは、ソースだけを見せる）。
-    public var hasRenderedView: Bool {
-        switch self {
-        case .markdown, .html, .image, .pdf, .notebook, .other: true
-        case .folder, .code, .text: false
-        }
-    }
-
     /// 生のソース（テキスト）として見られるか。
     public var hasSourceView: Bool {
         switch self {
         case .markdown, .html, .code, .text, .notebook: true
         case .folder, .image, .pdf, .other: false
-        }
-    }
-
-    /// ソース表示の色づけに使う言語名。
-    public var sourceLanguage: String? {
-        switch self {
-        case .markdown: "markdown"
-        case .html: "html"
-        case .code(let language): language
-        case .text: "text"
-        case .notebook: "json"
-        case .folder, .image, .pdf, .other: nil
         }
     }
 
