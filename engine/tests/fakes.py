@@ -25,7 +25,7 @@ from sundesk_engine.runtime.manager import Embedder, ImageGenerator, ModelManage
 
 LLM_ID = "test/tiny-llm"
 EMBEDDING_ID = "cl-nagoya/ruri-v3-130m"
-IMAGE_REPO = "Tongyi-MAI/Z-Image-Turbo"
+IMAGE_REPO = "mflux-community/z-image-turbo-mflux-q4"
 HIDDEN_SIZE = 32
 NUM_LAYERS = 2
 NUM_HEADS = 4

@@ -88,7 +88,9 @@ def test_mflux_knows_the_catalog_models() -> None:
 
     repos = {spec.id: spec.repo for spec in IMAGE_MODELS}
 
-    assert config.z_image_turbo().model_name == repos["z-image-turbo"]
+    # Z-Image Turbo は量子化済みの重みを使うので、mflux の既定のリポジトリとは別になる
+    assert config.z_image_turbo().model_name == "Tongyi-MAI/Z-Image-Turbo"
+    assert repos["z-image-turbo"] == "mflux-community/z-image-turbo-mflux-q4"
     assert config.flux2_klein_4b().model_name == repos["flux2-klein-4b"]
     assert all(find_image_repo(spec.repo) is spec for spec in IMAGE_MODELS)
 

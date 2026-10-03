@@ -17,7 +17,7 @@ def test_image_models(client: TestClient) -> None:
     assert z_image == {
         "id": "z-image-turbo",
         "name": "Z-Image Turbo",
-        "repo": "Tongyi-MAI/Z-Image-Turbo",
+        "repo": "mflux-community/z-image-turbo-mflux-q4",
         "downloaded": True,
         "default_steps": 9,
         "default_size": {"width": 1024, "height": 1024},

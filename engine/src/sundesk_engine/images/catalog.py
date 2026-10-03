@@ -33,7 +33,8 @@ IMAGE_MODELS: tuple[ImageModelSpec, ...] = (
     ImageModelSpec(
         id="z-image-turbo",
         name="Z-Image Turbo",
-        repo="Tongyi-MAI/Z-Image-Turbo",
+        # 4bit に量子化済みの重み。本家の重み（fp32 で 30GB 超）は、読み込むときの量子化で 16GB に収まらない
+        repo="mflux-community/z-image-turbo-mflux-q4",
         default_steps=9,
         default_width=1024,
         default_height=1024,
