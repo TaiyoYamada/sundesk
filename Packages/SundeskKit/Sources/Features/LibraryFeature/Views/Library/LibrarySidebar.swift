@@ -7,13 +7,14 @@
 
 import SwiftUI
 
-/// ライブラリ、コレクション、タグのサイドバー。
-/// 文献の行をコレクションへドラッグすると、そこに入れる。コレクションを別のコレクションへドラッグすると、その中へ移す。
+/// ライブラリ、コレクション（中の論文を含む木）、タグのサイドバー。
+/// 論文をコレクションへドラッグすると、そこに入れる。コレクションを別のコレクションへドラッグすると、その中へ移す。
 struct LibrarySidebar: View {
     @Bindable var viewModel: LibraryViewModel
     @State private var naming: Naming?
     @State private var name = ""
     @State private var pendingDeletion: UUID?
+    @State private var pendingReferenceDeletion: UUID?
 
     /// 名前を入れてもらう操作。
     private enum Naming {
@@ -25,17 +26,11 @@ struct LibrarySidebar: View {
         List(selection: $viewModel.sidebarSelection) {
             Section("ライブラリ") {
                 Label("すべての文献", systemImage: "books.vertical").tag(SidebarItem.all)
-                Label("未整理", systemImage: "tray").tag(SidebarItem.unfiled)
+                SidebarNodeRow(node: viewModel.unfiledNode, viewModel: viewModel, actions: actions)
             }
             Section("コレクション") {
-                OutlineGroup(viewModel.collectionTree, children: \.children) { node in
-                    Label(node.name, systemImage: "folder")
-                        .tag(SidebarItem.collection(node.id))
-                        .contextMenu { menu(for: node.id) }
-                        .draggable(Self.collectionPrefix + node.id.uuidString)
-                        .dropDestination(for: String.self) { items, _ in
-                            drop(items, into: node.id)
-                        }
+                ForEach(viewModel.collectionTree) { node in
+                    SidebarNodeRow(node: node, viewModel: viewModel, actions: actions)
                 }
             }
             if !viewModel.tags.isEmpty {
@@ -80,26 +75,30 @@ struct LibrarySidebar: View {
         } message: {
             Text("中のコレクションも消えます。文献はライブラリに残ります。")
         }
-    }
-
-    @ViewBuilder
-    private func menu(for id: UUID) -> some View {
-        Button("この中に新しいコレクション…") { startNaming(.create(parentID: id)) }
-        Button("名前を変える…") { startNaming(.rename(id)) }
-        if !viewModel.isTopLevelCollection(id) {
-            Button("一番上の階層へ移す") { Task { await viewModel.moveCollection(id, into: nil) } }
+        .confirmationDialog("この文献を削除しますか？", isPresented: isConfirmingReferenceDeletion) {
+            Button("削除", role: .destructive) {
+                guard let id = pendingReferenceDeletion else { return }
+                Task { await viewModel.delete([id]) }
+            }
+        } message: {
+            Text("添付した PDF、注釈、メモも消えます。")
         }
-        Divider()
-        Button("削除…", role: .destructive) { pendingDeletion = id }
     }
 
-    /// コレクションをドラッグするときの文字の頭（文献の行は ID だけを運ぶ）。
-    private static let collectionPrefix = "sundesk-collection:"
+    private var actions: SidebarActions {
+        SidebarActions(
+            createCollection: { startNaming(.create(parentID: $0)) },
+            renameCollection: { startNaming(.rename($0)) },
+            deleteCollection: { pendingDeletion = $0 },
+            deleteReference: { pendingReferenceDeletion = $0 },
+            drop: drop)
+    }
 
     /// コレクションなら中へ移す。文献の行なら入れる。ドラッグされた行が選んでいる行の 1 つなら、選んでいる行をすべて入れる。
     private func drop(_ items: [String], into collectionID: UUID) {
-        let collections = items.filter { $0.hasPrefix(Self.collectionPrefix) }
-            .compactMap { UUID(uuidString: String($0.dropFirst(Self.collectionPrefix.count))) }
+        let prefix = SidebarActions.collectionPrefix
+        let collections = items.filter { $0.hasPrefix(prefix) }
+            .compactMap { UUID(uuidString: String($0.dropFirst(prefix.count))) }
         for id in collections {
             Task { await viewModel.moveCollection(id, into: collectionID) }
         }
@@ -142,5 +141,9 @@ struct LibrarySidebar: View {
 
     private var isConfirmingDeletion: Binding<Bool> {
         Binding(get: { pendingDeletion != nil }, set: { if !$0 { pendingDeletion = nil } })
+    }
+
+    private var isConfirmingReferenceDeletion: Binding<Bool> {
+        Binding(get: { pendingReferenceDeletion != nil }, set: { if !$0 { pendingReferenceDeletion = nil } })
     }
 }

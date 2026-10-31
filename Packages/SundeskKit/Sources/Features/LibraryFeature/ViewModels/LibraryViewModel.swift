@@ -14,7 +14,11 @@ import SundeskDomain
 @MainActor
 @Observable
 public final class LibraryViewModel {
-    public var sidebarSelection: SidebarItem? = .all
+    public var sidebarSelection: SidebarItem? = .all {
+        didSet { revealSelection() }
+    }
+    /// サイドバーで開いている行。
+    public var expandedItems: Set<SidebarItem> = []
     public var query = ""
     public var selection: Set<UUID> = []
     public var sortOrder: [KeyPathComparator<ReferenceRow>]
@@ -29,7 +33,10 @@ public final class LibraryViewModel {
     public var exportText: String?
     /// 時間のかかる操作をしている間の説明。
     public private(set) var progressMessage: String?
-    public private(set) var collectionTree: [CollectionNode] = []
+    /// コレクションの木（中のコレクションと論文を含む）。
+    public private(set) var collectionTree: [SidebarNode] = []
+    /// 「未整理」の行（どのコレクションにも入っていない論文を含む）。
+    public private(set) var unfiledNode = SidebarNode(id: .unfiled, name: "未整理", kind: .unfiled, children: nil)
     public private(set) var collectionChoices: [CollectionChoice] = []
     public private(set) var tags: [String] = []
 
@@ -48,10 +55,39 @@ public final class LibraryViewModel {
             .sorted(using: sortOrder)
     }
 
-    /// 選んでいるコレクション（コレクションを選んでいなければ nil）。
+    /// 選んでいるコレクション。論文を選んでいるときは、その行のあるコレクション。
     public var selectedCollectionID: UUID? {
-        if case .collection(let id) = sidebarSelection { return id }
+        switch sidebarSelection {
+        case .collection(let id): id
+        case .reference(_, let collectionID): collectionID
+        case .all, .unfiled, .tag, nil: nil
+        }
+    }
+
+    /// サイドバーで選んでいる論文（PDF を出す）。フォルダを選んでいれば nil（一覧を出す）。
+    public var selectedReferenceID: UUID? {
+        if case .reference(let id, _) = sidebarSelection { return id }
         return nil
+    }
+
+    /// 一覧から論文を開く。今見ているフォルダの中にその論文の行があれば、その行を選ぶ。
+    public func openReference(_ id: UUID) {
+        guard let reference = references.first(where: { $0.id == id }) else { return }
+        let inFolder: Set<UUID> =
+            switch sidebarSelection {
+            case .collection(let folder): collections.descendantIDs(of: folder)
+            case .all, .unfiled, .tag, .reference, nil: []
+            }
+        let parent =
+            reference.collectionIDs.first(where: inFolder.contains)
+            ?? collectionChoices.first { reference.collectionIDs.contains($0.id) }?.id
+        sidebarSelection = .reference(id, parent: parent)
+    }
+
+    /// 論文を見ているときの、その論文の行の親のフォルダ（検索を始めたときに一覧へ戻るため）。
+    public func returnToFolder() {
+        guard case .reference(_, let parent) = sidebarSelection else { return }
+        sidebarSelection = parent.map(SidebarItem.collection) ?? .unfiled
     }
 
     public var storageURL: URL {
@@ -122,7 +158,7 @@ public final class LibraryViewModel {
             noticeMessage =
                 result.total == 0
                 ? "書誌情報が見つかっていない文献はありません"
-                : "\(result.total) 件のうち \(result.found) 件の書誌情報が見つかりました。見つからなかった文献は、題名だけ PDF から拾い直しました"
+                : "\(result.total) 件のうち \(result.found) 件の書誌情報が見つかりました。見つからなかった文献は、題名、著者、年を PDF とファイル名から埋め直しました"
         } catch {
             errorMessage = error.message
         }
@@ -136,6 +172,7 @@ public final class LibraryViewModel {
     }
 
     public func delete(_ ids: Set<UUID>) async {
+        if let id = selectedReferenceID, ids.contains(id) { returnToFolder() }
         do {
             try await library.delete(Array(ids))
             selection.subtract(ids)
@@ -205,6 +242,14 @@ public final class LibraryViewModel {
     /// 選んでいるコレクションから外す（文献は消さない）。
     public func removeFromSelectedCollection(_ ids: Set<UUID>) async {
         guard let collectionID = selectedCollectionID else { return }
+        await remove(ids, fromCollection: collectionID)
+    }
+
+    /// コレクションから外す（文献は消さない）。外した論文の行を見ていたら、そのコレクションの一覧に戻る。
+    public func remove(_ ids: Set<UUID>, fromCollection collectionID: UUID) async {
+        if case .reference(let id, collectionID) = sidebarSelection, ids.contains(id) {
+            sidebarSelection = .collection(collectionID)
+        }
         do {
             try await library.remove(Array(ids), from: collectionID)
         } catch {
@@ -212,7 +257,62 @@ public final class LibraryViewModel {
         }
     }
 
-    // MARK: - 書き出し
+    // MARK: - 読み込み
+
+    private var scope: LibraryScope {
+        switch sidebarSelection {
+        case .all, nil: .all
+        case .unfiled: .unfiled
+        case .collection(let id): .collection(id)
+        case .tag(let tag): .tag(tag)
+        case .reference: .all
+        }
+    }
+
+    private func reload() async {
+        do {
+            references = try await library.references()
+            collections = try await library.collections()
+        } catch {
+            errorMessage = error.message
+            return
+        }
+        tags = references.allTags
+        let tree = SidebarTree(references: references, collections: collections)
+        collectionTree = tree.collectionNodes(parentID: nil)
+        unfiledNode = tree.unfiledNode
+        collectionChoices = tree.choices(parentID: nil, prefix: "")
+        selection.formIntersection(references.map(\.id))
+    }
+
+    private func select(_ id: UUID) async {
+        await reload()
+        // 足した文献が今の一覧に出ないときは、検索をやめて、すべての文献を見せる
+        if !rows.contains(where: { $0.id == id }) {
+            query = ""
+            sidebarSelection = .all
+        }
+        selection = [id]
+    }
+
+    /// 選んだ論文の行が見えるように、親のコレクションを開く。
+    private func revealSelection() {
+        guard case .reference(_, let parent) = sidebarSelection else { return }
+        guard let parent else {
+            expandedItems.insert(.unfiled)
+            return
+        }
+        var current: UUID? = parent
+        while let id = current {
+            expandedItems.insert(.collection(id))
+            current = collections.first { $0.id == id }?.parentID
+        }
+    }
+}
+
+// MARK: - 書き出し
+
+extension LibraryViewModel {
 
     public func bibTeX(for ids: Set<UUID>) async -> String {
         do {
@@ -240,63 +340,8 @@ public final class LibraryViewModel {
             switch sidebarSelection {
             case .collection(let id): collectionName(id)
             case .tag(let tag): tag
-            case .all, .unfiled, nil: "library"
+            case .all, .unfiled, .reference, nil: "library"
             }
         return "\(name).bib"
-    }
-
-    // MARK: - 読み込み
-
-    private var scope: LibraryScope {
-        switch sidebarSelection {
-        case .all, nil: .all
-        case .unfiled: .unfiled
-        case .collection(let id): .collection(id)
-        case .tag(let tag): .tag(tag)
-        }
-    }
-
-    private func reload() async {
-        do {
-            references = try await library.references()
-            collections = try await library.collections()
-        } catch {
-            errorMessage = error.message
-            return
-        }
-        tags = references.allTags
-        collectionTree = tree(parentID: nil)
-        collectionChoices = choices(parentID: nil, prefix: "")
-        selection.formIntersection(references.map(\.id))
-    }
-
-    private func select(_ id: UUID) async {
-        await reload()
-        // 足した文献が今の一覧に出ないときは、検索をやめて、すべての文献を見せる
-        if !rows.contains(where: { $0.id == id }) {
-            query = ""
-            sidebarSelection = .all
-        }
-        selection = [id]
-    }
-
-    private func tree(parentID: UUID?) -> [CollectionNode] {
-        collections.filter { $0.parentID == parentID }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-            .map { collection in
-                let children = tree(parentID: collection.id)
-                return CollectionNode(
-                    id: collection.id, name: collection.name, children: children.isEmpty ? nil : children)
-            }
-    }
-
-    private func choices(parentID: UUID?, prefix: String) -> [CollectionChoice] {
-        collections.filter { $0.parentID == parentID }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-            .flatMap { collection in
-                let path = prefix + collection.name
-                return [CollectionChoice(id: collection.id, path: path)]
-                    + choices(parentID: collection.id, prefix: path + " / ")
-            }
     }
 }

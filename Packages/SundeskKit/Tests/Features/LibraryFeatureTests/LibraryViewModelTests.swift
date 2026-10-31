@@ -58,6 +58,38 @@ struct LibraryViewModelTests {
         #expect(viewModel.rows.isEmpty)
     }
 
+    @Test("サイドバーの木には、コレクションの中に論文が並ぶ。一覧から開くと、親のコレクションが開いて、その行が選ばれる")
+    func sidebarTree() async throws {
+        let test = try TestLibrary()
+        let viewModel = test.dependencies.makeLibrary()
+        let watching = Task { await viewModel.start() }
+        defer { watching.cancel() }
+        await viewModel.createCollection(named: "研究", parentID: nil)
+        let parentID = try #require(viewModel.selectedCollectionID)
+        await viewModel.createCollection(named: "最適化", parentID: parentID)
+        let childID = try #require(viewModel.selectedCollectionID)
+        await viewModel.addBlank()
+        let paper = try #require(viewModel.rows.first)
+        viewModel.sidebarSelection = .all
+        await viewModel.addBlank()
+        viewModel.sidebarSelection = .all
+        await waitUntil { viewModel.unfiledNode.children?.count == 1 }
+
+        let child = try #require(viewModel.collectionTree.first?.children?.first)
+        #expect(child.id == .collection(childID))
+        #expect(child.children?.map(\.id) == [.reference(paper.id, parent: childID)])
+
+        viewModel.sidebarSelection = .collection(parentID)
+        viewModel.openReference(paper.id)
+
+        #expect(viewModel.sidebarSelection == .reference(paper.id, parent: childID))
+        #expect(viewModel.selectedReferenceID == paper.id)
+        #expect(viewModel.expandedItems.isSuperset(of: [.collection(parentID), .collection(childID)]))
+
+        viewModel.returnToFolder()
+        #expect(viewModel.sidebarSelection == .collection(childID))
+    }
+
     @Test("検索で絞り、消すと一覧と選択から外れる")
     func searchAndDelete() async throws {
         let viewModel = try TestLibrary().dependencies.makeLibrary()

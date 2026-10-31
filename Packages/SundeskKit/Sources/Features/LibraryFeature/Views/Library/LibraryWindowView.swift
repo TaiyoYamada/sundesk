@@ -9,7 +9,7 @@ import SundeskDesignSystem
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// ライブラリのウインドウ（サイドバー、文献の一覧、選んだ文献の詳細）。
+/// ライブラリのウインドウ。左のサイドバーでフォルダを選ぶと文献の一覧を、論文を選ぶとその PDF を、右の全部に出す。
 public struct LibraryWindowView: View {
     private let dependencies: LibraryDependencies
     @State private var viewModel: LibraryViewModel
@@ -24,17 +24,18 @@ public struct LibraryWindowView: View {
     public var body: some View {
         NavigationSplitView {
             LibrarySidebar(viewModel: viewModel)
-                .navigationSplitViewColumnWidth(min: 180, ideal: 220)
-        } content: {
-            ReferenceTable(viewModel: viewModel)
-                .navigationSplitViewColumnWidth(min: 320, ideal: 460)
+                .navigationSplitViewColumnWidth(min: 220, ideal: 300, max: 480)
         } detail: {
-            detail
-                .navigationSplitViewColumnWidth(min: 480, ideal: 760)
+            // 帯は右側にだけ出す（ウインドウ全体に出すと、サイドバーの上の行を隠す）
+            detail.safeAreaInset(edge: .top, spacing: 0) { banners }
         }
         .searchable(text: $viewModel.query, placement: .toolbar, prompt: "題名、著者、年、タグ")
+        // 論文を見ているときに検索を始めたら、その論文のあるフォルダの一覧に戻る
+        .onChange(of: viewModel.query) { _, query in
+            if !query.isEmpty { viewModel.returnToFolder() }
+        }
         .toolbar { toolbar }
-        .safeAreaInset(edge: .top, spacing: 0) { banners }
+        .toolbar(removing: .title)
         .focusedSceneValue(viewModel)
         .task { await viewModel.start() }
         .sheet(isPresented: $viewModel.isAddingIdentifier) {
@@ -56,15 +57,13 @@ public struct LibraryWindowView: View {
 
     @ViewBuilder
     private var detail: some View {
-        if viewModel.selection.count == 1, let id = viewModel.selection.first {
+        if let id = viewModel.selectedReferenceID {
             ReferenceWorkspace(
                 viewModel: dependencies.makeReader(id), tab: $inspectorTab, isInspectorPresented: $isInspectorPresented
             )
             .id(id)
         } else {
-            ContentUnavailableView(
-                viewModel.selection.isEmpty ? "文献を選んでください" : "\(viewModel.selection.count) 件を選んでいます",
-                systemImage: "doc.text")
+            ReferenceTable(viewModel: viewModel)
         }
     }
 
@@ -73,6 +72,7 @@ public struct LibraryWindowView: View {
         ToolbarItemGroup(placement: .primaryAction) {
             // ショートカットはメニューバー（AppFeature の LibraryCommands）にある
             Button("文献を足す", systemImage: "plus") { viewModel.isAddingIdentifier = true }
+                .labelStyle(.titleAndIcon)
                 .help("DOI、arXiv の ID、ISBN から文献を足す（⌘N）")
             Menu {
                 Button("選んだ文献の BibTeX をコピー") { Task { await viewModel.copyBibTeX(for: viewModel.selection) } }
@@ -81,6 +81,7 @@ public struct LibraryWindowView: View {
                     .disabled(viewModel.rows.isEmpty)
             } label: {
                 Label("BibTeX", systemImage: "curlybraces")
+                    .labelStyle(.titleAndIcon)
             }
             .help("BibTeX を書き出す")
         }
