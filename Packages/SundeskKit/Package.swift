@@ -7,8 +7,8 @@ import PackageDescription
 //   App/            AppFeature … 画面全体の組み立てと DI。全モジュールを知る唯一の場所
 //   Features/       機能ごとの Presentation 層（ViewModel と View）。Features どうしは直接依存しない
 //   Core/           Domain（どこにも依存しない）、Data（Repository の実装）、DesignSystem
-//   Infrastructure/ 外部の技術を包む（Python エンジン、Markdown の解析、コードの色づけ）
-//   UI/             機能をまたいで使う画面の部品（閲覧と編集、HTML の表示）
+//   Infrastructure/ 外部の技術を包む（Markdown の解析、コードの色づけ）
+//   UI/             機能をまたいで使う画面の部品（Markdown のメモの閲覧と編集）
 
 /// Domain、Data、Infrastructure: 既定で nonisolated（Swift 6 の標準）。
 let coreSettings: [SwiftSetting] = [
@@ -47,7 +47,6 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/hmlongco/Factory", .upToNextMajor(from: "3.4.1")),
-        .package(url: "https://github.com/swiftlang/swift-subprocess", .upToNextMinor(from: "1.0.0")),
         .package(url: "https://github.com/swiftlang/swift-markdown", .upToNextMinor(from: "0.9.0")),
         .package(url: "https://github.com/mgriebling/SwiftMath", .upToNextMajor(from: "1.7.3")),
         .package(url: "https://github.com/tree-sitter/swift-tree-sitter", .upToNextMinor(from: "0.10.0")),
@@ -73,11 +72,7 @@ let package = Package(
         .target(
             name: "AppFeature",
             dependencies: [
-                "WorkspaceFeature", "NotesFeature", "LibraryFeature", "GraphFeature", "ChatFeature", "LabFeature",
-                "ImagesFeature",
-                "EngineFeature", "SettingsFeature",
-                "SundeskDomain", "SundeskData", "SundeskDesignSystem",
-                "SundeskEngineClient", "SundeskMarkdown",
+                "LibraryFeature", "SettingsFeature", "SundeskDomain", "SundeskData", "SundeskDesignSystem",
                 .product(name: "FactoryKit", package: "Factory"),
             ],
             path: "Sources/App/AppFeature",
@@ -87,59 +82,14 @@ let package = Package(
         // MARK: - Features
 
         .target(
-            name: "WorkspaceFeature",
-            dependencies: [
-                "NotesFeature", "LibraryFeature", "GraphFeature", "ChatFeature", "LabFeature", "ImagesFeature",
-                "EngineFeature", "SundeskDomain", "SundeskDesignSystem",
-            ],
-            path: "Sources/Features/WorkspaceFeature",
-            swiftSettings: uiSettings
-        ),
-        .target(
-            name: "NotesFeature",
-            dependencies: ["SundeskDomain", "SundeskDesignSystem", "SundeskEditorUI", "SundeskWebView"],
-            path: "Sources/Features/NotesFeature",
-            swiftSettings: uiSettings
-        ),
-        .target(
-            name: "GraphFeature",
-            dependencies: ["SundeskDomain", "SundeskDesignSystem", "SundeskGraphRenderer"],
-            path: "Sources/Features/GraphFeature",
-            swiftSettings: uiSettings
-        ),
-        .target(
-            name: "ChatFeature",
-            dependencies: ["SundeskDomain", "SundeskDesignSystem"],
-            path: "Sources/Features/ChatFeature",
-            swiftSettings: uiSettings
-        ),
-        .target(
-            name: "LabFeature",
-            dependencies: ["SundeskDomain", "SundeskDesignSystem", "SundeskEditorUI"],
-            path: "Sources/Features/LabFeature",
-            swiftSettings: uiSettings
-        ),
-        .target(
-            name: "ImagesFeature",
-            dependencies: ["SundeskDomain", "SundeskDesignSystem"],
-            path: "Sources/Features/ImagesFeature",
-            swiftSettings: uiSettings
-        ),
-        .target(
             name: "LibraryFeature",
-            dependencies: ["SundeskDomain", "SundeskDesignSystem"],
+            dependencies: ["SundeskDomain", "SundeskDesignSystem", "SundeskEditorUI"],
             path: "Sources/Features/LibraryFeature",
             swiftSettings: uiSettings
         ),
         .target(
-            name: "EngineFeature",
-            dependencies: ["SundeskDomain", "SundeskDesignSystem"],
-            path: "Sources/Features/EngineFeature",
-            swiftSettings: uiSettings
-        ),
-        .target(
             name: "SettingsFeature",
-            dependencies: ["SundeskDomain", "SundeskDesignSystem"],
+            dependencies: ["SundeskDesignSystem"],
             path: "Sources/Features/SettingsFeature",
             swiftSettings: uiSettings
         ),
@@ -153,7 +103,7 @@ let package = Package(
         ),
         .target(
             name: "SundeskData",
-            dependencies: ["SundeskDomain", "SundeskEngineClient"],
+            dependencies: ["SundeskDomain"],
             path: "Sources/Core/SundeskData",
             swiftSettings: coreSettings
         ),
@@ -166,14 +116,8 @@ let package = Package(
         // MARK: - Infrastructure
 
         .target(
-            name: "SundeskEngineClient",
-            dependencies: [.product(name: "Subprocess", package: "swift-subprocess")],
-            path: "Sources/Infrastructure/SundeskEngineClient",
-            swiftSettings: coreSettings
-        ),
-        .target(
             name: "SundeskMarkdown",
-            dependencies: ["SundeskDomain", .product(name: "Markdown", package: "swift-markdown")],
+            dependencies: [.product(name: "Markdown", package: "swift-markdown")],
             path: "Sources/Infrastructure/SundeskMarkdown",
             swiftSettings: coreSettings
         ),
@@ -205,76 +149,13 @@ let package = Package(
             path: "Sources/UI/SundeskEditorUI",
             swiftSettings: uiSettings
         ),
-        .target(
-            name: "SundeskGraphRenderer",
-            path: "Sources/UI/SundeskGraphRenderer",
-            swiftSettings: uiSettings
-        ),
-        .target(
-            name: "SundeskWebView",
-            path: "Sources/UI/SundeskWebView",
-            swiftSettings: uiSettings
-        ),
 
         // MARK: - Tests
 
         .testTarget(
-            name: "AppFeatureTests",
-            dependencies: [
-                "AppFeature", "WorkspaceFeature", "NotesFeature", "EngineFeature", "SundeskDomain", "SundeskData",
-                "SundeskEngineClient",
-                .product(name: "FactoryKit", package: "Factory"),
-                .product(name: "FactoryTesting", package: "Factory"),
-            ],
-            path: "Tests/App/AppFeatureTests",
-            swiftSettings: uiSettings
-        ),
-        .testTarget(
-            name: "NotesFeatureTests",
-            dependencies: ["NotesFeature", "SundeskDomain"],
-            path: "Tests/Features/NotesFeatureTests",
-            swiftSettings: uiSettings
-        ),
-        .testTarget(
-            name: "WorkspaceFeatureTests",
-            dependencies: ["WorkspaceFeature", "NotesFeature", "SundeskDomain"],
-            path: "Tests/Features/WorkspaceFeatureTests",
-            swiftSettings: uiSettings
-        ),
-        .testTarget(
-            name: "GraphFeatureTests",
-            dependencies: ["GraphFeature", "SundeskDomain"],
-            path: "Tests/Features/GraphFeatureTests",
-            swiftSettings: uiSettings
-        ),
-        .testTarget(
-            name: "ChatFeatureTests",
-            dependencies: ["ChatFeature", "SundeskDomain"],
-            path: "Tests/Features/ChatFeatureTests",
-            swiftSettings: uiSettings
-        ),
-        .testTarget(
-            name: "LabFeatureTests",
-            dependencies: ["LabFeature", "SundeskDomain"],
-            path: "Tests/Features/LabFeatureTests",
-            swiftSettings: uiSettings
-        ),
-        .testTarget(
-            name: "ImagesFeatureTests",
-            dependencies: ["ImagesFeature", "SundeskDomain"],
-            path: "Tests/Features/ImagesFeatureTests",
-            swiftSettings: uiSettings
-        ),
-        .testTarget(
             name: "LibraryFeatureTests",
-            dependencies: ["LibraryFeature", "SundeskDomain"],
+            dependencies: ["LibraryFeature", "SundeskDomain", "SundeskData"],
             path: "Tests/Features/LibraryFeatureTests",
-            swiftSettings: uiSettings
-        ),
-        .testTarget(
-            name: "EngineFeatureTests",
-            dependencies: ["EngineFeature", "SundeskDomain"],
-            path: "Tests/Features/EngineFeatureTests",
             swiftSettings: uiSettings
         ),
         .testTarget(
@@ -285,19 +166,13 @@ let package = Package(
         ),
         .testTarget(
             name: "SundeskDataTests",
-            dependencies: ["SundeskData", "SundeskDomain", "SundeskEngineClient", "SundeskMarkdown"],
+            dependencies: ["SundeskData", "SundeskDomain"],
             path: "Tests/Core/SundeskDataTests",
             swiftSettings: coreSettings
         ),
         .testTarget(
-            name: "SundeskEngineClientTests",
-            dependencies: ["SundeskEngineClient"],
-            path: "Tests/Infrastructure/SundeskEngineClientTests",
-            swiftSettings: coreSettings
-        ),
-        .testTarget(
             name: "SundeskMarkdownTests",
-            dependencies: ["SundeskMarkdown", "SundeskDomain"],
+            dependencies: ["SundeskMarkdown"],
             path: "Tests/Infrastructure/SundeskMarkdownTests",
             swiftSettings: coreSettings
         ),
@@ -311,18 +186,6 @@ let package = Package(
             name: "SundeskEditorUITests",
             dependencies: ["SundeskEditorUI", "SundeskMarkdown", "SundeskCodeHighlight"],
             path: "Tests/UI/SundeskEditorUITests",
-            swiftSettings: uiSettings
-        ),
-        .testTarget(
-            name: "SundeskGraphRendererTests",
-            dependencies: ["SundeskGraphRenderer"],
-            path: "Tests/UI/SundeskGraphRendererTests",
-            swiftSettings: uiSettings
-        ),
-        .testTarget(
-            name: "SundeskWebViewTests",
-            dependencies: ["SundeskWebView"],
-            path: "Tests/UI/SundeskWebViewTests",
             swiftSettings: uiSettings
         ),
     ]
