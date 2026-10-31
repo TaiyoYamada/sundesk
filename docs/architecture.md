@@ -61,7 +61,7 @@ sundesk/
 │   ├── Sources/
 │   │   ├── App/AppFeature/              Composition Root（Factory への登録）、ウインドウ、メニュー
 │   │   ├── Features/
-│   │   │   ├── LibraryFeature/          ライブラリのウインドウ、文献の詳細、PDF を読むウインドウ
+│   │   │   ├── LibraryFeature/          ライブラリのウインドウ（サイドバー、一覧、PDF とインスペクタ）
 │   │   │   └── SettingsFeature/         設定の画面（外観、保存先）
 │   │   ├── Core/
 │   │   │   ├── SundeskDomain/           Entity、UseCase、Repository の protocol、BibTeX、要約の区切り方
@@ -99,12 +99,13 @@ sundesk/
 
 | ウインドウ | 中身 |
 |---|---|
-| ライブラリ（`Window`、1 つだけ） | 左: すべての文献、未整理、コレクション（入れ子）、タグ。中: 文献の一覧（`Table`）。右: 選んだ文献の情報、メモ、要約 |
-| PDF を読む（`WindowGroup(for: UUID.self)`、文献ごと） | PDFView と、右のインスペクタ（注釈、メモ、要約） |
+| ライブラリ（`Window`、1 つだけ） | 左: すべての文献、未整理、コレクション（入れ子）、タグ。中: 文献の一覧（`Table`）。右: 選んだ文献の PDF（PDFView）と、インスペクタ（情報、注釈、メモ、要約） |
 | 設定 | 外観、保存先の場所 |
 
 - 一覧に PDF をドロップすると取り込む。行をサイドバーのコレクションへドラッグすると、そこに入れる（選んでいる行の 1 つなら、選んでいる行すべて）
-- 一覧の行をダブルクリックすると、PDF を読むウインドウを開く
+- 一覧で選ぶと、右にそのまま PDF を出す（`ReferenceWorkspace`）。インスペクタのタブと開閉は `@AppStorage` に残し、文献を切り替えても保つ。
+  行をダブルクリックすると、Mac の既定のアプリで PDF を開く
+- コレクションは、別のコレクションへドラッグすると中へ移る（自分の中へは移さない）。右クリックで一番上の階層へ戻せる
 - 文献を足す操作と BibTeX の書き出しは「ファイル」メニューにある（`LibraryCommands`。`@FocusedValue` でライブラリの ViewModel を受け取る）
 - 編集は `ReferenceDetailViewModel` が 0.6 秒待ってから保存する。保存を待っている間に変更の知らせが来ても、画面の値を残す。
   画面を閉じるときは待たずに保存する（`flush()`）
@@ -116,17 +117,21 @@ sundesk/
 ```
 識別子（DOI / arXiv / ISBN） ─ ReferenceIdentifier(parsing:) ─┐
                                                             ├→ LibraryInteractor → SwiftDataReferenceRepository
-PDF ─ PDFKitReader（最初の 3 ページの DOI / arXiv の ID）──┘          └→ FileAttachmentStore（Storage/<ID>/）
+PDF ─ PDFKitReader（DOI / arXiv の ID、題名の候補）───────┘          └→ FileAttachmentStore（Storage/<ID>/）
                                      │
                          OnlineBibliography（通信するのはここだけ）
                          ├ DOI   → doi.org（Accept: application/vnd.citationstyles.csl+json）→ CSLItem
                          │         arXiv の DOI（10.48550/arXiv.*）は arXiv の API に回す
                          ├ arXiv → export.arxiv.org の API（Atom）→ ArxivFeed、PDF は arxiv.org/pdf
-                         └ ISBN  → Open Library の Books API → OpenLibraryBook
+                         ├ ISBN  → Open Library の Books API → OpenLibraryBook
+                         └ 検索  → Crossref の /works?query.bibliographic= → CSLItem
 ```
 
 - doi.org は、Crossref の DOI には Crossref の種類の名前（`journal-article` など）を返し、値の型も揺れる（題名が文字列か配列か、巻が文字列か数か）。
   `ReferenceType(csl:)` と `FlexibleText` で、どちらでも読む
+- DOI も arXiv の ID もない PDF は、`PDFKitReader.titleCandidates`（1 ページ目と 2 ページ目でいちばん大きい文字、埋め込みの題名）で
+  Crossref を検索し、`PaperTitle.matches` で題名が合うものを採る。合わなければ、`FileNameHint`（ファイル名の年と語）で検索し、
+  年、筆頭著者、題名の語が合うものを採る。埋め込みの題名は、元の文書のファイル名や壊れた記号の列のことがあるので、`PaperTitle.isPlausible` で除く
 - 引用キーは `CitationKey.make` が付ける。保存するときに空なら付け直す
 
 ## 6. 要約
