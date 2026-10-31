@@ -60,18 +60,15 @@ public struct LibraryInteractor: ManageLibraryUseCase {
     public func importPDF(_ url: URL, into collectionID: UUID?) async throws(LibraryError) -> Reference {
         guard !pdfs.pages(of: url).isEmpty else { throw .unreadablePDF }
         let all = try await repository.references()
-        let identifier = pdfs.identifier(in: url)
-        if let identifier, let existing = all.first(where: { $0.metadata.matches(identifier) }) {
+        if let identifier = pdfs.identifier(in: url),
+            let existing = all.first(where: { $0.metadata.matches(identifier) })
+        {
             if existing.attachment == nil { try await attachPDF(url, to: existing.id) }
             return try await repository.reference(existing.id) ?? existing
         }
 
-        // 書誌情報が引けなくても、PDF の題名で足しておく（あとで手で直せる）
-        var metadata = ReferenceMetadata(
-            type: .document, title: pdfs.title(in: url) ?? url.deletingPathExtension().lastPathComponent)
-        if let identifier, let fetched = try? await bibliography.metadata(for: identifier) {
-            metadata = fetched
-        }
+        // 書誌情報が見つからなくても、PDF の題名で足しておく（あとで手で直せる）
+        let metadata = await identify(url) ?? ReferenceMetadata(type: .document, title: fallbackTitle(of: url))
         let reference = try await create(metadata, into: collectionID, existing: all)
         try await attachPDF(url, to: reference.id)
         return try await repository.reference(reference.id) ?? reference
@@ -106,9 +103,67 @@ public struct LibraryInteractor: ManageLibraryUseCase {
         let metadata = reference.metadata
         let identifier =
             [metadata.doi, metadata.arxiv, metadata.isbn].lazy.compactMap(ReferenceIdentifier.init(parsing:)).first
-        guard let identifier else { throw .invalidIdentifier(metadata.title) }
-        reference.metadata = try await bibliography.metadata(for: identifier)
+        if let identifier {
+            reference.metadata = try await bibliography.metadata(for: identifier)
+        } else if let pdf = pdfURL(of: reference), let found = await identify(pdf) {
+            reference.metadata = found
+        } else {
+            throw .notFound("「\(metadata.title)」")
+        }
         try await save(reference)
+    }
+
+    public func findMissingMetadata(
+        progress: @Sendable (Int, Int) async -> Void
+    ) async throws(LibraryError) -> (found: Int, total: Int) {
+        let targets = try await repository.references().filter { reference in
+            let metadata = reference.metadata
+            return reference.attachment != nil && metadata.doi.isEmpty && metadata.arxiv.isEmpty
+                && metadata.isbn.isEmpty
+        }
+        var found = 0
+        for (index, target) in targets.enumerated() {
+            await progress(index + 1, targets.count)
+            guard var reference = try await repository.reference(target.id), let pdf = pdfURL(of: reference)
+            else { continue }
+            if let metadata = await identify(pdf) {
+                reference.metadata = metadata
+                found += 1
+            } else if reference.metadata.type == .document {
+                // 書誌情報を探せず、題名も PDF から拾ったままの文献だけ、題名を拾い直す（手で直した題名は残す）
+                reference.metadata.title = fallbackTitle(of: pdf)
+            } else {
+                continue
+            }
+            try await save(reference)
+        }
+        return (found, targets.count)
+    }
+
+    /// PDF の DOI か arXiv の ID、題名の候補、ファイル名の順に、書誌情報を探す。
+    /// どの段でも、ファイル名の年と筆頭著者に食い違うものは採らない。
+    private func identify(_ pdf: URL) async -> ReferenceMetadata? {
+        let hint = FileNameHint(fileName: pdf.lastPathComponent)
+        if let identifier = pdfs.identifier(in: pdf), let metadata = try? await bibliography.metadata(for: identifier),
+            !PaperTitle.contradicts(metadata, hint: hint)
+        {
+            return metadata
+        }
+        for title in pdfs.titleCandidates(in: pdf) {
+            let results = (try? await bibliography.search(title)) ?? []
+            if let found = results.first(where: {
+                PaperTitle.matches($0, title: title) && !PaperTitle.contradicts($0, hint: hint)
+            }) {
+                return found
+            }
+        }
+        guard hint.words.count >= 2 else { return nil }
+        let results = (try? await bibliography.search(hint.query)) ?? []
+        return results.first { PaperTitle.matches($0, hint: hint) }
+    }
+
+    private func fallbackTitle(of pdf: URL) -> String {
+        pdfs.titleCandidates(in: pdf).first ?? pdf.deletingPathExtension().lastPathComponent
     }
 
     public func delete(_ ids: [UUID]) async throws(LibraryError) {

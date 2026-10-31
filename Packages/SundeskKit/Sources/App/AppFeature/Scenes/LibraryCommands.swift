@@ -28,6 +28,15 @@ struct LibraryCommands: Commands {
             .disabled(library == nil)
         }
 
+        CommandGroup(after: .newItem) {
+            Divider()
+            Button("見つかっていない書誌情報を探す") {
+                let library = library
+                Task { await library?.findMissingMetadata() }
+            }
+            .disabled(library == nil)
+        }
+
         CommandGroup(replacing: .importExport) {
             Button("選んだ文献の BibTeX をコピー") {
                 guard let library else { return }

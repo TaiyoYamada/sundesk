@@ -35,6 +35,30 @@ struct BibliographyParsingTests {
         #expect(metadata.abstract == "Text here")
     }
 
+    @Test("Crossref の検索の応答（items の配列）を読み、題名のないものは飛ばす")
+    func crossrefSearch() {
+        let json = """
+            {"status":"ok","message":{"items":[
+              {"DOI":"10.1007/3-540-45356-3_35","type":"book-chapter","author":[{"family":"Hansen","given":"Nikolaus"}],
+               "title":["Invariance, Self-Adaptation and Correlated Mutations in Evolution Strategies"],
+               "issued":{"date-parts":[[2000]]}},
+              {"DOI":"10.1/none"}
+            ]}}
+            """
+        let results = CSLItem.parseSearch(Data(json.utf8))
+
+        #expect(results.count == 1)
+        #expect(results.first?.type == .bookChapter)
+        #expect(results.first?.doi == "10.1007/3-540-45356-3_35")
+        #expect(results.first?.issued == PartialDate(year: 2000))
+    }
+
+    @Test("日本語の 1 文字ずつの空白を詰める")
+    func joiningCJK() {
+        #expect(BibliographyText.joiningCJK("暗 算 習 熟 者 に お け る") == "暗算習熟者における")
+        #expect(BibliographyText.joiningCJK("CMA-ES の 研究 and more") == "CMA-ES の研究 and more")
+    }
+
     @Test("題名のない応答は読まない")
     func missingTitle() {
         #expect(CSLItem.parse(Data(#"{"type":"article"}"#.utf8)) == nil)

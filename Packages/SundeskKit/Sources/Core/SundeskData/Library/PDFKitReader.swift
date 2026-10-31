@@ -5,6 +5,7 @@
 //  Created by 山田大陽 on 2026/11/01.
 //
 
+import AppKit
 import Foundation
 import PDFKit
 import SundeskDomain
@@ -26,14 +27,39 @@ public struct PDFKitReader: PDFReading {
         return nil
     }
 
-    public func title(in pdf: URL) -> String? {
-        guard let document = PDFDocument(url: pdf) else { return nil }
-        if let title = document.documentAttributes?[PDFDocumentAttribute.titleAttribute] as? String, title.count > 8 {
-            return title
+    public func titleCandidates(in pdf: URL) -> [String] {
+        guard let document = PDFDocument(url: pdf) else { return [] }
+        var candidates = (0..<min(document.pageCount, 2)).compactMap { document.page(at: $0).flatMap(largestText) }
+        if let title = document.documentAttributes?[PDFDocumentAttribute.titleAttribute] as? String {
+            candidates.append(title)
         }
-        return document.page(at: 0)?.string?.split(separator: "\n")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .first { $0.count > 15 && !$0.lowercased().contains("arxiv") }
+        var seen: Set<String> = []
+        return candidates.map { BibliographyText.joiningCJK(BibliographyText.clean($0)) }
+            .filter { PaperTitle.isPlausible($0) && seen.insert($0).inserted }
+    }
+
+    /// ページでいちばん大きい文字のまとまり（題名はたいていこれ）。題名らしくなければ、次に大きい文字を見る。
+    private func largestText(on page: PDFPage) -> String? {
+        guard let text = page.attributedString, text.length > 0 else { return nil }
+        var runs: [(text: String, size: CGFloat)] = []
+        text.enumerateAttribute(.font, in: NSRange(location: 0, length: text.length)) { value, range, _ in
+            let size = (value as? NSFont)?.pointSize ?? 0
+            runs.append(((text.string as NSString).substring(with: range), size))
+        }
+        let sizes = Set(runs.filter { $0.text.contains(where: \.isLetter) }.map(\.size)).sorted(by: >)
+        for size in sizes.prefix(4) {
+            // その大きさの文字が最初に出てくるところから、大きさが変わるまでをつなぐ（空白や改行は挟んでよい）
+            guard let start = runs.firstIndex(where: { $0.size == size && $0.text.contains(where: \.isLetter) })
+            else { continue }
+            var block = ""
+            for run in runs[start...] {
+                guard run.size == size || run.text.allSatisfy(\.isWhitespace) else { break }
+                block += run.text
+            }
+            let cleaned = BibliographyText.joiningCJK(BibliographyText.clean(block))
+            if PaperTitle.isPlausible(cleaned) { return cleaned }
+        }
+        return nil
     }
 
     public func pages(of pdf: URL) -> [String] {

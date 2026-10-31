@@ -95,6 +95,9 @@ public struct LibraryWindowView: View {
             if let message = viewModel.errorMessage {
                 ErrorBanner(message: message) { viewModel.errorMessage = nil }
             }
+            if let message = viewModel.noticeMessage {
+                NoticeBanner(message: message) { viewModel.noticeMessage = nil }
+            }
         }
     }
 

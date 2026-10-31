@@ -11,8 +11,9 @@ import Foundation
 public protocol PDFReading: Sendable {
     /// 最初の数ページに書かれた DOI か arXiv の ID。
     func identifier(in pdf: URL) -> ReferenceIdentifier?
-    /// PDF の属性か 1 ページ目から推し量った題名。
-    func title(in pdf: URL) -> String?
+    /// 題名の候補（確からしい順）。1 ページ目でいちばん大きい文字、2 ページ目のそれ（1 ページ目が表紙のとき）、
+    /// PDF に埋め込まれた題名の順に並べ、題名としてありえないもの（``PaperTitle/isPlausible(_:)``）は除く。
+    func titleCandidates(in pdf: URL) -> [String]
     /// ページごとの文字。読めなければ空。
     func pages(of pdf: URL) -> [String]
 }

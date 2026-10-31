@@ -57,13 +57,57 @@ struct LibraryInteractorTests {
             bibliography: FakeBibliography(metadata: [.doi("10.1038/ncomms5213"): vqe]),
             pdfs: FakePDFReader(identifier: .doi("10.1038/ncomms5213"))
         ).importPDF(pdf, into: nil)
-        let unknown = try await interactor(pdfs: FakePDFReader(identifier: .doi("10.9999/x"), title: "題名"))
+        let unknown = try await interactor(pdfs: FakePDFReader(identifier: .doi("10.9999/x"), titles: ["題名の候補"]))
             .importPDF(URL(filePath: "/tmp/other.pdf"), into: nil)
 
         #expect(found.metadata.title == vqe.title)
         #expect(found.attachment != nil)
-        #expect(unknown.metadata.title == "題名")
+        #expect(unknown.metadata.title == "題名の候補")
         #expect(unknown.metadata.type == .document)
+    }
+
+    @Test("DOI がなければ、PDF の題名で検索し、題名が合うものを採る")
+    func importByTitleSearch() async throws {
+        let title = "A variational eigenvalue solver on a photonic quantum processor"
+        let other = ReferenceMetadata(title: "Something else entirely different")
+        let library = interactor(
+            bibliography: FakeBibliography(results: [title: [other, vqe]]), pdfs: FakePDFReader(titles: [title]))
+
+        let added = try await library.importPDF(URL(filePath: "/tmp/paper.pdf"), into: nil)
+
+        #expect(added.metadata.doi == "10.1038/ncomms5213")
+    }
+
+    @Test("題名で見つからなければ、ファイル名の語（著者、年、題名の略）で検索する")
+    func importByFileName() async throws {
+        let hint = FileNameHint(fileName: "2014_Peruzzo_variational-eigenvalue-solver_NatCommun.pdf")
+        let library = interactor(
+            bibliography: FakeBibliography(results: [hint.query: [vqe]]),
+            pdfs: FakePDFReader(titles: ["( %)*++ , - ./ \"# $0%1 2"]))
+
+        let added = try await library.importPDF(
+            URL(filePath: "/tmp/2014_Peruzzo_variational-eigenvalue-solver_NatCommun.pdf"), into: nil)
+
+        #expect(added.metadata.doi == "10.1038/ncomms5213")
+    }
+
+    @Test("見つかっていない書誌情報を探し直す。DOI のある文献は探さない")
+    func findMissing() async throws {
+        let title = "A variational eigenvalue solver on a photonic quantum processor"
+        let library = interactor(
+            bibliography: FakeBibliography(results: [title: [vqe]]), pdfs: FakePDFReader(titles: [title]))
+        let found = Reference(
+            metadata: ReferenceMetadata(type: .document, title: "Microsoft Word - x.doc"), attachment: "a/x.pdf")
+        let edited = Reference(metadata: ReferenceMetadata(type: .book, title: "手で直した題名"), attachment: "b/y.pdf")
+        let identified = Reference(metadata: vqe, attachment: "c/z.pdf")
+        for reference in [found, edited, identified] { await repository.save(reference) }
+
+        let result = try await library.findMissingMetadata { _, _ in }
+
+        #expect(result.found == 2)
+        #expect(result.total == 2)
+        #expect(await repository.reference(found.id)?.metadata.doi == "10.1038/ncomms5213")
+        #expect(await repository.reference(identified.id)?.metadata == vqe)
     }
 
     @Test("文字を読めない PDF は足さない")

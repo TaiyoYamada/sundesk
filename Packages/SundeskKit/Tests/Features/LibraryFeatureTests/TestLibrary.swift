@@ -63,6 +63,10 @@ struct StubBibliography: BibliographyService {
         return found
     }
 
+    func search(_ query: String) async throws(LibraryError) -> [ReferenceMetadata] {
+        []
+    }
+
     func downloadPDF(arxiv: String) async throws(LibraryError) -> URL {
         URL(filePath: "/tmp/\(arxiv).pdf")
     }
@@ -70,7 +74,7 @@ struct StubBibliography: BibliographyService {
 
 struct StubPDFReader: PDFReading {
     func identifier(in pdf: URL) -> ReferenceIdentifier? { nil }
-    func title(in pdf: URL) -> String? { "PDF の題名" }
+    func titleCandidates(in pdf: URL) -> [String] { ["PDF の題名"] }
     func pages(of pdf: URL) -> [String] { ["本文"] }
 }
 

@@ -19,6 +19,8 @@ public final class LibraryViewModel {
     public var selection: Set<UUID> = []
     public var sortOrder: [KeyPathComparator<ReferenceRow>]
     public var errorMessage: String?
+    /// 終わった操作の結果（「書誌情報が 80 件見つかりました」など）。
+    public var noticeMessage: String?
     /// 識別子を入れるシートを出しているか（メニューからも開く）。
     public var isAddingIdentifier = false
     /// PDF を選ぶパネルを出しているか。
@@ -109,6 +111,22 @@ public final class LibraryViewModel {
         } catch {
             errorMessage = error.message
         }
+    }
+
+    /// 書誌情報が見つかっていない文献を、PDF の題名とファイル名から探し直す。
+    public func findMissingMetadata() async {
+        do {
+            let result = try await library.findMissingMetadata { index, count in
+                await MainActor.run { self.progressMessage = "書誌情報を探しています（\(index) / \(count)）" }
+            }
+            noticeMessage =
+                result.total == 0
+                ? "書誌情報が見つかっていない文献はありません"
+                : "\(result.total) 件のうち \(result.found) 件の書誌情報が見つかりました。見つからなかった文献は、題名だけ PDF から拾い直しました"
+        } catch {
+            errorMessage = error.message
+        }
+        progressMessage = nil
     }
 
     /// PDF を、Mac の既定のアプリ（プレビューなど）で開く。

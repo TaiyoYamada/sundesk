@@ -83,6 +83,12 @@ final class FakeAttachmentStore: AttachmentStore, @unchecked Sendable {
 /// 決まった書誌情報を返す。
 struct FakeBibliography: BibliographyService {
     var metadata: [ReferenceIdentifier: ReferenceMetadata] = [:]
+    /// 検索の語ごとの結果。
+    var results: [String: [ReferenceMetadata]] = [:]
+
+    func search(_ query: String) async throws(LibraryError) -> [ReferenceMetadata] {
+        results[query] ?? []
+    }
 
     func metadata(for identifier: ReferenceIdentifier) async throws(LibraryError) -> ReferenceMetadata {
         guard let found = metadata[identifier] else { throw .notFound(identifier.text) }
@@ -97,10 +103,10 @@ struct FakeBibliography: BibliographyService {
 /// 決まった中身を返す PDF の読み手。
 struct FakePDFReader: PDFReading {
     var identifier: ReferenceIdentifier?
-    var title: String?
+    var titles: [String] = []
     var pages: [String] = ["本文"]
 
     func identifier(in pdf: URL) -> ReferenceIdentifier? { identifier }
-    func title(in pdf: URL) -> String? { title }
+    func titleCandidates(in pdf: URL) -> [String] { titles }
     func pages(of pdf: URL) -> [String] { pages }
 }

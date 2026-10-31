@@ -46,9 +46,18 @@ struct CSLItem: Decodable {
     }
 
     static func parse(_ data: Data) -> ReferenceMetadata? {
-        guard let item = try? JSONDecoder().decode(CSLItem.self, from: data),
-            let title = item.title?.value.map(BibliographyText.clean), !title.isEmpty
-        else { return nil }
+        (try? JSONDecoder().decode(CSLItem.self, from: data))?.metadata
+    }
+
+    /// Crossref の検索の応答（`message.items`）を読む。
+    static func parseSearch(_ data: Data) -> [ReferenceMetadata] {
+        ((try? JSONDecoder().decode(CrossrefSearchResponse.self, from: data))?.message.items ?? [])
+            .compactMap(\.metadata)
+    }
+
+    var metadata: ReferenceMetadata? {
+        let item = self
+        guard let title = item.title?.value.map(BibliographyText.clean), !title.isEmpty else { return nil }
         let names = item.author ?? item.editor ?? []
         return ReferenceMetadata(
             type: ReferenceType(csl: item.type ?? ""),
@@ -99,4 +108,13 @@ struct CSLDate: Decodable {
     var partialDate: PartialDate? {
         dateParts?.first.flatMap { parts in PartialDate(parts: parts.compactMap { $0.value.flatMap { Int($0) } }) }
     }
+}
+
+/// Crossref の検索の応答。結果は `message.items` に CSL JSON に近い形で入っている。
+struct CrossrefSearchResponse: Decodable {
+    struct Message: Decodable {
+        let items: [CSLItem]
+    }
+
+    let message: Message
 }
