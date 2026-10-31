@@ -6,25 +6,33 @@
 //
 
 import FactoryKit
+import LibraryFeature
 import SwiftUI
-import WorkspaceFeature
 
-/// アプリのすべての画面（メインウインドウ、設定）。アプリのターゲットはこれを表示するだけ。
+/// アプリのすべての画面（ライブラリ、PDF を読むウインドウ、設定）。アプリのターゲットはこれを表示するだけ。
 public struct SundeskScenes: Scene {
     public init() {}
 
     public var body: some Scene {
-        WindowGroup("sundesk", id: "main") {
-            MainWindowView(dependencies: Container.shared.workspaceDependencies())
-                .frame(minWidth: 900, minHeight: 560)
+        Window("sundesk", id: "library") {
+            LibraryWindowView(dependencies: Container.shared.libraryDependencies())
+                .frame(minWidth: 960, minHeight: 560)
         }
-        .defaultSize(width: 1200, height: 800)
+        .defaultSize(width: 1280, height: 800)
         .commands {
             SidebarCommands()
             ToolbarCommands()
-            WorkspaceCommands()
-            EngineCommands(engineStatus: Container.shared.engineStatusViewModel())
+            InspectorCommands()
+            LibraryCommands()
         }
+
+        WindowGroup(id: LibraryWindowView.readerWindowID, for: UUID.self) { $referenceID in
+            if let referenceID {
+                ReaderWindowView(dependencies: Container.shared.libraryDependencies(), referenceID: referenceID)
+                    .frame(minWidth: 720, minHeight: 520)
+            }
+        }
+        .defaultSize(width: 1200, height: 900)
 
         Settings {
             SettingsView()
