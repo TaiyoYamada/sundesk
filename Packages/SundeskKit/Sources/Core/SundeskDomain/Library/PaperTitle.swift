@@ -13,9 +13,15 @@ public enum PaperTitle {
     /// 文字の対応が壊れた記号の列（「( %)*++ , - ./」）のことがあるので除く。
     public static func isPlausible(_ text: String) -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard (8...300).contains(trimmed.count) else { return false }
+        guard (8...300).contains(trimmed.count), normalize(trimmed).count >= 10 else { return false }
         let lowered = trimmed.lowercased()
         if lowered.hasPrefix("microsoft word") || lowered.hasPrefix("untitled") { return false }
+        // リポジトリの表紙や、投稿原稿の欄外
+        let coverWords = [
+            "repository", "research report", "running head", "this is the author", "manuscript details",
+            "click here", "proceedings template",
+        ]
+        if coverWords.contains(where: lowered.contains) { return false }
         if trimmed.contains(":/") || trimmed.contains("\\") { return false }
         if lowered.wholeMatch(of: /.*\.(docx?|dvi|tiff?|indd|qxp|key|pdf|tex|ps)/) != nil { return false }
         // 雑誌の欄外（「Vol. 47 No. SIG 14」「VOL. 13, NO. 2」）

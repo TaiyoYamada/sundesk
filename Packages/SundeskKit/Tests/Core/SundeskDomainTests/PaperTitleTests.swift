@@ -17,7 +17,8 @@ struct PaperTitleTests {
             "Microsoft Word - tr062.doc", "D:/SVN2/GECCO2013_BBOB/templateBBOBmany.dvi", "gec457-comellas.dvi",
             "( %)*++ , - ./ \"# $0%1 2", "Vol. 47 No. SIG 14(TOM 15) 情報処理学会論文誌：数理モデル化と応用 Oct. 2006",
             "IEEE TRANSACTIONS ON EVOLUTIONARY COMPUTATION, VOL. 13, NO. 2, APRIL 2009 243", "Untitled.PDF",
-            "cma-es.key", "短い",
+            "cma-es.key", "短い", "UvA-DARE (Digital Academic Repository)",
+            "Running Head: A TRIAL OF MENTAL ABACUS INSTRUCTION 1",
         ])
     func implausible(title: String) {
         #expect(!PaperTitle.isPlausible(title))
@@ -121,7 +122,18 @@ struct PaperTitleTests {
         #expect(japanese.year == 1992)
         #expect(japanese.words == ["Tsugawa", "暗算習熟者の数の保持"])
 
+        #expect(japanese.authors == [Creator(family: "Tsugawa")])
+        #expect(japanese.title == "暗算習熟者の数の保持")
+
+        let pair = FileNameHint(fileName: "SieglerLemaire_1997_strategy_choice_mental_calculator.pdf")
+        #expect(pair.authors == [Creator(family: "Siegler"), Creator(family: "Lemaire")])
+        #expect(pair.title == "strategy choice mental calculator")
+        #expect(FileNameHint(fileName: "deMooij_2020_tailored_math.pdf").authors == [Creator(family: "deMooij")])
+
         let plain = FileNameHint(fileName: "Adaptive Operator Selection for Meta-Heuristics - A Survey.pdf")
         #expect(plain.year == nil)
+        #expect(plain.title == nil)
+        #expect(plain.authors.isEmpty)
+        #expect(FileNameHint(fileName: "2000_Hansen_invariance_PPSN.pdf").title == nil, "年が先の形は題名を取らない")
     }
 }

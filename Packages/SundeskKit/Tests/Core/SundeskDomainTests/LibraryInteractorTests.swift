@@ -57,12 +57,13 @@ struct LibraryInteractorTests {
             bibliography: FakeBibliography(metadata: [.doi("10.1038/ncomms5213"): vqe]),
             pdfs: FakePDFReader(identifier: .doi("10.1038/ncomms5213"))
         ).importPDF(pdf, into: nil)
-        let unknown = try await interactor(pdfs: FakePDFReader(identifier: .doi("10.9999/x"), titles: ["題名の候補"]))
+        let longTitle = "題名の候補として十分に長い日本語の題名です"
+        let unknown = try await interactor(pdfs: FakePDFReader(identifier: .doi("10.9999/x"), titles: [longTitle]))
             .importPDF(URL(filePath: "/tmp/other.pdf"), into: nil)
 
         #expect(found.metadata.title == vqe.title)
         #expect(found.attachment != nil)
-        #expect(unknown.metadata.title == "題名の候補")
+        #expect(unknown.metadata.title == "題名の候補として十分に長い日本語の題名です")
         #expect(unknown.metadata.type == .document)
     }
 
@@ -124,6 +125,19 @@ struct LibraryInteractorTests {
 
         try await library.moveCollection(child.id, into: nil)
         #expect(await repository.collections().first { $0.id == child.id }?.parentID == nil)
+    }
+
+    @Test("書誌情報が見つからなければ、題名は PDF の大きな文字か、短い切れ端ならファイル名から取り、著者と年はファイル名から埋める")
+    func fallbackFromFileName() async throws {
+        let pdf = URL(filePath: "/tmp/Tsugawa_1992_暗算習熟者の数の保持.pdf")
+        let short = try await interactor(pdfs: FakePDFReader(titles: ["暗算習熟者における"])).importPDF(pdf, into: nil)
+        #expect(short.metadata.title == "暗算習熟者の数の保持")
+        #expect(short.metadata.authors == [Creator(family: "Tsugawa")])
+        #expect(short.metadata.issued == PartialDate(year: 1992))
+
+        let long = try await interactor(pdfs: FakePDFReader(titles: ["珠算式暗算の習熟者における数の保持と心像の役割"]))
+            .importPDF(URL(filePath: "/tmp/Tsugawa_1992_x.pdf"), into: nil)
+        #expect(long.metadata.title == "珠算式暗算の習熟者における数の保持と心像の役割")
     }
 
     @Test("文字を読めない PDF は足さない")

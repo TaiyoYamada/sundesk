@@ -68,7 +68,7 @@ public struct LibraryInteractor: ManageLibraryUseCase {
         }
 
         // 書誌情報が見つからなくても、PDF の題名で足しておく（あとで手で直せる）
-        let metadata = await identify(url) ?? ReferenceMetadata(type: .document, title: fallbackTitle(of: url))
+        let metadata = await identify(url) ?? fallbackMetadata(of: url)
         let reference = try await create(metadata, into: collectionID, existing: all)
         try await attachPDF(url, to: reference.id)
         return try await repository.reference(reference.id) ?? reference
@@ -130,8 +130,8 @@ public struct LibraryInteractor: ManageLibraryUseCase {
                 reference.metadata = metadata
                 found += 1
             } else if reference.metadata.type == .document {
-                // 書誌情報を探せず、題名も PDF から拾ったままの文献だけ、題名を拾い直す（手で直した題名は残す）
-                reference.metadata.title = fallbackTitle(of: pdf)
+                // 書誌情報を探せず、PDF とファイル名から拾ったままの文献だけ、拾い直す（種類を変えた文献は手で直したとみなして残す）
+                reference.metadata = fallbackMetadata(of: pdf)
             } else {
                 continue
             }
@@ -162,8 +162,16 @@ public struct LibraryInteractor: ManageLibraryUseCase {
         return results.first { PaperTitle.matches($0, hint: hint) }
     }
 
-    private func fallbackTitle(of pdf: URL) -> String {
-        pdfs.titleCandidates(in: pdf).first ?? pdf.deletingPathExtension().lastPathComponent
+    /// 書誌情報が見つからないときの書誌情報。題名は PDF のいちばん大きい文字を使い、それが短い切れ端なら
+    /// ファイル名の題名の部分を使う。著者と年は「著者_年_題名」の形のファイル名から埋める。
+    private func fallbackMetadata(of pdf: URL) -> ReferenceMetadata {
+        let hint = FileNameHint(fileName: pdf.lastPathComponent)
+        let candidate = pdfs.titleCandidates(in: pdf).first { PaperTitle.normalize($0).count >= 20 }
+        return ReferenceMetadata(
+            type: .document,
+            title: candidate ?? hint.title ?? pdf.deletingPathExtension().lastPathComponent,
+            authors: hint.authors,
+            issued: hint.year.map { PartialDate(year: $0) })
     }
 
     public func delete(_ ids: [UUID]) async throws(LibraryError) {
