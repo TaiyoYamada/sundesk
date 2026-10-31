@@ -111,6 +111,12 @@ public final class LibraryViewModel {
         }
     }
 
+    /// PDF を、Mac の既定のアプリ（プレビューなど）で開く。
+    public func openPDFExternally(_ id: UUID) async {
+        guard let reference = try? await library.reference(id), let url = library.pdfURL(of: reference) else { return }
+        NSWorkspace.shared.open(url)
+    }
+
     public func delete(_ ids: Set<UUID>) async {
         do {
             try await library.delete(Array(ids))

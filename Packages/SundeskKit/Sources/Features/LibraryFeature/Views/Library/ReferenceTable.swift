@@ -10,7 +10,6 @@ import SwiftUI
 /// 文献の一覧。PDF をドロップすると取り込む。
 struct ReferenceTable: View {
     @Bindable var viewModel: LibraryViewModel
-    let onOpen: (UUID) -> Void
     @State private var pendingDeletion: Set<UUID> = []
 
     var body: some View {
@@ -44,7 +43,8 @@ struct ReferenceTable: View {
         .contextMenu(forSelectionType: UUID.self) { ids in
             menu(for: ids)
         } primaryAction: { ids in
-            if let id = ids.first { onOpen(id) }
+            // 一覧で選べば右に PDF が出るので、ダブルクリックは Mac の既定のアプリ（プレビューなど）で開く
+            if let id = ids.first { Task { await viewModel.openPDFExternally(id) } }
         }
         .onDeleteCommand { pendingDeletion = viewModel.selection }
         .dropDestination(for: URL.self) { urls, _ in
@@ -74,7 +74,7 @@ struct ReferenceTable: View {
     private func menu(for ids: Set<UUID>) -> some View {
         if !ids.isEmpty {
             if ids.count == 1, let id = ids.first {
-                Button("PDF を読む") { onOpen(id) }
+                Button("既定のアプリで開く") { Task { await viewModel.openPDFExternally(id) } }
                 Divider()
             }
             Menu("コレクションに追加") {

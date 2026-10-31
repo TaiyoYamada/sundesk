@@ -13,7 +13,6 @@ import UniformTypeIdentifiers
 struct ReferenceInfoForm: View {
     @Binding var draft: ReferenceDraft
     let viewModel: ReferenceDetailViewModel
-    let onOpenPDF: () -> Void
     @State private var isAttaching = false
 
     var body: some View {
@@ -65,24 +64,24 @@ struct ReferenceInfoForm: View {
         }
     }
 
+    // インスペクタは幅が狭いので、ボタンは縦に並べる
     private var actions: some View {
-        HStack {
+        VStack(alignment: .leading, spacing: 8) {
+            Button(hasIdentifier ? "書誌情報を取り直す" : "書誌情報を探す", systemImage: "arrow.clockwise") {
+                Task { await viewModel.refreshMetadata() }
+            }
+            .disabled(viewModel.isRefreshing || (!hasIdentifier && !viewModel.hasPDF))
+            .help(hasIdentifier ? "DOI、arXiv の ID、ISBN から、もう一度引きます" : "PDF の題名とファイル名から探します")
+            Button(viewModel.hasPDF ? "PDF を差し替える…" : "PDF を添付…", systemImage: "paperclip") {
+                isAttaching = true
+            }
             if viewModel.hasPDF {
-                Button("PDF を開く", systemImage: "doc.richtext", action: onOpenPDF)
                 Button("Finder で表示", systemImage: "folder") {
                     if let url = viewModel.pdfURL { NSWorkspace.shared.activateFileViewerSelecting([url]) }
                 }
             }
-            Button(viewModel.hasPDF ? "PDF を差し替える…" : "PDF を添付…", systemImage: "paperclip") {
-                isAttaching = true
-            }
-            Spacer()
-            Button("書誌情報を取り直す", systemImage: "arrow.clockwise") {
-                Task { await viewModel.refreshMetadata() }
-            }
-            .disabled(viewModel.isRefreshing || !hasIdentifier)
-            .help("DOI、arXiv の ID、ISBN から、もう一度引きます")
         }
+        .buttonStyle(.borderless)
     }
 
     private var hasIdentifier: Bool {

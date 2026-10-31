@@ -19,7 +19,10 @@ final class SundeskUITests: XCTestCase {
         try FileManager.default.createDirectory(at: library, withIntermediateDirectories: true)
         app = XCUIApplication()
         // 本物のライブラリを汚さないよう、一時フォルダを使う（UserDefaults の引数ドメインで上書きする）
-        app.launchArguments += ["-library.directory", library.path]
+        // インスペクタは「情報」のタブを開いた状態から始める
+        app.launchArguments += [
+            "-library.directory", library.path, "-inspector.tab", "info", "-inspector.isPresented", "YES",
+        ]
         app.launch()
     }
 

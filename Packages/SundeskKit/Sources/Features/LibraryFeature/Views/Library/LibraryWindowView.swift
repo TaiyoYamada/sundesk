@@ -11,12 +11,10 @@ import UniformTypeIdentifiers
 
 /// ライブラリのウインドウ（サイドバー、文献の一覧、選んだ文献の詳細）。
 public struct LibraryWindowView: View {
-    /// PDF を読むウインドウの ID（`WindowGroup(id:for:)` に渡す）。
-    public static let readerWindowID = "reader"
-
     private let dependencies: LibraryDependencies
     @State private var viewModel: LibraryViewModel
-    @Environment(\.openWindow) private var openWindow
+    @AppStorage("inspector.tab") private var inspectorTab = DetailTab.info
+    @AppStorage("inspector.isPresented") private var isInspectorPresented = true
 
     public init(dependencies: LibraryDependencies) {
         self.dependencies = dependencies
@@ -28,11 +26,11 @@ public struct LibraryWindowView: View {
             LibrarySidebar(viewModel: viewModel)
                 .navigationSplitViewColumnWidth(min: 180, ideal: 220)
         } content: {
-            ReferenceTable(viewModel: viewModel, onOpen: openReader)
-                .navigationSplitViewColumnWidth(min: 420, ideal: 680)
+            ReferenceTable(viewModel: viewModel)
+                .navigationSplitViewColumnWidth(min: 320, ideal: 460)
         } detail: {
             detail
-                .navigationSplitViewColumnWidth(min: 320, ideal: 400)
+                .navigationSplitViewColumnWidth(min: 480, ideal: 760)
         }
         .searchable(text: $viewModel.query, placement: .toolbar, prompt: "題名、著者、年、タグ")
         .toolbar { toolbar }
@@ -59,8 +57,10 @@ public struct LibraryWindowView: View {
     @ViewBuilder
     private var detail: some View {
         if viewModel.selection.count == 1, let id = viewModel.selection.first {
-            ReferenceDetailView(viewModel: dependencies.makeDetail(id)) { openReader(id) }
-                .id(id)
+            ReferenceWorkspace(
+                viewModel: dependencies.makeReader(id), tab: $inspectorTab, isInspectorPresented: $isInspectorPresented
+            )
+            .id(id)
         } else {
             ContentUnavailableView(
                 viewModel.selection.isEmpty ? "文献を選んでください" : "\(viewModel.selection.count) 件を選んでいます",
@@ -100,9 +100,5 @@ public struct LibraryWindowView: View {
 
     private var isExporting: Binding<Bool> {
         Binding(get: { viewModel.exportText != nil }, set: { if !$0 { viewModel.exportText = nil } })
-    }
-
-    private func openReader(_ id: UUID) {
-        openWindow(id: Self.readerWindowID, value: id)
     }
 }

@@ -7,14 +7,14 @@
 
 import SwiftUI
 
-/// 文献の詳細と、PDF を読む画面のインスペクタのタブ。
-enum DetailTab: String, CaseIterable, Identifiable {
+/// PDF の横のインスペクタのタブ。
+public enum DetailTab: String, CaseIterable, Identifiable, Sendable {
     case info
     case annotations
     case note
     case summary
 
-    var id: Self { self }
+    public var id: Self { self }
 
     var title: String {
         switch self {

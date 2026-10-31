@@ -9,7 +9,7 @@ import FactoryKit
 import LibraryFeature
 import SwiftUI
 
-/// アプリのすべての画面（ライブラリ、PDF を読むウインドウ、設定）。アプリのターゲットはこれを表示するだけ。
+/// アプリのすべての画面（ライブラリ、設定）。アプリのターゲットはこれを表示するだけ。
 public struct SundeskScenes: Scene {
     public init() {}
 
@@ -19,20 +19,14 @@ public struct SundeskScenes: Scene {
                 .frame(minWidth: 960, minHeight: 560)
         }
         .defaultSize(width: 1280, height: 800)
+        // 前回ウインドウを閉じたまま終了していても、起動したらライブラリを出す（ほかに開くウインドウがないため）
+        .defaultLaunchBehavior(.presented)
         .commands {
             SidebarCommands()
             ToolbarCommands()
             InspectorCommands()
             LibraryCommands()
         }
-
-        WindowGroup(id: LibraryWindowView.readerWindowID, for: UUID.self) { $referenceID in
-            if let referenceID {
-                ReaderWindowView(dependencies: Container.shared.libraryDependencies(), referenceID: referenceID)
-                    .frame(minWidth: 720, minHeight: 520)
-            }
-        }
-        .defaultSize(width: 1200, height: 900)
 
         Settings {
             SettingsView()

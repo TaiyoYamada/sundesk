@@ -1,5 +1,5 @@
 //
-//  ReaderWindowView.swift
+//  ReferenceWorkspace.swift
 //  LibraryFeature
 //
 //  Created by 山田大陽 on 2026/11/01.
@@ -9,23 +9,24 @@ import SundeskDesignSystem
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// 1 件の文献の PDF を読むウインドウ。右のインスペクタに、注釈、メモ、要約を出す。
-public struct ReaderWindowView: View {
+/// 一覧で選んだ文献の PDF と、右のインスペクタ（情報、注釈、メモ、要約）。
+struct ReferenceWorkspace: View {
     @State private var viewModel: ReaderViewModel
     @State private var controller = PDFReaderController()
-    @State private var isInspectorPresented = true
-    @State private var tab = DetailTab.annotations
     @State private var isAttaching = false
+    @Binding private var tab: DetailTab
+    @Binding private var isInspectorPresented: Bool
 
-    public init(dependencies: LibraryDependencies, referenceID: UUID) {
-        _viewModel = State(initialValue: dependencies.makeReader(referenceID))
+    init(viewModel: ReaderViewModel, tab: Binding<DetailTab>, isInspectorPresented: Binding<Bool>) {
+        _viewModel = State(initialValue: viewModel)
+        _tab = tab
+        _isInspectorPresented = isInspectorPresented
     }
 
-    public var body: some View {
+    var body: some View {
         content
-            .navigationTitle(viewModel.title)
             .inspector(isPresented: $isInspectorPresented) {
-                inspector.inspectorColumnWidth(min: 260, ideal: 320, max: 520)
+                inspector.inspectorColumnWidth(min: 280, ideal: 360, max: 560)
             }
             .toolbar { toolbar }
             .safeAreaInset(edge: .top, spacing: 0) {
@@ -76,14 +77,15 @@ public struct ReaderWindowView: View {
     private var inspector: some View {
         VStack(spacing: 0) {
             Picker("表示", selection: $tab) {
-                ForEach([DetailTab.annotations, .note, .summary]) { Text($0.title).tag($0) }
+                ForEach(DetailTab.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
             .padding(8)
             Divider()
             switch tab {
-            case .annotations, .info: HighlightList(viewModel: viewModel)
+            case .info: ReferenceInfoTab(viewModel: viewModel.detail)
+            case .annotations: HighlightList(viewModel: viewModel)
             case .note: NoteEditor(viewModel: viewModel.detail)
             case .summary: SummaryPanel(viewModel: viewModel.detail)
             }
@@ -106,10 +108,9 @@ public struct ReaderWindowView: View {
                 .keyboardShortcut("h", modifiers: [.command, .shift])
                 .help("選んだ文をハイライトする（⇧⌘H）")
                 .disabled(viewModel.pdfURL == nil)
-        }
-        ToolbarItem {
             Button("インスペクタ", systemImage: "sidebar.trailing") { isInspectorPresented.toggle() }
-                .keyboardShortcut("0", modifiers: [.command, .option])
+                .keyboardShortcut("i", modifiers: [.command, .option])
+                .help("情報、注釈、メモ、要約を出す（⌥⌘I）")
         }
     }
 
