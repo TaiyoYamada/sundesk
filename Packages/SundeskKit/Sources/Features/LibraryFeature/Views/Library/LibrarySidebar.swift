@@ -7,7 +7,8 @@
 
 import SwiftUI
 
-/// ライブラリ、コレクション、タグのサイドバー。文献の行をコレクションへドラッグすると、そこに入れる。
+/// ライブラリ、コレクション、タグのサイドバー。
+/// 文献の行をコレクションへドラッグすると、そこに入れる。コレクションを別のコレクションへドラッグすると、その中へ移す。
 struct LibrarySidebar: View {
     @Bindable var viewModel: LibraryViewModel
     @State private var naming: Naming?
@@ -31,6 +32,7 @@ struct LibrarySidebar: View {
                     Label(node.name, systemImage: "folder")
                         .tag(SidebarItem.collection(node.id))
                         .contextMenu { menu(for: node.id) }
+                        .draggable(Self.collectionPrefix + node.id.uuidString)
                         .dropDestination(for: String.self) { items, _ in
                             drop(items, into: node.id)
                         }
@@ -46,8 +48,21 @@ struct LibrarySidebar: View {
         }
         .safeAreaInset(edge: .bottom) {
             HStack {
-                Button("新しいコレクション", systemImage: "folder.badge.plus") { startNaming(.create(parentID: nil)) }
-                    .buttonStyle(.borderless)
+                Menu {
+                    Button("一番上に新しいコレクション…") { startNaming(.create(parentID: nil)) }
+                    if let id = viewModel.selectedCollectionID {
+                        Button("「\(viewModel.collectionName(id))」の中に新しいコレクション…") {
+                            startNaming(.create(parentID: id))
+                        }
+                    }
+                } label: {
+                    Label("新しいコレクション", systemImage: "folder.badge.plus")
+                } primaryAction: {
+                    // 選んでいるコレクションがあれば、その中に作る
+                    startNaming(.create(parentID: viewModel.selectedCollectionID))
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
                 Spacer()
             }
             .padding(8)
@@ -71,12 +86,23 @@ struct LibrarySidebar: View {
     private func menu(for id: UUID) -> some View {
         Button("この中に新しいコレクション…") { startNaming(.create(parentID: id)) }
         Button("名前を変える…") { startNaming(.rename(id)) }
+        if !viewModel.isTopLevelCollection(id) {
+            Button("一番上の階層へ移す") { Task { await viewModel.moveCollection(id, into: nil) } }
+        }
         Divider()
         Button("削除…", role: .destructive) { pendingDeletion = id }
     }
 
-    /// ドラッグされた行が選んでいる行の 1 つなら、選んでいる行をすべて入れる。
+    /// コレクションをドラッグするときの文字の頭（文献の行は ID だけを運ぶ）。
+    private static let collectionPrefix = "sundesk-collection:"
+
+    /// コレクションなら中へ移す。文献の行なら入れる。ドラッグされた行が選んでいる行の 1 つなら、選んでいる行をすべて入れる。
     private func drop(_ items: [String], into collectionID: UUID) {
+        let collections = items.filter { $0.hasPrefix(Self.collectionPrefix) }
+            .compactMap { UUID(uuidString: String($0.dropFirst(Self.collectionPrefix.count))) }
+        for id in collections {
+            Task { await viewModel.moveCollection(id, into: collectionID) }
+        }
         let dropped = Set(items.compactMap(UUID.init(uuidString:)))
         guard !dropped.isEmpty else { return }
         let ids = dropped.isSubset(of: viewModel.selection) ? viewModel.selection : dropped

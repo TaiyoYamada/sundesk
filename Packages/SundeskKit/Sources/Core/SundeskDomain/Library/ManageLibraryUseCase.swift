@@ -38,6 +38,8 @@ public protocol ManageLibraryUseCase: Sendable {
 
     func createCollection(named name: String, parentID: UUID?) async throws(LibraryError) -> ReferenceCollection
     func save(_ collection: ReferenceCollection) async throws(LibraryError)
+    /// コレクションを別のコレクションの中へ移す（nil なら一番上へ）。自分の中へは移さない。
+    func moveCollection(_ id: UUID, into parentID: UUID?) async throws(LibraryError)
     func deleteCollection(_ id: UUID) async throws(LibraryError)
     func add(_ ids: [UUID], to collectionID: UUID) async throws(LibraryError)
     func remove(_ ids: [UUID], from collectionID: UUID) async throws(LibraryError)

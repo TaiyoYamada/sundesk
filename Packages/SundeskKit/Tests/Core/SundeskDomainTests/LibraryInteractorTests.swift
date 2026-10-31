@@ -110,6 +110,22 @@ struct LibraryInteractorTests {
         #expect(await repository.reference(identified.id)?.metadata == vqe)
     }
 
+    @Test("コレクションは別のコレクションの中へ移せる。自分の中へは移さない")
+    func moveCollection() async throws {
+        let library = interactor()
+        let parent = try await library.createCollection(named: "研究", parentID: nil)
+        let child = try await library.createCollection(named: "最適化", parentID: nil)
+
+        try await library.moveCollection(child.id, into: parent.id)
+        #expect(await repository.collections().first { $0.id == child.id }?.parentID == parent.id)
+
+        try await library.moveCollection(parent.id, into: child.id)
+        #expect(await repository.collections().first { $0.id == parent.id }?.parentID == nil)
+
+        try await library.moveCollection(child.id, into: nil)
+        #expect(await repository.collections().first { $0.id == child.id }?.parentID == nil)
+    }
+
     @Test("文字を読めない PDF は足さない")
     func unreadablePDF() async {
         await #expect(throws: LibraryError.unreadablePDF) {

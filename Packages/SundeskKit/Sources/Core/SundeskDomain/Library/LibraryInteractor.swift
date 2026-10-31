@@ -196,6 +196,14 @@ public struct LibraryInteractor: ManageLibraryUseCase {
         try await repository.save(collection)
     }
 
+    public func moveCollection(_ id: UUID, into parentID: UUID?) async throws(LibraryError) {
+        let collections = try await repository.collections()
+        guard var collection = collections.first(where: { $0.id == id }) else { return }
+        if let parentID, collections.descendantIDs(of: id).contains(parentID) { return }
+        collection.parentID = parentID
+        try await repository.save(collection)
+    }
+
     public func deleteCollection(_ id: UUID) async throws(LibraryError) {
         try await repository.deleteCollection(id)
     }

@@ -170,6 +170,21 @@ public final class LibraryViewModel {
         }
     }
 
+    /// コレクションを別のコレクションの中へ移す（nil なら一番上へ）。
+    public func moveCollection(_ id: UUID, into parentID: UUID?) async {
+        guard id != parentID else { return }
+        do {
+            try await library.moveCollection(id, into: parentID)
+        } catch {
+            errorMessage = error.message
+        }
+    }
+
+    /// 一番上の階層にあるか。
+    public func isTopLevelCollection(_ id: UUID) -> Bool {
+        collections.first { $0.id == id }?.parentID == nil
+    }
+
     public func deleteCollection(_ id: UUID) async {
         if selectedCollectionID.map(collections.descendantIDs(of: id).contains) == true { sidebarSelection = .all }
         do {
