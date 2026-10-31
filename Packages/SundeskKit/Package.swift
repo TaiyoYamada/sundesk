@@ -8,7 +8,7 @@ import PackageDescription
 //   Features/       機能ごとの Presentation 層（ViewModel と View）。Features どうしは直接依存しない
 //   Core/           Domain（どこにも依存しない）、Data（Repository の実装）、DesignSystem
 //   Infrastructure/ 外部の技術を包む（Markdown の解析、コードの色づけ）
-//   UI/             機能をまたいで使う画面の部品（Markdown のメモの閲覧と編集）
+//   UI/             機能をまたいで使う画面の部品（Markdown のメモのエディタ）
 
 /// Domain、Data、Infrastructure: 既定で nonisolated（Swift 6 の標準）。
 let coreSettings: [SwiftSetting] = [
@@ -48,7 +48,6 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/hmlongco/Factory", .upToNextMajor(from: "3.4.1")),
         .package(url: "https://github.com/swiftlang/swift-markdown", .upToNextMinor(from: "0.9.0")),
-        .package(url: "https://github.com/mgriebling/SwiftMath", .upToNextMajor(from: "1.7.3")),
         .package(url: "https://github.com/tree-sitter/swift-tree-sitter", .upToNextMinor(from: "0.10.0")),
         .package(url: "https://github.com/alex-pinkus/tree-sitter-swift", exact: "0.7.3-with-generated-files"),
         // 次の 4 つは、Sources/Infrastructure/TreeSitterScanners の scanner.c と同じバージョンに固定する
@@ -142,10 +141,7 @@ let package = Package(
 
         .target(
             name: "SundeskEditorUI",
-            dependencies: [
-                "SundeskMarkdown", "SundeskCodeHighlight", "SundeskDesignSystem",
-                .product(name: "SwiftMath", package: "SwiftMath"),
-            ],
+            dependencies: ["SundeskMarkdown", "SundeskCodeHighlight", "SundeskDesignSystem"],
             path: "Sources/UI/SundeskEditorUI",
             swiftSettings: uiSettings
         ),

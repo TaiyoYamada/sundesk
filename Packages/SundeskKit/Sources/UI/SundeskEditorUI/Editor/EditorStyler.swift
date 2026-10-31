@@ -13,17 +13,11 @@ import SundeskMarkdown
 public enum EditorSyntax: Equatable, Sendable {
     /// Markdown。`livePreview` なら、カーソルのない行の記号を隠す（Obsidian のライブプレビュー）。
     case markdown(livePreview: Bool, notePath: String)
-    /// コード。行番号を出す。
-    case code(language: String)
-    /// 色づけしないテキスト。
-    case plain
-
-    var isMarkdown: Bool {
-        if case .markdown = self { true } else { false }
-    }
 
     var livePreview: Bool {
-        if case .markdown(let livePreview, _) = self { livePreview } else { false }
+        switch self {
+        case .markdown(let livePreview, _): livePreview
+        }
     }
 }
 
@@ -169,22 +163,8 @@ struct MarkdownStyler {
     }
 }
 
-/// コードのファイルと、Markdown の中のコードブロックを色づけする。
+/// Markdown の中のコードブロックを色づけする。
 enum CodeStyler {
-    static var baseAttributes: [NSAttributedString.Key: Any] {
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.lineSpacing = 2
-        return [.font: EditorTheme.codeFont, .foregroundColor: NSColor.labelColor, .paragraphStyle: paragraph]
-    }
-
-    static func apply(language: String?, to storage: NSTextStorage) {
-        let range = NSRange(location: 0, length: storage.length)
-        storage.setAttributes(baseAttributes, range: range)
-        if let language {
-            colorTokens(in: storage, range: range, language: language)
-        }
-    }
-
     static func colorTokens(in storage: NSTextStorage, range: NSRange, language: String) {
         let code = (storage.string as NSString).substring(with: range)
         for token in CodeHighlighter.shared.highlight(code, language: language) {

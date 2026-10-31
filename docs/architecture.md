@@ -68,11 +68,11 @@ sundesk/
 │   │   │   ├── SundeskData/             SwiftData、PDF の置き場、書誌情報の取得、PDFKit、Foundation Models
 │   │   │   └── SundeskDesignSystem/     共通の画面部品（帯、インスペクタの節、流し込みの並べ方）
 │   │   ├── Infrastructure/
-│   │   │   ├── SundeskMarkdown/         swift-markdown での解析（エディタ用、閲覧用）
+│   │   │   ├── SundeskMarkdown/         swift-markdown での、エディタの色づけのための解析
 │   │   │   ├── SundeskCodeHighlight/    tree-sitter でのコードの色づけ
 │   │   │   └── TreeSitterScanners/      文法パッケージから漏れる scanner.c（C）
 │   │   └── UI/
-│   │       └── SundeskEditorUI/         メモのエディタ（TextKit 2）と閲覧の View
+│   │       └── SundeskEditorUI/         メモのエディタ（TextKit 2）
 │   └── Tests/                           モジュールごとのテスト（Sources と同じグループ分け）
 ├── Configurations/                      xcconfig（バンドル ID、対象 OS、Swift の設定）
 ├── scripts/                             補助スクリプト（カバレッジの集計）
@@ -91,7 +91,7 @@ sundesk/
 | SundeskData | SundeskDomain |
 | SundeskMarkdown | swift-markdown |
 | SundeskCodeHighlight | swift-tree-sitter、14 言語の文法、TreeSitterScanners |
-| SundeskEditorUI | SundeskMarkdown、SundeskCodeHighlight、SundeskDesignSystem、SwiftMath |
+| SundeskEditorUI | SundeskMarkdown、SundeskCodeHighlight、SundeskDesignSystem |
 
 同じモジュールの中の決まり（View は Domain を import しない、など）は SwiftLint の独自ルールで守る（[ADR 0011](adr/0011-feature-based-multi-module.md)）。
 
@@ -160,7 +160,7 @@ PDF ─ PDFKitReader（最初の 3 ページの DOI / arXiv の ID）──┘  
 | Domain | 識別子の読み取り、著者の名前、引用キー、BibTeX、絞り込み、要約の区切り方。UseCase は Repository などを偽物に差し替えて流れを確かめる |
 | Data | SwiftData はメモリ上の DB で実際に動かす。doi.org、arXiv、Open Library の応答の読み取り。PDF の置き場は一時フォルダで |
 | ViewModel | メモリ上の SwiftData と本物の `LibraryInteractor` を使い、通信と PDF だけ偽物にする |
-| Markdown の解析とエディタ | 日本語を含む入力で、位置のずれと記号の隠し方を確かめる。エディタは本物の `NSTextView` で |
+| Markdown の解析とエディタ | 日本語を含む入力で、記法の位置のずれと、ライブプレビューでの記号の隠し方を確かめる。エディタは本物の `NSTextView` で |
 | 画面 | 一時フォルダのライブラリ（起動引数 `-library.directory`）で起動し、主な操作を確かめる。通信する操作は確かめない |
 
 - `make test` でパッケージとアプリのテスト、`make test-ui` で UI テスト
