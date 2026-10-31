@@ -83,12 +83,16 @@ struct ReferenceWorkspace: View {
             .labelsHidden()
             .padding(8)
             Divider()
-            switch tab {
-            case .info: ReferenceInfoTab(viewModel: viewModel.detail)
-            case .annotations: HighlightList(viewModel: viewModel)
-            case .note: NoteEditor(viewModel: viewModel.detail)
-            case .summary: SummaryPanel(viewModel: viewModel.detail)
+            // 中身が短いタブ（ハイライトがないときの案内）でも、タブの切り替えを上に留めるため、高さいっぱいに広げる
+            Group {
+                switch tab {
+                case .info: ReferenceInfoTab(viewModel: viewModel.detail)
+                case .annotations: HighlightList(viewModel: viewModel)
+                case .note: NoteEditor(viewModel: viewModel.detail)
+                case .summary: SummaryPanel(viewModel: viewModel.detail)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
