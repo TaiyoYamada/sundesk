@@ -7,7 +7,6 @@
 
 import Foundation
 import Markdown
-import SundeskDomain
 
 /// エディタで色や書体を変える範囲。範囲は UTF-16（NSTextView と同じ単位）で、ノート全体での位置。
 public struct MarkdownSyntaxSpan: Equatable, Sendable {

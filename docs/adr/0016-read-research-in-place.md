@@ -1,6 +1,6 @@
 # 0016. ~/Research と study-artifact を、コピーせずその場で読む
 
-- 状態: 採用
+- 状態: 置き換え済み（[0017](0017-reference-manager.md)）
 - 日付: 2026-09-30
 
 ## 背景

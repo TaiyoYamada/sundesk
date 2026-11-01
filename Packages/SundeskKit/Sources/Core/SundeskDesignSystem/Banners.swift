@@ -61,3 +61,29 @@ public struct ErrorBanner: View {
         .background(.orange.opacity(0.1))
     }
 }
+
+/// 終わった操作の結果を、画面の上に帯で出す。
+public struct NoticeBanner: View {
+    private let message: String
+    private let dismiss: () -> Void
+
+    public init(message: String, dismiss: @escaping () -> Void) {
+        self.message = message
+        self.dismiss = dismiss
+    }
+
+    public var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Label(message, systemImage: "info.circle")
+                .textSelection(.enabled)
+            Spacer()
+            Button("閉じる", systemImage: "xmark", action: dismiss)
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+        }
+        .font(.callout)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(.bar)
+    }
+}

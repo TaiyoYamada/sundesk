@@ -2,7 +2,7 @@
 //  Container+Library.swift
 //  AppFeature
 //
-//  Created by 山田大陽 on 2026/09/29.
+//  Created by 山田大陽 on 2026/11/01.
 //
 
 import FactoryKit
@@ -14,43 +14,48 @@ import SundeskDomain
 extension Container {
     // MARK: - Data
 
-    /// 研究ライブラリ（Vault と同じフォルダ）。
-    var libraryRepository: Factory<any LibraryRepository> {
+    /// アプリのデータフォルダ（library.store と Storage/ を置く）。
+    /// UI テストは起動引数（`-library.directory <パス>`）で、一時フォルダに差し替える。
+    var dataDirectory: Factory<URL> {
         self {
-            let settings = self.settingsRepository()
-            return FileSystemLibraryRepository(
-                root: {
-                    URL(
-                        filePath: settings.load().resolved(with: settings.defaults).vaultDirectory,
-                        directoryHint: .isDirectory)
-                },
-                markdown: self.markdownParser(), mounts: self.researchMounts())
+            if let path = UserDefaults.standard.string(forKey: "library.directory") {
+                return URL(filePath: path, directoryHint: .isDirectory)
+            }
+            do {
+                return try AppDataDirectory.url("Library")
+            } catch {
+                fatalError("データフォルダを作れませんでした: \(error)")
+            }
         }
         .singleton
+    }
+
+    var referenceRepository: Factory<any ReferenceRepository> {
+        self {
+            let url = self.dataDirectory().appending(path: "library.store")
+            do {
+                return try SwiftDataReferenceRepository.open(at: url)
+            } catch {
+                fatalError("ライブラリ（\(url.path)）を開けませんでした: \(error)")
+            }
+        }
+        .singleton
+    }
+
+    var attachmentStore: Factory<any AttachmentStore> {
+        self { FileAttachmentStore(root: self.dataDirectory().appending(path: "Storage", directoryHint: .isDirectory)) }
     }
 
     var bibliography: Factory<any BibliographyService> {
         self { OnlineBibliography() }
     }
 
-    var pdfInspector: Factory<any PDFInspecting> {
-        self { PDFKitInspector() }
+    var pdfReader: Factory<any PDFReading> {
+        self { PDFKitReader() }
     }
 
-    /// ~/Research の実験（読むだけ）。
-    var researchProjects: Factory<any ResearchProjectRepository> {
-        self { FileSystemResearchProjects(mounts: self.researchMounts()) }
-    }
-
-    var readTableHead: Factory<any ReadTableHeadUseCase> {
-        self {
-            let vault = self.vaultRepository()
-            return CSVHeadReader { vault.fileURL(for: $0) }
-        }
-    }
-
-    var loadResearchProjects: Factory<any LoadResearchProjectsUseCase> {
-        self { LoadResearchProjectsInteractor(repository: self.researchProjects()) }
+    var paperSummarizer: Factory<any PaperSummarizer> {
+        self { FoundationModelsSummarizer() }
     }
 
     // MARK: - UseCase
@@ -58,32 +63,23 @@ extension Container {
     var manageLibrary: Factory<any ManageLibraryUseCase> {
         self {
             LibraryInteractor(
-                repository: self.libraryRepository(), bibliography: self.bibliography(), pdfs: self.pdfInspector())
+                repository: self.referenceRepository(), attachments: self.attachmentStore(),
+                bibliography: self.bibliography(), pdfs: self.pdfReader())
         }
     }
 
-    // MARK: - ViewModel
-
-    @MainActor
-    var libraryViewModel: Factory<LibraryViewModel> {
+    var summarizePaper: Factory<any SummarizePaperUseCase> {
         self {
-            LibraryViewModel(
-                library: self.manageLibrary(), observeChanges: self.observeVaultChanges(),
-                loadProjects: self.loadResearchProjects())
+            SummarizePaperInteractor(
+                summarizer: self.paperSummarizer(), repository: self.referenceRepository(),
+                attachments: self.attachmentStore(), pdfs: self.pdfReader())
         }
     }
 
+    // MARK: - 画面
+
     @MainActor
-    var researchScreens: Factory<ResearchScreenFactory> {
-        self {
-            ResearchScreenFactory(
-                makeProject: { ResearchProjectViewModel(path: $0, loadProjects: self.loadResearchProjects()) },
-                makeRun: { path in
-                    let vault = self.vaultRepository()
-                    return ResearchRunViewModel(
-                        path: path, loadProjects: self.loadResearchProjects(), readHead: self.readTableHead(),
-                        fileURL: { vault.fileURL(for: $0) })
-                })
-        }
+    var libraryDependencies: Factory<LibraryDependencies> {
+        self { LibraryDependencies(library: self.manageLibrary(), summarize: self.summarizePaper()) }
     }
 }

@@ -14,12 +14,12 @@ git flow で運用しています。`main` はリリース済みの状態、`dev
 [Conventional Commits](https://www.conventionalcommits.org/ja/v1.0.0/) に沿って、種類は英語、要約は日本語で書いています。
 
 ```
-feat(graph): 知識グラフの力学レイアウトを Metal で計算する
-fix(rag): 出典の番号がずれる問題を直す
+feat(library): 文献をコレクションへドラッグして入れる
+fix(bibtex): ページの範囲の区切りを -- にする
 docs: アーキテクチャの図を更新する
 ```
 
-範囲にはモジュールや機能の名前（`notes`、`editor`、`graph`、`rag`、`lab`、`image`、`engine` など）を入れます。
+範囲にはモジュールや機能の名前（`library`、`reader`、`summary`、`bibtex`、`editor`、`settings` など）を入れます。
 
 ## バージョン
 
@@ -27,7 +27,7 @@ docs: アーキテクチャの図を更新する
 
 ## 開発環境
 
-macOS 27 と Xcode 27（Swift 6.4）を使っています。Python の環境は [uv](https://docs.astral.sh/uv/) で管理しています。
+macOS 27 と Xcode 27（Swift 6.4）を使っています。
 よく使う操作は Makefile にまとめてあり、`make` だけで一覧が出ます。
 
 ```sh
@@ -36,7 +36,6 @@ make lint        # 静的チェック
 make format      # 整形
 make test        # UI テスト以外のテスト
 make test-ui     # UI テスト
-make engine      # AI エンジンだけを起動する
 ```
 
 ## コード
@@ -46,6 +45,6 @@ make engine      # AI エンジンだけを起動する
 
 ## 実データ
 
-このリポジトリは公開しているので、研究の実データ（~/Research、study-artifact、アプリのデータフォルダ）は入れません。
+このリポジトリは公開しているので、実データ（アプリのデータフォルダにある文献、PDF、メモ）は入れません。
 中身だけでなく、論文や実験のファイル名、フォルダ名、設定の名前も、テストや文書に書かないようにしています。
-テストと画面の確認には、作り物の見本（`SampleLibrary/`）と、テストの中で作る一時フォルダを使います。
+テストと画面の確認には、テストの中で作る作り物の文献と一時フォルダを使います。
