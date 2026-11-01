@@ -60,6 +60,7 @@ sundesk/
 │   ├── Package.swift
 │   ├── Sources/
 │   │   ├── App/AppFeature/              Composition Root（Factory への登録）、ウインドウ、メニュー
+│   │   ├── App/SundeskCLI/              CLI（sundesk）と MCP サーバー（sundesk mcp）
 │   │   ├── Features/
 │   │   │   ├── LibraryFeature/          ライブラリのウインドウ（論文を含むサイドバーの木、一覧、PDF とインスペクタ）
 │   │   │   └── SettingsFeature/         設定の画面（外観、保存先）
@@ -85,6 +86,7 @@ sundesk/
 | モジュール | 依存先 |
 |---|---|
 | AppFeature | LibraryFeature、SettingsFeature、SundeskDomain、SundeskData、SundeskDesignSystem、FactoryKit |
+| SundeskCLI | SundeskDomain、SundeskData、swift-argument-parser、MCP の Swift SDK |
 | LibraryFeature | SundeskDomain、SundeskDesignSystem、SundeskEditorUI |
 | SettingsFeature | SundeskDesignSystem |
 | SundeskDomain | なし |
@@ -156,7 +158,7 @@ PDF ─ PDFKitReader（DOI / arXiv の ID、題名の候補）──────
 | View、ViewModel | `@MainActor` |
 | UseCase | `nonisolated` の struct |
 | SwiftData | `@ModelActor`（`SwiftDataReferenceRepository`） |
-| 変更の知らせ | Repository が持つ `AsyncStream` の一覧に、保存のたびに流す |
+| 変更の知らせ | Repository が持つ `AsyncStream` の一覧に、保存のたびに流す。別のプロセス（CLI、MCP サーバー）には、分散通知（`com.taiyou.sundesk.libraryDidChange`）で知らせる |
 
 ## 8. テスト
 
@@ -168,6 +170,7 @@ PDF ─ PDFKitReader（DOI / arXiv の ID、題名の候補）──────
 | Data | SwiftData はメモリ上の DB で実際に動かす。doi.org、arXiv、Open Library の応答の読み取り。PDF の置き場は一時フォルダで |
 | ViewModel | メモリ上の SwiftData と本物の `LibraryInteractor` を使い、通信と PDF だけ偽物にする |
 | Markdown の解析とエディタ | 日本語を含む入力で、記法の位置のずれと、ライブプレビューでの記号の隠し方を確かめる。エディタは本物の `NSTextView` で |
+| CLI と MCP | メモリ上の SwiftData と本物の `LibraryInteractor` で、命令とツールの結果を確かめる |
 | 画面 | 一時フォルダのライブラリ（起動引数 `-library.directory`）で起動し、主な操作を確かめる。通信する操作は確かめない |
 
 - `make test` でパッケージとアプリのテスト、`make test-ui` で UI テスト
