@@ -43,11 +43,8 @@ line_length:
 identifier_name:
   excluded:
     - id
-    - fd
     - x
     - y
-    - ai
-    - uv
     # プログラミング言語の名前
     - c
     - go
@@ -77,13 +74,13 @@ custom_rules:
     severity: error
   domain_imports_framework:
     name: "Domain は画面や保存の仕組みを import しない"
-    regex: '^import (SwiftUI|AppKit|SwiftData|WebKit|Combine)$'
+    regex: '^import (SwiftUI|AppKit|SwiftData|PDFKit|FoundationModels|Combine)$'
     included: 'Packages/SundeskKit/Sources/Core/SundeskDomain/.*\.swift'
     message: "Domain は Foundation 以外に依存しない"
     severity: error
   feature_imports_data:
     name: "Features は Data や Infrastructure を import しない"
-    regex: '^import (SundeskData|SundeskEngineClient|SundeskMarkdown|SundeskCodeHighlight|FactoryKit)$'
+    regex: '^import (SundeskData|SundeskMarkdown|SundeskCodeHighlight|FactoryKit)$'
     included: 'Packages/SundeskKit/Sources/Features/.*\.swift'
     message: "Data と DI の組み立ては AppFeature の役目"
     severity: error

@@ -83,27 +83,14 @@ struct TextEditorSessionTests {
         let session = TextEditorSession()
         var received: [String] = []
         session.onTextChange = { received.append($0) }
-        session.update(text: "a", syntax: .plain)
+        session.update(text: "a", syntax: .markdown(livePreview: false, notePath: "a.md"))
 
         session.textView.setSelectedRange(NSRange(location: 1, length: 0))
         session.textView.insertText("b", replacementRange: session.textView.selectedRange())
         #expect(received == ["ab"])
 
-        session.update(text: "外で変更", syntax: .plain)
+        session.update(text: "外で変更", syntax: .markdown(livePreview: false, notePath: "a.md"))
         #expect(session.string == "外で変更")
-    }
-
-    @Test("コードのファイルは行番号を出し、Markdown は行の長さを絞る")
-    func layoutOptions() {
-        let code = TextEditorSession()
-        code.update(text: "let a = 1", syntax: .code(language: "swift"))
-        let note = TextEditorSession()
-        note.update(text: "本文", syntax: .markdown(livePreview: true, notePath: "a.md"))
-
-        #expect(code.textView.showsLineNumbers)
-        #expect(!code.textView.limitsLineLength)
-        #expect(!note.textView.showsLineNumbers)
-        #expect(note.textView.limitsLineLength)
     }
 
     @Test("リンクの属性に行き先を載せる")
@@ -117,26 +104,5 @@ struct TextEditorSessionTests {
         #expect((wikilink as? LinkAttribute)?.link == .note("量子ビット"))
         let tag = storage.attribute(.documentLink, at: string.range(of: "線形").location, effectiveRange: nil)
         #expect((tag as? LinkAttribute)?.link == .tag("線形代数"))
-    }
-}
-
-@Suite("DocumentLink")
-struct DocumentLinkTests {
-    @Test(
-        "URL にして戻せる（日本語を含む）",
-        arguments: [
-            DocumentLink.note("量子ビット"), .file("数学/固有値.md"), .heading("定義 と 例"), .tag("量子/基礎"),
-            .external(URL(string: "https://example.com/a?b=c")!),
-        ])
-    func roundTrip(link: DocumentLink) {
-        #expect(DocumentLink(url: link.url) == link)
-    }
-
-    @Test("見出しへのリンクは、空白と - の違いと大文字小文字を無視して比べる")
-    func headingAnchors() {
-        #expect(HeadingAnchor.matches("固有値の定義", heading: "固有値の定義"))
-        #expect(HeadingAnchor.matches("Bra-Ket", heading: "bra ket"))
-        #expect(HeadingAnchor.matches("%E5%AE%9A%E7%BE%A9", heading: "定義"))
-        #expect(!HeadingAnchor.matches("定義", heading: "例"))
     }
 }

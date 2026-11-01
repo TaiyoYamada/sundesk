@@ -1,6 +1,6 @@
 # 0010. ノートの描画と編集は Swift で行い、WebKit は HTML ファイルだけに使う
 
-- 状態: 採用（[0008](0008-webkit-renderer.md) を置き換える）
+- 状態: 採用（[0008](0008-webkit-renderer.md) を置き換える）。[0017](0017-reference-manager.md) で WebKit での HTML の表示はなくし、文献のメモの編集に使う
 - 日付: 2026-09-29
 
 ## 背景

@@ -6,24 +6,26 @@
 //
 
 import FactoryKit
+import LibraryFeature
 import SwiftUI
-import WorkspaceFeature
 
-/// アプリのすべての画面（メインウインドウ、設定）。アプリのターゲットはこれを表示するだけ。
+/// アプリのすべての画面（ライブラリ、設定）。アプリのターゲットはこれを表示するだけ。
 public struct SundeskScenes: Scene {
     public init() {}
 
     public var body: some Scene {
-        WindowGroup("sundesk", id: "main") {
-            MainWindowView(dependencies: Container.shared.workspaceDependencies())
-                .frame(minWidth: 900, minHeight: 560)
+        Window("sundesk", id: "library") {
+            LibraryWindowView(dependencies: Container.shared.libraryDependencies())
+                .frame(minWidth: 960, minHeight: 560)
         }
-        .defaultSize(width: 1200, height: 800)
+        .defaultSize(width: 1280, height: 800)
+        // 前回ウインドウを閉じたまま終了していても、起動したらライブラリを出す（ほかに開くウインドウがないため）
+        .defaultLaunchBehavior(.presented)
         .commands {
             SidebarCommands()
             ToolbarCommands()
-            WorkspaceCommands()
-            EngineCommands(engineStatus: Container.shared.engineStatusViewModel())
+            InspectorCommands()
+            LibraryCommands()
         }
 
         Settings {

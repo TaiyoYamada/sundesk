@@ -11,15 +11,6 @@ DerivedData/
 .build/
 .swiftpm/
 
-# Python（engine/）
-.venv/
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-
 # make でのビルド
 build/
 
@@ -27,11 +18,7 @@ build/
 # カバレッジの途中のファイル
 *.profraw
 
-# 実データ（~/Research、study-artifact、アプリのデータフォルダ）はリポジトリに入れない。
-# sundesk はそれぞれの場所で読むので、写しをここに置く必要はない
-/Research/
-/research/
-/study-artifact/
+# 実データ（アプリのデータフォルダにある文献と PDF）はリポジトリに入れない
 /Library/
 *.store
 *.store-shm

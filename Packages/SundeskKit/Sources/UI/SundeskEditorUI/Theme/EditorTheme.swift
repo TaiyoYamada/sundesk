@@ -7,9 +7,8 @@
 
 import AppKit
 import SundeskCodeHighlight
-import SwiftUI
 
-/// 閲覧とエディタで使う文字の大きさと色。色はシステムの色を使い、ダークモードに合わせて変わる。
+/// エディタで使う文字の大きさと色。色はシステムの色を使い、ダークモードに合わせて変わる。
 enum EditorTheme {
     // MARK: - 文字
 
@@ -43,10 +42,8 @@ enum EditorTheme {
     static let mathColor = NSColor.systemPurple
     static let secondaryColor = NSColor.secondaryLabelColor
     static let codeBackground = NSColor.quaternaryLabelColor.withAlphaComponent(0.08)
-    /// コードのエディタで、カーソルのある行の背景。
-    static let currentLineColor = NSColor.controlAccentColor.withAlphaComponent(0.07)
 
-    /// コードの色づけ（Xcode の既定に近い配色）。
+    /// コードブロックの色づけ（Xcode の既定に近い配色）。
     static func color(for kind: CodeTokenKind) -> NSColor {
         switch kind {
         case .keyword: .systemPink
@@ -62,23 +59,6 @@ enum EditorTheme {
         case .attribute: .systemBrown
         case .tag: .systemBlue
         case .escape: .systemOrange
-        }
-    }
-
-    /// 注記の種類ごとのアイコンと色。
-    static func callout(_ kind: String) -> (systemImage: String, color: Color) {
-        switch kind {
-        case "tip", "hint": ("flame", .teal)
-        case "important": ("exclamationmark.circle", .purple)
-        case "warning", "attention": ("exclamationmark.triangle", .orange)
-        case "caution", "danger", "error": ("xmark.octagon", .red)
-        case "todo": ("checklist", .blue)
-        case "question", "faq", "help": ("questionmark.circle", .yellow)
-        case "example": ("list.bullet.rectangle", .indigo)
-        case "quote", "cite": ("quote.opening", .gray)
-        case "success", "check", "done": ("checkmark.circle", .green)
-        case "info": ("info.circle", .blue)
-        default: ("pencil", .blue)
         }
     }
 }

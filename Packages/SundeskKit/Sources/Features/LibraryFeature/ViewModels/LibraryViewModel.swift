@@ -2,280 +2,346 @@
 //  LibraryViewModel.swift
 //  LibraryFeature
 //
-//  Created by 山田大陽 on 2026/09/29.
+//  Created by 山田大陽 on 2026/11/01.
 //
 
+import AppKit
 import Foundation
 import Observation
 import SundeskDomain
 
-/// 研究ライブラリの一覧（左のナビゲータ）。種類を切り替え、取り込み、新しく作る。
+/// ライブラリのウインドウ（サイドバー、文献の一覧）の状態。
 @MainActor
 @Observable
 public final class LibraryViewModel {
-    public enum Section: String, CaseIterable, Identifiable, Sendable {
-        case notes, papers, experiments, data, materials
-
-        public var id: Self { self }
-
-        public var title: String {
-            switch self {
-            case .notes: "ノート"
-            case .papers: "論文"
-            case .experiments: "実験"
-            case .data: "データ"
-            case .materials: "資料"
-            }
-        }
-
-        public var systemImage: String {
-            switch self {
-            case .notes: "note.text"
-            case .papers: "doc.text.magnifyingglass"
-            case .experiments: "testtube.2"
-            case .data: "tablecells"
-            case .materials: "photo.on.rectangle"
-            }
-        }
-
-        /// ライブラリのルートからのフォルダ。
-        public var folder: String { domain.folder }
-
-        var domain: LibrarySection {
-            switch self {
-            case .notes: .notes
-            case .papers: .papers
-            case .experiments: .experiments
-            case .data: .data
-            case .materials: .materials
-            }
-        }
+    public var sidebarSelection: SidebarItem? = .all {
+        didSet { revealSelection() }
     }
-
-    public var section: Section = .notes
-    /// 比べるために選んだ実験。
-    public var selectedExperiments: Set<String> = []
-
-    public private(set) var papers: [PaperRow] = []
-    public private(set) var experiments: [ExperimentRow] = []
-    /// ~/Research の実験のプロジェクト（読むだけ）。
-    public private(set) var projects: [ResearchProjectRow] = []
-    public private(set) var isWorking = false
-    public var message: String?
+    /// サイドバーで開いている行。
+    public var expandedItems: Set<SidebarItem> = []
+    public var query = ""
+    public var selection: Set<UUID> = []
+    public var sortOrder: [KeyPathComparator<ReferenceRow>]
     public var errorMessage: String?
+    /// 終わった操作の結果（「書誌情報が 80 件見つかりました」など）。
+    public var noticeMessage: String?
+    /// 識別子を入れるシートを出しているか（メニューからも開く）。
+    public var isAddingIdentifier = false
+    /// PDF を選ぶパネルを出しているか。
+    public var isImportingPDF = false
+    /// 書き出す BibTeX。値があれば、保存のパネルを出す。
+    public var exportText: String?
+    /// 時間のかかる操作をしている間の説明。
+    public private(set) var progressMessage: String?
+    /// コレクションの木（中のコレクションと論文を含む）。
+    public private(set) var collectionTree: [SidebarNode] = []
+    /// 「未整理」の行（どのコレクションにも入っていない論文を含む）。
+    public private(set) var unfiledNode = SidebarNode(id: .unfiled, name: "未整理", kind: .unfiled, children: nil)
+    public private(set) var collectionChoices: [CollectionChoice] = []
+    public private(set) var tags: [String] = []
 
-    public static let statuses = ReadingStatus.allCases.map(\.rawValue)
+    private var references: [Reference] = []
+    private var collections: [ReferenceCollection] = []
+    private let library: any ManageLibraryUseCase
 
-    @ObservationIgnored private let library: any ManageLibraryUseCase
-    @ObservationIgnored private let observeChanges: any ObserveVaultChangesUseCase
-    @ObservationIgnored private let loadProjects: (any LoadResearchProjectsUseCase)?
-
-    public init(
-        library: any ManageLibraryUseCase, observeChanges: any ObserveVaultChangesUseCase,
-        loadProjects: (any LoadResearchProjectsUseCase)? = nil
-    ) {
+    public init(library: any ManageLibraryUseCase) {
         self.library = library
-        self.observeChanges = observeChanges
-        self.loadProjects = loadProjects
+        sortOrder = [KeyPathComparator(\.dateAdded, order: .reverse)]
     }
 
-    // MARK: - 木の中で 1 つのものとして見せるフォルダ
+    public var rows: [ReferenceRow] {
+        references.filtered(by: scope, query: query, collections: collections)
+            .map(ReferenceRow.init)
+            .sorted(using: sortOrder)
+    }
 
-    /// パス → 論文、実験、~/Research の実行やプロジェクト。
-    public private(set) var bundles: [String: LibraryBundle] = [:]
-    /// 木で選んでいるもの（パス）。
-    public var selectedPaths: Set<String> = []
-
-    /// 選んでいる自分の実験のキー（2 つ以上なら比べられる）。
-    public var selectedExperimentKeys: [String] {
-        selectedPaths.sorted().compactMap { path in
-            if case .experiment(let key)? = bundles[path]?.kind { return key }
-            return nil
+    /// 選んでいるコレクション。論文を選んでいるときは、その行のあるコレクション。
+    public var selectedCollectionID: UUID? {
+        switch sidebarSelection {
+        case .collection(let id): id
+        case .reference(_, let collectionID): collectionID
+        case .all, .unfiled, .tag, nil: nil
         }
     }
 
-    private func rebuildBundles() {
-        var result: [String: LibraryBundle] = [:]
-        for paper in papers {
-            let subtitle = [paper.authors, paper.year.map(String.init), paper.status]
-                .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: "・")
-            result[paper.folderPath] = LibraryBundle(
-                kind: .paper(key: paper.key), title: paper.title, subtitle: subtitle,
-                systemImage: paper.hasPDF ? "doc.richtext" : "doc.text.magnifyingglass", isLeaf: true)
+    /// サイドバーで選んでいる論文（PDF を出す）。フォルダを選んでいれば nil（一覧を出す）。
+    public var selectedReferenceID: UUID? {
+        if case .reference(let id, _) = sidebarSelection { return id }
+        return nil
+    }
+
+    /// 一覧から論文を開く。今見ているフォルダの中にその論文の行があれば、その行を選ぶ。
+    public func openReference(_ id: UUID) {
+        guard let reference = references.first(where: { $0.id == id }) else { return }
+        let inFolder: Set<UUID> =
+            switch sidebarSelection {
+            case .collection(let folder): collections.descendantIDs(of: folder)
+            case .all, .unfiled, .tag, .reference, nil: []
+            }
+        let parent =
+            reference.collectionIDs.first(where: inFolder.contains)
+            ?? collectionChoices.first { reference.collectionIDs.contains($0.id) }?.id
+        sidebarSelection = .reference(id, parent: parent)
+    }
+
+    /// 論文を見ているときの、その論文の行の親のフォルダ（検索を始めたときに一覧へ戻るため）。
+    public func returnToFolder() {
+        guard case .reference(_, let parent) = sidebarSelection else { return }
+        sidebarSelection = parent.map(SidebarItem.collection) ?? .unfiled
+    }
+
+    public var storageURL: URL {
+        library.storageRoot
+    }
+
+    /// 読み込み、そのあとはライブラリの変更を見張って読み直す。
+    public func start() async {
+        await reload()
+        for await _ in await library.changes() {
+            await reload()
         }
-        for experiment in experiments {
-            let subtitle = [experiment.algorithm, experiment.status, experiment.headline ?? ""]
-                .filter { !$0.isEmpty }.joined(separator: "・")
-            result[experiment.folderPath] = LibraryBundle(
-                kind: .experiment(key: experiment.key), title: experiment.title, subtitle: subtitle,
-                systemImage: "testtube.2", isLeaf: true)
+    }
+
+    // MARK: - 文献を足す、消す
+
+    /// DOI、arXiv の ID、ISBN から足す。足せたら true。
+    public func add(identifier text: String) async -> Bool {
+        guard let identifier = ReferenceIdentifier(parsing: text) else {
+            errorMessage = LibraryError.invalidIdentifier(text).message
+            return false
         }
-        for project in projects {
-            result[project.path] = LibraryBundle(
-                kind: .researchProject(path: project.path), title: project.title,
-                subtitle: project.runs.isEmpty ? nil : "実行 \(project.runs.count) 件",
-                systemImage: "folder.badge.gearshape", isLeaf: false)
-            for run in project.runs {
-                result[run.path] = LibraryBundle(
-                    kind: .researchRun(path: run.path), title: run.name,
-                    subtitle: [run.date, run.detail].filter { !$0.isEmpty }.joined(separator: "・"),
-                    systemImage: "chart.bar.doc.horizontal", isLeaf: true)
+        progressMessage = "\(identifier.text) の書誌情報を取っています"
+        defer { progressMessage = nil }
+        do {
+            let reference = try await library.add(identifier, into: selectedCollectionID)
+            await select(reference.id)
+            return true
+        } catch {
+            errorMessage = error.message
+            return false
+        }
+    }
+
+    public func importPDFs(_ urls: [URL]) async {
+        let pdfs = urls.filter { $0.pathExtension.lowercased() == "pdf" }
+        var added: [UUID] = []
+        for (index, url) in pdfs.enumerated() {
+            progressMessage = "PDF を取り込んでいます（\(index + 1) / \(pdfs.count)）"
+            do {
+                added.append(try await library.importPDF(url, into: selectedCollectionID).id)
+            } catch {
+                errorMessage = "\(url.lastPathComponent): \(error.message)"
             }
         }
-        bundles = result
+        progressMessage = nil
+        if let last = added.last {
+            await select(last)
+            selection = Set(added)
+        }
+    }
+
+    public func addBlank() async {
+        do {
+            let reference = try await library.addBlank(into: selectedCollectionID)
+            await select(reference.id)
+        } catch {
+            errorMessage = error.message
+        }
+    }
+
+    /// 書誌情報が見つかっていない文献を、PDF の題名とファイル名から探し直す。
+    public func findMissingMetadata() async {
+        do {
+            let result = try await library.findMissingMetadata { index, count in
+                await MainActor.run { self.progressMessage = "書誌情報を探しています（\(index) / \(count)）" }
+            }
+            noticeMessage =
+                result.total == 0
+                ? "書誌情報が見つかっていない文献はありません"
+                : "\(result.total) 件のうち \(result.found) 件の書誌情報が見つかりました。見つからなかった文献は、題名、著者、年を PDF とファイル名から埋め直しました"
+        } catch {
+            errorMessage = error.message
+        }
+        progressMessage = nil
+    }
+
+    /// PDF を、Mac の既定のアプリ（プレビューなど）で開く。
+    public func openPDFExternally(_ id: UUID) async {
+        guard let reference = try? await library.reference(id), let url = library.pdfURL(of: reference) else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    public func delete(_ ids: Set<UUID>) async {
+        if let id = selectedReferenceID, ids.contains(id) { returnToFolder() }
+        do {
+            try await library.delete(Array(ids))
+            selection.subtract(ids)
+        } catch {
+            errorMessage = error.message
+        }
+    }
+
+    // MARK: - コレクション
+
+    public func createCollection(named name: String, parentID: UUID?) async {
+        do {
+            let collection = try await library.createCollection(named: name, parentID: parentID)
+            await reload()
+            sidebarSelection = .collection(collection.id)
+        } catch {
+            errorMessage = error.message
+        }
+    }
+
+    public func collectionName(_ id: UUID) -> String {
+        collections.first { $0.id == id }?.name ?? ""
+    }
+
+    public func renameCollection(_ id: UUID, to name: String) async {
+        guard var collection = collections.first(where: { $0.id == id }) else { return }
+        collection.name = name
+        do {
+            try await library.save(collection)
+        } catch {
+            errorMessage = error.message
+        }
+    }
+
+    /// コレクションを別のコレクションの中へ移す（nil なら一番上へ）。
+    public func moveCollection(_ id: UUID, into parentID: UUID?) async {
+        guard id != parentID else { return }
+        do {
+            try await library.moveCollection(id, into: parentID)
+        } catch {
+            errorMessage = error.message
+        }
+    }
+
+    /// 一番上の階層にあるか。
+    public func isTopLevelCollection(_ id: UUID) -> Bool {
+        collections.first { $0.id == id }?.parentID == nil
+    }
+
+    public func deleteCollection(_ id: UUID) async {
+        if selectedCollectionID.map(collections.descendantIDs(of: id).contains) == true { sidebarSelection = .all }
+        do {
+            try await library.deleteCollection(id)
+        } catch {
+            errorMessage = error.message
+        }
+    }
+
+    public func add(_ ids: Set<UUID>, toCollection collectionID: UUID) async {
+        do {
+            try await library.add(Array(ids), to: collectionID)
+        } catch {
+            errorMessage = error.message
+        }
+    }
+
+    /// 選んでいるコレクションから外す（文献は消さない）。
+    public func removeFromSelectedCollection(_ ids: Set<UUID>) async {
+        guard let collectionID = selectedCollectionID else { return }
+        await remove(ids, fromCollection: collectionID)
+    }
+
+    /// コレクションから外す（文献は消さない）。外した論文の行を見ていたら、そのコレクションの一覧に戻る。
+    public func remove(_ ids: Set<UUID>, fromCollection collectionID: UUID) async {
+        if case .reference(let id, collectionID) = sidebarSelection, ids.contains(id) {
+            sidebarSelection = .collection(collectionID)
+        }
+        do {
+            try await library.remove(Array(ids), from: collectionID)
+        } catch {
+            errorMessage = error.message
+        }
     }
 
     // MARK: - 読み込み
 
-    /// 一覧を読み、ライブラリが変わるたびに読み直す（取り込み箱も見る）。
-    public func observe() async {
-        try? await library.prepare()
-        await refresh()
-        for await _ in observeChanges() {
-            await refresh()
+    private var scope: LibraryScope {
+        switch sidebarSelection {
+        case .all, nil: .all
+        case .unfiled: .unfiled
+        case .collection(let id): .collection(id)
+        case .tag(let tag): .tag(tag)
+        case .reference: .all
         }
     }
 
-    public func refresh() async {
-        if let imported = try? await library.importInbox(), !imported.isEmpty {
-            message = "取り込み箱から \(imported.count) 件の実験を取り込みました"
+    private func reload() async {
+        do {
+            references = try await library.references()
+            collections = try await library.collections()
+        } catch {
+            errorMessage = error.message
+            return
         }
-        if let linked = try? await library.linkResearchPapers(), linked > 0 {
-            message = "~/Research の PDF を \(linked) 本、論文につなぎました"
-        }
-        papers = ((try? await library.papers()) ?? []).map(PaperRow.init)
-        experiments = ((try? await library.experiments()) ?? []).map(ExperimentRow.init)
-        if let loadProjects { projects = await loadProjects().map(ResearchProjectRow.init) }
-        rebuildBundles()
+        tags = references.allTags
+        let tree = SidebarTree(references: references, collections: collections)
+        collectionTree = tree.collectionNodes(parentID: nil)
+        unfiledNode = tree.unfiledNode
+        collectionChoices = tree.choices(parentID: nil, prefix: "")
+        selection.formIntersection(references.map(\.id))
     }
 
-    // MARK: - 足す
-
-    /// arXiv の ID か DOI（URL でもよい）から論文を足す。足した論文のキーを返す。
-    public func addPaper(identifier text: String, downloadsPDF: Bool) async -> String? {
-        guard let identifier = PaperIdentifier(parsing: text) else {
-            errorMessage = "arXiv の ID（1304.3061 など）か DOI（10.1038/… など）を入れてください"
-            return nil
+    private func select(_ id: UUID) async {
+        await reload()
+        // 足した文献が今の一覧に出ないときは、検索をやめて、すべての文献を見せる
+        if !rows.contains(where: { $0.id == id }) {
+            query = ""
+            sidebarSelection = .all
         }
-        return await work("書誌情報を取っています") {
-            try await self.library.addPaper(identifier: identifier, downloadsPDF: downloadsPDF).key
-        }
+        selection = [id]
     }
 
-    /// PDF を取り込んで論文にする。最後に取り込んだ論文のキーを返す。
-    public func importPapers(_ urls: [URL]) async -> String? {
-        let key: String?? = await work("PDF を取り込んでいます") {
-            var last: String?
-            for url in urls {
-                let accessing = url.startAccessingSecurityScopedResource()
-                defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-                last = try await self.library.importPaper(pdf: url).key
-            }
-            return last
+    /// 選んだ論文の行が見えるように、親のコレクションを開く。
+    private func revealSelection() {
+        guard case .reference(_, let parent) = sidebarSelection else { return }
+        guard let parent else {
+            expandedItems.insert(.unfiled)
+            return
         }
-        return key.flatMap { $0 }
-    }
-
-    public func createNote(named name: String) async -> String? {
-        await work(nil) { try await self.library.createNote(named: name) }
-    }
-
-    public func createExperiment(title: String, algorithm: String, problem: String) async -> String? {
-        await work(nil) {
-            try await self.library.createExperiment(title: title, algorithm: algorithm, problem: problem).key
+        var current: UUID? = parent
+        while let id = current {
+            expandedItems.insert(.collection(id))
+            current = collections.first { $0.id == id }?.parentID
         }
     }
+}
 
-    /// データや資料のファイルを取り込む。
-    public func importFiles(_ urls: [URL]) async {
-        _ = await work("取り込んでいます") {
-            for url in urls {
-                let accessing = url.startAccessingSecurityScopedResource()
-                defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-                _ = try await self.library.importFiles([url], into: self.section.domain)
-            }
+// MARK: - 書き出し
+
+extension LibraryViewModel {
+
+    public func bibTeX(for ids: Set<UUID>) async -> String {
+        do {
+            return try await library.bibTeX(for: Array(ids))
+        } catch {
+            errorMessage = error.message
             return ""
         }
     }
 
-    private func work<T>(_ title: String?, _ body: @escaping () async throws -> T) async -> T? {
-        isWorking = true
-        errorMessage = nil
-        message = title
-        defer {
-            isWorking = false
-            if let title, message == title { message = nil }
-        }
-        do {
-            let result = try await body()
-            await refresh()
-            return result
-        } catch let error as LibraryError {
-            errorMessage = error.message
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-        return nil
+    public func copyBibTeX(for ids: Set<UUID>) async {
+        let text = await bibTeX(for: ids)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
     }
-}
 
-// MARK: - 表示用の型
-
-public struct PaperRow: Identifiable, Hashable, Sendable {
-    public var id: String { key }
-    public let key: String
-    public let title: String
-    public let authors: String
-    public let year: Int?
-    public let status: String
-    public let hasPDF: Bool
-    public let tags: [String]
-    /// 論文のフォルダ（タブで開くときに使う）。
-    public let folderPath: String
-
-    init(_ paper: Paper) {
-        key = paper.key
-        title = paper.metadata.title
-        let names = paper.metadata.authors.map { $0.split(separator: " ").last.map(String.init) ?? $0 }
-        authors = names.count > 3 ? names.prefix(3).joined(separator: ", ") + " ほか" : names.joined(separator: ", ")
-        year = paper.metadata.year
-        status = paper.status.rawValue
-        hasPDF = paper.pdfPath != nil
-        tags = paper.tags
-        folderPath = "\(LibrarySection.papers.folder)/\(paper.key)"
+    /// 今の一覧に出ている文献すべてを書き出す（保存のパネルを出す）。
+    public func exportVisibleRows() async {
+        exportText = await bibTeX(for: Set(rows.map(\.id)))
     }
-}
 
-public struct ExperimentRow: Identifiable, Hashable, Sendable {
-    public var id: String { key }
-    public let key: String
-    public let title: String
-    public let algorithm: String
-    public let problem: String
-    public let status: String
-    public let isDone: Bool
-    public let date: String
-    /// 目的関数の値（あれば）。
-    public let headline: String?
-    public let folderPath: String
-
-    init(_ experiment: ResearchExperiment) {
-        key = experiment.key
-        title = experiment.title
-        algorithm = experiment.algorithm
-        problem = experiment.problem
-        status = experiment.status.title
-        isDone = experiment.status == .done
-        date = experiment.created?.formatted(date: .abbreviated, time: .omitted) ?? ""
-        headline = experiment.headlineMetric.map { "\($0.name) \(ExperimentFormat.number($0.value))" }
-        folderPath = experiment.folderPath
-    }
-}
-
-enum ExperimentFormat {
-    static func number(_ value: Double) -> String {
-        if value == value.rounded() && abs(value) < 1e9 { return String(Int64(value)) }
-        // 有効数字 7 桁（エネルギーの mHa の桁まで見える）。末尾の 0 は付けない
-        return String(format: "%.7g", value)
+    /// 書き出すファイルの既定の名前。
+    public var exportFileName: String {
+        let name =
+            switch sidebarSelection {
+            case .collection(let id): collectionName(id)
+            case .tag(let tag): tag
+            case .all, .unfiled, .reference, nil: "library"
+            }
+        return "\(name).bib"
     }
 }

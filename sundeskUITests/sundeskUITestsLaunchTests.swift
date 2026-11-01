@@ -19,8 +19,11 @@ final class SundeskUITestsLaunchTests: XCTestCase {
 
     @MainActor
     func testLaunch() throws {
+        let library = FileManager.default.temporaryDirectory.appending(path: "sundesk-launch-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: library, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: library) }
         let app = XCUIApplication()
-        app.launchArguments += ["-engine.startsAutomatically", "NO"]
+        app.launchArguments += ["-library.directory", library.path]
         app.launch()
 
         let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
