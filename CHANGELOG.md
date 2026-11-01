@@ -3,7 +3,7 @@
 このプロジェクトの主な変更を記録する。書き方は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、
 バージョンは [セマンティック バージョニング](https://semver.org/lang/ja/) に従う。
 
-## [Unreleased]
+## [0.2.0] - 2026-11-01
 
 ローカル AI の実験場から、文献管理のアプリに作り直した（[ADR 0017](docs/adr/0017-reference-manager.md)）。
 
