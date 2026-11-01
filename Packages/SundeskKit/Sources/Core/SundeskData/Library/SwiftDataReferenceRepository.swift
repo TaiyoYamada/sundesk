@@ -10,9 +10,15 @@ import SundeskDomain
 import SwiftData
 
 /// 文献、コレクション、注釈を SwiftData に保存する。
+/// アプリと CLI（MCP サーバー）が同じファイルを開くので、書き換えたら別のプロセスにも知らせる。
 @ModelActor
 public actor SwiftDataReferenceRepository: ReferenceRepository {
+    private static let didChange = Notification.Name("com.taiyou.sundesk.libraryDidChange")
+    /// 知らせの送り主。自分が送った知らせで読み直さないために付ける。
+    private static let processID = String(ProcessInfo.processInfo.processIdentifier)
+
     private var observers: [UUID: AsyncStream<Void>.Continuation] = [:]
+    private var otherProcessObserver: (any NSObjectProtocol)?
 
     /// - Parameter url: 保存するファイル。nil ならメモリの上だけに置く（テスト用）。
     public static func open(at url: URL?) throws -> SwiftDataReferenceRepository {
@@ -98,6 +104,7 @@ public actor SwiftDataReferenceRepository: ReferenceRepository {
     // MARK: - 変更の知らせ
 
     public func changes() -> AsyncStream<Void> {
+        observeOtherProcesses()
         let (stream, continuation) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
         let key = UUID()
         observers[key] = continuation
@@ -109,6 +116,21 @@ public actor SwiftDataReferenceRepository: ReferenceRepository {
 
     private func removeObserver(_ key: UUID) {
         observers[key] = nil
+    }
+
+    private func observeOtherProcesses() {
+        guard otherProcessObserver == nil else { return }
+        let processID = Self.processID
+        otherProcessObserver = DistributedNotificationCenter.default().addObserver(
+            forName: Self.didChange, object: nil, queue: nil
+        ) { [weak self] notification in
+            guard let self, notification.object as? String != processID else { return }
+            Task { await self.notifyObservers() }
+        }
+    }
+
+    private func notifyObservers() {
+        for observer in observers.values { observer.yield() }
     }
 
     // MARK: - SwiftData
@@ -140,6 +162,9 @@ public actor SwiftDataReferenceRepository: ReferenceRepository {
         } catch {
             throw .storage(error.localizedDescription)
         }
-        for observer in observers.values { observer.yield() }
+        notifyObservers()
+        // 裏に回っているアプリにも、すぐに届ける
+        DistributedNotificationCenter.default().postNotificationName(
+            Self.didChange, object: Self.processID, userInfo: nil, deliverImmediately: true)
     }
 }

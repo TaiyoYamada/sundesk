@@ -104,9 +104,9 @@ public struct LibraryInteractor: ManageLibraryUseCase {
         let identifier =
             [metadata.doi, metadata.arxiv, metadata.isbn].lazy.compactMap(ReferenceIdentifier.init(parsing:)).first
         if let identifier {
-            reference.metadata = try await bibliography.metadata(for: identifier)
+            try await replaceMetadata(of: &reference, with: try await bibliography.metadata(for: identifier))
         } else if let pdf = pdfURL(of: reference), let found = await identify(pdf) {
-            reference.metadata = found
+            try await replaceMetadata(of: &reference, with: found)
         } else {
             throw .notFound("「\(metadata.title)」")
         }
@@ -127,17 +127,29 @@ public struct LibraryInteractor: ManageLibraryUseCase {
             guard var reference = try await repository.reference(target.id), let pdf = pdfURL(of: reference)
             else { continue }
             if let metadata = await identify(pdf) {
-                reference.metadata = metadata
+                try await replaceMetadata(of: &reference, with: metadata)
                 found += 1
             } else if reference.metadata.type == .document {
                 // 書誌情報を探せず、PDF とファイル名から拾ったままの文献だけ、拾い直す（種類を変えた文献は手で直したとみなして残す）
-                reference.metadata = fallbackMetadata(of: pdf)
+                try await replaceMetadata(of: &reference, with: fallbackMetadata(of: pdf))
             } else {
                 continue
             }
             try await save(reference)
         }
         return (found, targets.count)
+    }
+
+    /// 書誌情報を差し替える。引用キーが前の書誌情報から自動で付けたままなら、新しい書誌情報で付け直す（手で変えたキーは残す）。
+    private func replaceMetadata(
+        of reference: inout Reference, with metadata: ReferenceMetadata
+    ) async throws(LibraryError) {
+        let id = reference.id
+        let keys = Set(try await repository.references().filter { $0.id != id }.map(\.citationKey))
+        if reference.citationKey == CitationKey.make(for: reference.metadata, existing: keys) {
+            reference.citationKey = CitationKey.make(for: metadata, existing: keys)
+        }
+        reference.metadata = metadata
     }
 
     /// PDF の DOI か arXiv の ID、題名の候補、ファイル名の順に、書誌情報を探す。

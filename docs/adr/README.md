@@ -22,5 +22,6 @@
 | [0015](0015-research-library.md) | 研究の一次資料を、アプリの中の研究ライブラリに置く | 置き換え済み（0017） |
 | [0016](0016-read-research-in-place.md) | ~/Research と study-artifact を、コピーせずその場で読む | 置き換え済み（0017） |
 | [0017](0017-reference-manager.md) | sundesk を、Swift だけで動く文献管理アプリに作り直す | 採用 |
+| [0018](0018-cli-and-mcp.md) | CLI と MCP サーバーは、ライブラリのファイルを直接開く | 採用 |
 
 新しく書くときは [template.md](template.md) を写して使う。

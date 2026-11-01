@@ -4,7 +4,7 @@ import PackageDescription
 
 // sundesk のモジュール構成（docs/architecture.md、docs/adr/0011 を参照）。
 //
-//   App/            AppFeature … 画面全体の組み立てと DI。全モジュールを知る唯一の場所
+//   App/            AppFeature … 画面全体の組み立てと DI。SundeskCLI … CLI と MCP サーバー（画面を持たない入口）
 //   Features/       機能ごとの Presentation 層（ViewModel と View）。Features どうしは直接依存しない
 //   Core/           Domain（どこにも依存しない）、Data（Repository の実装）、DesignSystem
 //   Infrastructure/ 外部の技術を包む（Markdown の解析、コードの色づけ）
@@ -43,10 +43,14 @@ let package = Package(
     platforms: [.macOS(.v27)],
     products: [
         // アプリのターゲットが使うのは AppFeature だけ
-        .library(name: "AppFeature", targets: ["AppFeature"])
+        .library(name: "AppFeature", targets: ["AppFeature"]),
+        // ターミナルと MCP のクライアントから使う。入れるときに sundesk という名前にする（Makefile の install-cli）
+        .executable(name: "sundesk-cli", targets: ["SundeskCLI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/hmlongco/Factory", .upToNextMajor(from: "3.4.1")),
+        .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMajor(from: "1.8.2")),
+        .package(url: "https://github.com/modelcontextprotocol/swift-sdk", .upToNextMinor(from: "0.12.1")),
         .package(url: "https://github.com/swiftlang/swift-markdown", .upToNextMinor(from: "0.9.0")),
         .package(url: "https://github.com/tree-sitter/swift-tree-sitter", .upToNextMinor(from: "0.10.0")),
         .package(url: "https://github.com/alex-pinkus/tree-sitter-swift", exact: "0.7.3-with-generated-files"),
@@ -76,6 +80,16 @@ let package = Package(
             ],
             path: "Sources/App/AppFeature",
             swiftSettings: uiSettings
+        ),
+        .executableTarget(
+            name: "SundeskCLI",
+            dependencies: [
+                "SundeskDomain", "SundeskData",
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                .product(name: "MCP", package: "swift-sdk"),
+            ],
+            path: "Sources/App/SundeskCLI",
+            swiftSettings: coreSettings
         ),
 
         // MARK: - Features
@@ -148,6 +162,12 @@ let package = Package(
 
         // MARK: - Tests
 
+        .testTarget(
+            name: "SundeskCLITests",
+            dependencies: ["SundeskCLI", "SundeskDomain", "SundeskData", .product(name: "MCP", package: "swift-sdk")],
+            path: "Tests/App/SundeskCLITests",
+            swiftSettings: coreSettings
+        ),
         .testTarget(
             name: "LibraryFeatureTests",
             dependencies: ["LibraryFeature", "SundeskDomain", "SundeskData"],

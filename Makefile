@@ -58,7 +58,7 @@ coverage: test-package ## Swift パッケージのカバレッジをモジュー
 
 # MARK: - ビルドと実行
 
-.PHONY: build run install clean
+.PHONY: build run install install-cli clean
 build: ## アプリをビルドする
 	$(XCODEBUILD) build
 
@@ -67,8 +67,9 @@ run: build ## アプリをビルドして起動する
 
 APP_ID := com.taiyou.sundesk
 INSTALL_DIR ?= /Applications
+CLI_DIR ?= $(HOME)/.local/bin
 
-install: ## 普段使いの設定（Release）でビルドし、アプリケーションフォルダに入れ直して起動する
+install: install-cli ## 普段使いの設定（Release）でビルドし、アプリケーションフォルダに入れ直して起動する。CLI も入れる
 	$(XCODEBUILD) -configuration Release build
 	@# 動いていれば終了してもらい、終わるまで待つ
 	@osascript -e 'if application id "$(APP_ID)" is running then tell application id "$(APP_ID)" to quit'
@@ -77,6 +78,11 @@ install: ## 普段使いの設定（Release）でビルドし、アプリケー�
 	rm -rf $(INSTALL_DIR)/sundesk.app
 	ditto $(DERIVED_DATA)/Build/Products/Release/sundesk.app $(INSTALL_DIR)/sundesk.app
 	open $(INSTALL_DIR)/sundesk.app
+
+install-cli: ## CLI を Release でビルドし、~/.local/bin に sundesk という名前で入れる
+	swift build -c release --package-path $(PACKAGE) --product sundesk-cli
+	install -d $(CLI_DIR)
+	install -m 755 $(PACKAGE)/.build/release/sundesk-cli $(CLI_DIR)/sundesk
 
 clean: ## ビルドの成果物を消す
 	rm -rf build $(PACKAGE)/.build

@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum LibraryError: Error, Equatable, Sendable {
+public enum LibraryError: LocalizedError, Equatable, Sendable {
     /// DOI、arXiv の ID、ISBN として読めない。
     case invalidIdentifier(String)
     case notFound(String)
@@ -23,5 +23,9 @@ public enum LibraryError: Error, Equatable, Sendable {
         case .storage(let reason): "保存できませんでした: \(reason)"
         case .unreadablePDF: "PDF として読めませんでした"
         }
+    }
+
+    public var errorDescription: String? {
+        message
     }
 }

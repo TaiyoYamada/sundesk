@@ -188,5 +188,20 @@ struct LibraryInteractorTests {
         #expect(refreshed.metadata.title == "新しい題名")
         #expect(refreshed.tags == ["VQE"])
         #expect(refreshed.note == "メモ")
+        // 手で付けたキーは変えない
+        #expect(refreshed.citationKey == "k")
+    }
+
+    @Test("自動で付けた引用キーは、引き直した書誌情報で付け直す")
+    func refreshCitationKey() async throws {
+        let placeholder = ReferenceMetadata(title: "jsdt", doi: "10.1038/ncomms5213")
+        let library = interactor(bibliography: FakeBibliography(metadata: [.doi("10.1038/ncomms5213"): vqe]))
+        let reference = Reference(metadata: placeholder)
+        try await library.save(reference)
+        #expect(await repository.reference(reference.id)?.citationKey == "jsdt")
+
+        try await library.refreshMetadata(of: reference.id)
+
+        #expect(await repository.reference(reference.id)?.citationKey == "peruzzo2014variational")
     }
 }
