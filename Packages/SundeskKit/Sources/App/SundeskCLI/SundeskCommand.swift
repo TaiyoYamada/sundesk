@@ -10,7 +10,7 @@ import ArgumentParser
 @main
 struct SundeskCommand: AsyncParsableCommand {
     /// Configurations/Shared.xcconfig の MARKETING_VERSION と合わせる。
-    static let version = "0.2.0"
+    static let version = "0.3.0"
 
     static let configuration = CommandConfiguration(
         commandName: "sundesk",

@@ -7,7 +7,7 @@
 //  プロジェクト全体（すべてのターゲット）に効く設定。
 //  ターゲットごとの設定は App.xcconfig、Tests.xcconfig、UITests.xcconfig に書く。
 
-MARKETING_VERSION = 0.2.0
+MARKETING_VERSION = 0.3.0
 CURRENT_PROJECT_VERSION = 1
 BUNDLE_ID_PREFIX = com.taiyou
 DEVELOPMENT_TEAM = HJC5DQ3PVM
