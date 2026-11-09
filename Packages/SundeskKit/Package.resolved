@@ -1,5 +1,5 @@
 {
-  "originHash" : "7f324e2c71a8b72dbe88a6cceae6d556bd6165ee363cd8ce9e7b4c2ab8700830",
+  "originHash" : "6c073c562a8742634127a179593646802e29e62c7d6792d949c55d2bf124a632",
   "pins" : [
     {
       "identity" : "eventsource",
@@ -105,8 +105,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/tree-sitter/swift-tree-sitter",
       "state" : {
-        "revision" : "f97df585296977d8fcaf644cbde567151d1367b8",
-        "version" : "0.10.0"
+        "revision" : "08ef81eb8620617b55b08868126707ad72bf754f",
+        "version" : "0.25.0"
       }
     },
     {
