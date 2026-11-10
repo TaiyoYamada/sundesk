@@ -53,7 +53,7 @@ let package = Package(
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk", .upToNextMinor(from: "0.12.1")),
         .package(url: "https://github.com/swiftlang/swift-markdown", .upToNextMinor(from: "0.9.0")),
         .package(url: "https://github.com/tree-sitter/swift-tree-sitter", .upToNextMinor(from: "0.10.0")),
-        .package(url: "https://github.com/alex-pinkus/tree-sitter-swift", exact: "0.7.3-with-generated-files"),
+        .package(url: "https://github.com/alex-pinkus/tree-sitter-swift", exact: "0.7.4"),
         // 次の 4 つは、Sources/Infrastructure/TreeSitterScanners の scanner.c と同じバージョンに固定する
         .package(url: "https://github.com/tree-sitter/tree-sitter-python", exact: "0.25.0"),
         .package(url: "https://github.com/tree-sitter/tree-sitter-javascript", exact: "0.25.0"),
