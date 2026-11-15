@@ -57,6 +57,23 @@ struct LibraryAccessTests {
         #expect(collected.map(\.collections) == [["研究/量子"]])
     }
 
+    @Test("「親/子」で作ると、ない親だけを足して作る")
+    func createCollection() async throws {
+        let access = try await makeLibrary()
+
+        let created = try await access.createCollection("研究/量子/アニーリング")
+        _ = try await access.createCollection("割当/保育所")
+
+        #expect(created == "研究/量子/アニーリング")
+        #expect(
+            Set(try await access.collections().map(\.path)) == [
+                "研究", "研究/量子", "研究/量子/アニーリング", "量子", "割当", "割当/保育所",
+            ])
+        await #expect(throws: CommandError.self) {
+            try await access.createCollection("研究/量子")
+        }
+    }
+
     @Test("同じ DOI をもう一度足しても、増えない")
     func addTwice() async throws {
         let access = try await makeLibrary()
