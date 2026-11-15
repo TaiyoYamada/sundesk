@@ -58,6 +58,7 @@ sundesk show peruzzo2014variational  # 1 件を、要旨、メモ、要約まで
 sundesk add 10.1038/ncomms5213 --collection 研究/量子   # DOI、arXiv の ID、ISBN、PDF のパス
 sundesk collect peruzzo2014variational --into 読む
 sundesk collections
+sundesk create-collection 研究/量子/アニーリング   # ない親も作る（CLI だけ。MCP には出さない）
 sundesk bib peruzzo2014variational
 ```
 

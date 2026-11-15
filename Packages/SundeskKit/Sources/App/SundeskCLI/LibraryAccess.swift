@@ -99,6 +99,25 @@ struct LibraryAccess {
         return collected
     }
 
+    /// 「親/子」の形で指したコレクションを作る。ない親も作り、作ったコレクションの「親/子」を返す。
+    func createCollection(_ path: String) async throws -> String {
+        var collections = try await library.collections()
+        if collections.contains(where: { collections.path(of: $0.id) == path }) {
+            throw CommandError.collectionExists(path)
+        }
+        var parentID: UUID?
+        for name in path.split(separator: "/").map(String.init) {
+            if let existing = collections.first(where: { $0.parentID == parentID && $0.name == name }) {
+                parentID = existing.id
+            } else {
+                let created = try await library.createCollection(named: name, parentID: parentID)
+                collections.append(created)
+                parentID = created.id
+            }
+        }
+        return path
+    }
+
     private func find(key: String) async throws -> Reference {
         guard let reference = try await library.references().first(where: { $0.citationKey == key }) else {
             throw CommandError.unknownReference(key)
