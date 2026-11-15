@@ -22,7 +22,7 @@ struct SundeskCommand: AsyncParsableCommand {
         version: version,
         subcommands: [
             SearchCommand.self, ShowCommand.self, AddCommand.self, CollectCommand.self, CollectionsCommand.self,
-            BibCommand.self, MCPCommand.self,
+            CreateCollectionCommand.self, BibCommand.self, MCPCommand.self,
         ]
     )
 }

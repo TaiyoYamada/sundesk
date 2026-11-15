@@ -3,6 +3,12 @@
 このプロジェクトの主な変更を記録する。書き方は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、
 バージョンは [セマンティック バージョニング](https://semver.org/lang/ja/) に従う。
 
+## [Unreleased]
+
+### 追加
+
+- CLI: `sundesk create-collection 親/子` でコレクションを作る。ない親も作る。MCP のツールには出さない（[ADR 0018](docs/adr/0018-cli-and-mcp.md)）
+
 ## [0.3.0] - 2026-11-01
 
 ### 追加
